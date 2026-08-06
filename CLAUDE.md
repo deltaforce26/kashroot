@@ -16,7 +16,10 @@ An app that answers "Can I eat here according to MY standards?" — user defines
 - Paid placement never influences match results or organic ranking.
 
 ## Current status (Aug 2026)
-- PRD complete (`docs/`). No application code yet.
+- PRD complete (`docs/`).
+- **Backend scaffolded:** `app/` (FastAPI modular monolith) with PRD §16 models, Alembic
+  initial migration `0001_initial_schema`, and `kashroot seed-import` (dry-run by
+  default). No match engine, no API beyond `/health` yet — that's next.
 - **Seed data corpus exists:** `data/seed/kashroot_seed_corpus.csv` — 517 unique records from 6 certifier source documents (see `data/README.md` for schema, sources, and known gaps). Built by `scripts/build_seed.py`.
 - Seed data has certifier + status only — **no certificate-level attributes, no expiry dates**. Records are `LIST_VERIFIED` at best; treat as source-hierarchy level 1 (official published lists).
 - Launch gate: don't launch a city below 80% coverage.
@@ -31,3 +34,11 @@ An app that answers "Can I eat here according to MY standards?" — user defines
 - Hebrew text: UTF-8 everywhere; CSV outputs use utf-8-sig for Excel compatibility.
 - Never hardcode kashrut logic conclusions; everything derives from Certificate records + Profile.
 - Migrations via Alembic only; never edit schema manually.
+
+## Orchestration protocol (main session = orchestrator)
+You, the main conversation, are the orchestrator. Your job is coordination, not implementation.
+- **Delegate by default.** Implementation → `backend-builder`; data/CSV/ingestion → `data-pipeline`; running tests/linters → `verifier`; pre-commit review → `reviewer`. Do trivial edits (<10 lines, single file) yourself.
+- **Keep your context clean.** Never read large files, full test logs, or big diffs into the main conversation — that's what subagents are for. Expect and accept summary-only reports.
+- **Subagents may nest** (spawn their own subagents for parallel subtasks); every level returns only a summary to its caller.
+- **Anything requiring user approval or a product decision comes back to you** — subagents cannot ask the user questions. Surface decisions, don't bury them.
+- Typical flow: plan → delegate build → delegate verify → delegate review → report to user → commit.
