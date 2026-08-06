@@ -29,6 +29,7 @@ from app.models.enums import (
     SourceDocumentKind,
     UserRole,
 )
+from app.models.geocode import GeocodeCache
 from app.models.moderation import AuditLog, Flag, IngestionRun, OwnerClaim
 from app.models.restaurant import OpeningHours, Restaurant, RestaurantPhoto
 from app.models.user import (
@@ -58,6 +59,7 @@ __all__ = [
     "Flag",
     "FlagState",
     "FlagType",
+    "GeocodeCache",
     "HoursRuleType",
     "IngestionRun",
     "IngestionRunState",

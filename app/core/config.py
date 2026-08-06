@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     s3_access_key: str | None = None
     s3_secret_key: str | None = None
 
+    # Google Geocoding API (geocoding pipeline). No key → the pipeline can still run
+    # against its response cache; it just cannot make new API calls.
+    google_maps_api_key: str | None = None
+    # Politeness delay between paid geocoding calls.
+    geocode_delay_ms: int = 50
+
     # Certifier list snapshots carry no validity window (see data/README.md); a certificate
     # sourced from a published list goes stale this many days after its list date unless the
     # certifier overrides it. Staleness degrades to UNKNOWN — never to MATCH.
