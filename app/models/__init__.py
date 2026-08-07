@@ -3,7 +3,7 @@ Alembic's env.py relies on that, so any new model file must be imported here.
 """
 
 from app.db.base import Base
-from app.models.certificate import Certificate, validate_attributes
+from app.models.certificate import Certificate, CertificateEvidencePhoto, validate_attributes
 from app.models.certifier import Certifier, SourceDocument
 from app.models.enums import (
     CERTIFICATION_LEVEL_ORDER,
@@ -17,6 +17,7 @@ from app.models.enums import (
     CertificationLevel,
     CertifierType,
     DietType,
+    EvidencePhotoStatus,
     FlagState,
     FlagType,
     HoursRuleType,
@@ -50,12 +51,14 @@ __all__ = [
     "Base",
     "Certificate",
     "CertificateAttribute",
+    "CertificateEvidencePhoto",
     "CertificateSource",
     "CertificateState",
     "CertificationLevel",
     "Certifier",
     "CertifierType",
     "DietType",
+    "EvidencePhotoStatus",
     "Flag",
     "FlagState",
     "FlagType",

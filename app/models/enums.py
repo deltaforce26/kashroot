@@ -117,6 +117,18 @@ class CertificateAttribute(StrEnum):
     SHERUYA = "sheruya"
 
 
+class EvidencePhotoStatus(StrEnum):
+    """Review lifecycle of a certificate evidence photo (PRD §13, source level 2).
+
+    Fail-safe: only an ACCEPTED photo may ever feed certificate attributes, expiry
+    dates or a source upgrade. PENDING_REVIEW and REJECTED photos change nothing.
+    """
+
+    PENDING_REVIEW = "pending_review"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+
+
 class AmenityKey(StrEnum):
     """Keys allowed in ``Restaurant.amenities`` — soft preferences (Layer 2 only)."""
 
@@ -204,8 +216,9 @@ class AuditAction(StrEnum):
     STATE_CHANGE = "state_change"
 
 
-#: Every PG enum type name created by the initial migration, in creation order.
-#: Keep in sync with ``alembic/versions/0001_initial_schema.py``.
+#: Every PG enum type name created by migrations, in creation order (0001 creates all
+#: but the last; evidence_photo_status is added by 0004). Keep in sync with
+#: ``alembic/versions/``.
 ENUM_TYPES: dict[str, type[StrEnum]] = {
     "diet_type": DietType,
     "restaurant_status": RestaurantStatus,
@@ -224,4 +237,5 @@ ENUM_TYPES: dict[str, type[StrEnum]] = {
     "source_document_kind": SourceDocumentKind,
     "ingestion_run_state": IngestionRunState,
     "audit_action": AuditAction,
+    "evidence_photo_status": EvidencePhotoStatus,
 }

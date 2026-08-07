@@ -18,6 +18,15 @@ export function formatDate(value: string | null): string {
   return value ?? "—";
 }
 
+/**
+ * Today as a civil date in Israel (YYYY-MM-DD) — mirrors the server's ISRAEL_TZ
+ * rule for "strictly future" date checks. en-CA formatting yields ISO order.
+ * The server remains authoritative; this only makes the client pre-check agree.
+ */
+export function todayInIsrael(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem" }).format(new Date());
+}
+
 export function formatDateTime(value: string | null): string {
   if (!value) return "—";
   const d = new Date(value);

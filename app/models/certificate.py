@@ -17,7 +17,16 @@ import datetime as dt
 import uuid
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -28,6 +37,7 @@ from app.models.enums import (
     CertificateSource,
     CertificateState,
     CertificationLevel,
+    EvidencePhotoStatus,
     pg_enum,
 )
 
@@ -113,6 +123,61 @@ class Certificate(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     certifier: Mapped[Certifier] = relationship(back_populates="certificates")
     source_document: Mapped[SourceDocument | None] = relationship()
     verified_by: Mapped[User | None] = relationship()
+    evidence_photos: Mapped[list[CertificateEvidencePhoto]] = relationship(
+        back_populates="certificate", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper
         return f"<Certificate {self.restaurant_id} × {self.certifier_id} [{self.state}]>"
+
+
+class CertificateEvidencePhoto(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """A photo (or PDF scan) of the physical certificate — source-hierarchy level 2
+    evidence (PRD §13). This is how attributes and expiry dates enter the database:
+    a moderator reviews the photo and records what the certificate *actually says*.
+
+    Fail-safe lifecycle: uploads land as PENDING_REVIEW and change nothing. Only an
+    ACCEPTED review may write attributes / valid_until / a source upgrade onto the
+    certificate; a REJECTED photo changes nothing, ever.
+    """
+
+    __tablename__ = "certificate_evidence_photo"
+    __table_args__ = (
+        # Exact-duplicate uploads (same bytes, same certificate) are rejected in the
+        # API with 409; this constraint is the race-proof backstop.
+        UniqueConstraint("certificate_id", "sha256"),
+        Index("ix_certificate_evidence_photo_status", "status"),
+    )
+
+    certificate_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("certificate.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    #: Object key in S3-compatible storage (``cert-evidence/{certificate_id}/{uuid}.{ext}``);
+    #: never a public URL in the DB — viewing goes through presigned URLs.
+    storage_key: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    content_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    #: Hex digest of the stored bytes — dedupe key and integrity check.
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    #: Actor label of the uploader (``moderator:<name>`` for now; owner-portal uploads
+    #: will carry their own prefix).
+    uploaded_by: Mapped[str] = mapped_column(String(120), nullable=False)
+    uploaded_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    status: Mapped[EvidencePhotoStatus] = mapped_column(
+        pg_enum(EvidencePhotoStatus, "evidence_photo_status"),
+        nullable=False,
+        server_default=EvidencePhotoStatus.PENDING_REVIEW.value,
+    )
+    reviewed_by: Mapped[str | None] = mapped_column(String(120))
+    reviewed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    review_note: Mapped[str | None] = mapped_column(Text)
+
+    certificate: Mapped[Certificate] = relationship(back_populates="evidence_photos")
+
+    def __repr__(self) -> str:  # pragma: no cover - debug helper
+        return f"<CertificateEvidencePhoto {self.certificate_id} [{self.status}]>"

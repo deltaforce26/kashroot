@@ -4,6 +4,42 @@ Running notes on decisions, gotchas, and open items that are not obvious from th
 code or the PRD. Newest sections first. (Locked product decisions live in
 CLAUDE.md; this file is for everything worth remembering that isn't locked.)
 
+## Certificate photo flow (Aug 2026)
+
+- **Photo review is the only door for attributes/expiry** (source level 2, PRD §13):
+  upload → PENDING_REVIEW (changes nothing) → moderator `POST /photos/{id}/review`.
+  Only `accept` writes facts; the schema refuses attributes/valid_until on `reject`
+  at validation time. Attributes are tri-state and **StrictBool** — pydantic must not
+  coerce "yes"/1 into a kashrut fact. **Explicit `null` on accept CLEARS a key back
+  to unknown** (doubt → UNKNOWN: the new certificate no longer rules on it), audited
+  in before/after; an absent key stays untouched.
+- **Photo-verified source = `MODERATOR_VERIFIED`** (a moderator verified the physical
+  certificate from photo evidence). Applied only when strictly higher per
+  SOURCE_AUTHORITY — a cert sourced `certifier_portal` keeps its provenance; the
+  facts still land. Review-accept never touches `state`: restore stays exclusive to
+  `verify-renewal`, which now 409s unless `evidence_photo_key` names an ACCEPTED
+  photo of that same certificate.
+- Upload validation: declared Content-Type must be jpeg/png/webp/pdf AND match magic
+  bytes (400 on mismatch — headers are untrusted), ≤15 MB — rejected on the
+  Content-Length header first, post-read check covers chunked (413) — and
+  per-certificate sha256 dedupe (409; the DB unique constraint backstops the race,
+  and its IntegrityError is surfaced as the same 409, not a 500).
+- **Orphan-sweep is accepted ops debt:** a failed request after `storage.put` cleans
+  up its object best-effort, but a commit failure after the handler returns, or a
+  future restaurant/certificate cascade delete, can still strand objects under
+  `cert-evidence/`. A periodic sweep (keys without a DB row) is the eventual fix.
+- Storage: `app/storage/` — `MediaStorage` protocol, S3 impl (boto3, lazy import),
+  in-memory fake for tests. Injected via `app.api.deps.get_media_storage`
+  (lru_cached singleton; tests override the dependency — no test touches S3).
+  Keys `cert-evidence/{certificate_id}/{uuid}.{ext}`; DB stores keys only, viewing
+  via presigned GET URLs (15 min) that force Content-Disposition — images inline,
+  **PDFs attachment** (blocks PDF-polyglot script execution in the browser viewer).
+  S3 client pins region (`KASHROOT_S3_REGION`, default us-east-1), path-style
+  addressing and explicit timeouts. MinIO service in docker-compose (ports 9000/9001,
+  creds kashroot / kashroot-secret; create the bucket once via the console).
+- Migration 0004 = `certificate_evidence_photo` + `evidence_photo_status` enum;
+  chain test in test_geocode.py now pins heads at 0004.
+
 ## Moderation console (Aug 2026)
 
 - **Auth is TEMPORARY:** HTTP Bearer tokens mapped to actor names via
@@ -31,9 +67,8 @@ CLAUDE.md; this file is for everything worth remembering that isn't locked.)
   Token in sessionStorage (accepted for internal MVP). Dev proxy `/api` →
   localhost:8000. **Nothing serves `admin/dist` yet** — production needs
   same-origin hosting (no CORS middleware exists, deliberately).
-- Known gap: `verify-renewal` accepts `evidence_photo_key` but there is no media
-  upload endpoint yet (S3 is configured but unused). Certificate-photo flow is a
-  separate build.
+- ~~Known gap: `verify-renewal` accepts `evidence_photo_key` but there is no media
+  upload endpoint yet.~~ Closed — see "Certificate photo flow" above.
 
 ## Geocoding pipeline (Aug 2026)
 
@@ -112,6 +147,6 @@ CLAUDE.md; this file is for everything worth remembering that isn't locked.)
   blocks the public API layer design.
 - Real moderator accounts + RBAC to replace bearer-token auth.
 - Coverage denominator definition per launch city (what is "100%"?).
-- Media upload path (S3) for certificate photos — needed for attribute coverage
-  and the owner portal.
+- Owner-portal upload path for certificate photos (the moderator upload/review flow
+  exists; owner submissions need their own auth + actor labeling).
 - Pesach mode in MVP or fast-follow (PRD §21.3).

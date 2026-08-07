@@ -278,6 +278,82 @@ button.danger:hover:not(:disabled) {
   align-self: start;
 }
 
+.photo-thumb {
+  max-height: 3rem;
+  max-width: 6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  display: block;
+}
+
+.photo-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.photo-viewer img {
+  max-width: 100%;
+  max-height: 20rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.photo-upload {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.photo-upload button {
+  align-self: start;
+}
+
+.cert-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.decision-group {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-width: 40rem;
+}
+.decision-group legend {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.tristate-editor {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 40rem;
+  background: #fff;
+}
+.tristate-editor h4,
+.tristate-editor p {
+  margin: 0;
+}
+.tristate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.4rem 1rem;
+}
+.tristate-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 .dialog-backdrop {
   position: fixed;
   inset: 0;

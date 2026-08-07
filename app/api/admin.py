@@ -16,41 +16,59 @@ Ground rules, enforced in code:
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import uuid
 from enum import StrEnum
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
 from sqlalchemy import Select, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
-from app.api.deps import require_moderator
+from app.api.deps import get_media_storage, require_moderator
 from app.api.schemas import (
     AuditLogOut,
     CertificateOut,
     DegradeRequest,
+    EvidencePhotoOut,
     ExpiryQueueItem,
     FlagOut,
     Page,
+    PhotoQueueItem,
     ResolveFlagRequest,
     ResolveReviewRequest,
     RestaurantBrief,
+    ReviewPhotoRequest,
     ReviewQueueItem,
     VerifyRenewalRequest,
 )
 from app.db.session import get_session
 from app.models import (
+    SOURCE_AUTHORITY,
     AuditAction,
     AuditLog,
     Certificate,
+    CertificateEvidencePhoto,
     CertificateSource,
     CertificateState,
+    EvidencePhotoStatus,
     Flag,
     FlagState,
     RecordState,
     Restaurant,
 )
+from app.storage import MediaStorage
 
 router = APIRouter(
     prefix="/api/admin",
@@ -85,6 +103,59 @@ _STATE_RANK: dict[CertificateState, int] = {
 #: The one state a moderation degrade may target. EXPIRED is the model's "degraded"
 #: state: the match engine reads it as UNKNOWN, never as MATCH (fail-safe).
 _DEGRADE_TARGET = CertificateState.EXPIRED
+
+# ------------------------------------------------------- evidence photo constants
+
+MAX_PHOTO_BYTES = 15 * 1024 * 1024  # 15 MB
+
+#: Slack on top of MAX_PHOTO_BYTES when judging the *request* Content-Length: the
+#: multipart framing (boundary lines, part headers) rides in the same body. Requests
+#: whose declared length exceeds cap + slack cannot possibly carry a valid file.
+_MULTIPART_OVERHEAD_ALLOWANCE = 16 * 1024
+
+
+def _content_length_exceeds_cap(content_length: str | None) -> bool:
+    """True when the declared request Content-Length can only mean an oversize file.
+
+    Absent or malformed headers return False — those requests fall through to the
+    post-read size check (chunked transfer has no Content-Length at all).
+    """
+    if content_length is None:
+        return False
+    try:
+        declared = int(content_length)
+    except ValueError:
+        return False
+    return declared > MAX_PHOTO_BYTES + _MULTIPART_OVERHEAD_ALLOWANCE
+
+#: Accepted upload types → object-key extension. The declared Content-Type must ALSO
+#: match the file's magic bytes (see ``_magic_bytes_match``) — headers alone are
+#: client-controlled and untrusted.
+_PHOTO_EXTENSIONS: dict[str, str] = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "application/pdf": "pdf",
+}
+
+#: The source level an accepted photo review confers (PRD §13 source hierarchy):
+#: a moderator verified the physical certificate from photo evidence. Applied only
+#: when it is a strict upgrade per SOURCE_AUTHORITY — an accepted photo must never
+#: *lower* the provenance of a certificate already sourced from the certifier portal.
+_PHOTO_VERIFIED_SOURCE = CertificateSource.MODERATOR_VERIFIED
+
+
+def _magic_bytes_match(content_type: str, head: bytes) -> bool:
+    """Sniff the file signature and require it to agree with the declared type."""
+    if content_type == "image/jpeg":
+        return head.startswith(b"\xff\xd8\xff")
+    if content_type == "image/png":
+        return head.startswith(b"\x89PNG\r\n\x1a\n")
+    if content_type == "image/webp":
+        return len(head) >= 12 and head[:4] == b"RIFF" and head[8:12] == b"WEBP"
+    if content_type == "application/pdf":
+        return head.startswith(b"%PDF-")
+    return False
 
 
 # ------------------------------------------------------------------ audit plumbing
@@ -236,6 +307,14 @@ def _flag_certificate(
     )
 
 
+def _photo_out(photo: CertificateEvidencePhoto, storage: MediaStorage) -> EvidencePhotoOut:
+    """Serialize a photo row with a freshly minted presigned view URL (short-lived —
+    never stored, never logged)."""
+    out = EvidencePhotoOut.model_validate(photo)
+    out.view_url = storage.get_url(photo.storage_key)
+    return out
+
+
 # ------------------------------------------------------------------------- queues
 
 
@@ -361,6 +440,54 @@ def expiry_queue(
                 days_until_expiry=(c.valid_until - today).days,  # type: ignore[operator]
             )
             for c in rows
+        ],
+    )
+
+
+@router.get("/queues/photos", response_model=Page[PhotoQueueItem])
+def photo_queue(
+    city: str | None = Query(None, description="Filter by city_slug"),
+    limit: int = Query(DEFAULT_PAGE_LIMIT, ge=1, le=MAX_PAGE_LIMIT),
+    offset: int = Query(0, ge=0),
+    actor: str = Depends(require_moderator),
+    session: Session = Depends(get_session),
+    storage: MediaStorage = Depends(get_media_storage),
+) -> Page[PhotoQueueItem]:
+    """Evidence photos awaiting review (PENDING_REVIEW only), oldest first, with the
+    certificate + restaurant context a moderator needs and a presigned view URL.
+    Accepted/rejected photos leave the queue; their history lives in ``/audit``.
+    """
+    stmt = (
+        select(CertificateEvidencePhoto)
+        .join(Certificate, CertificateEvidencePhoto.certificate_id == Certificate.id)
+        .join(Restaurant, Certificate.restaurant_id == Restaurant.id)
+        .where(CertificateEvidencePhoto.status == EvidencePhotoStatus.PENDING_REVIEW)
+    )
+    if city:
+        stmt = stmt.where(Restaurant.city_slug == city)
+    stmt = stmt.order_by(
+        CertificateEvidencePhoto.uploaded_at.asc(), CertificateEvidencePhoto.id.asc()
+    )
+    total, rows = _paginate(
+        session,
+        stmt.options(
+            joinedload(CertificateEvidencePhoto.certificate).joinedload(Certificate.certifier),
+            joinedload(CertificateEvidencePhoto.certificate).joinedload(Certificate.restaurant),
+        ),
+        limit,
+        offset,
+    )
+    return Page(
+        total=total,
+        limit=limit,
+        offset=offset,
+        items=[
+            PhotoQueueItem(
+                photo=_photo_out(p, storage),
+                certificate=CertificateOut.model_validate(p.certificate),
+                restaurant=RestaurantBrief.model_validate(p.certificate.restaurant),
+            )
+            for p in rows
         ],
     )
 
@@ -575,6 +702,27 @@ def verify_renewal(
                 "evidence_url, evidence_photo_key (fail-safe: no evidence, no restore)"
             ),
         )
+    if evidence_fields["evidence_photo_key"]:
+        # A photo key is only evidence if it names an ACCEPTED evidence photo of THIS
+        # certificate — an unreviewed, rejected or foreign photo proves nothing.
+        photo = session.scalar(
+            select(CertificateEvidencePhoto).where(
+                CertificateEvidencePhoto.storage_key == evidence_fields["evidence_photo_key"]
+            )
+        )
+        if (
+            photo is None
+            or photo.certificate_id != certificate.id
+            or photo.status is not EvidencePhotoStatus.ACCEPTED
+        ):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                detail=(
+                    "evidence_photo_key must reference an accepted evidence photo of "
+                    "this certificate (upload via POST /certificates/{id}/photos and "
+                    "review it first)"
+                ),
+            )
     if certificate.state is CertificateState.REVOKED:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -619,3 +767,269 @@ def verify_renewal(
         {"action": "verify_renewal", **evidence_fields},
     )
     return CertificateOut.model_validate(certificate)
+
+
+# ---------------------------------------------------------------- evidence photos
+
+
+@router.post(
+    "/certificates/{certificate_id}/photos",
+    response_model=EvidencePhotoOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def upload_certificate_photo(
+    certificate_id: uuid.UUID,
+    request: Request,
+    file: UploadFile = File(...),
+    actor: str = Depends(require_moderator),
+    session: Session = Depends(get_session),
+    storage: MediaStorage = Depends(get_media_storage),
+) -> EvidencePhotoOut:
+    """Upload a photo (or PDF scan) of the physical certificate as evidence.
+
+    The upload lands PENDING_REVIEW and changes **nothing** on the certificate —
+    attributes, expiry and source can only move via an accepted review
+    (``POST /photos/{id}/review``). Validation: declared Content-Type must be an
+    accepted type AND agree with the file's magic bytes (the header alone is
+    untrusted), ≤ 15 MB, and not a byte-identical duplicate of an existing photo of
+    the same certificate (409).
+    """
+    # Cheapest rejection first: a declared Content-Length that cannot possibly carry a
+    # valid file dies on the header, before this handler touches the (spooled) body.
+    # Chunked/absent/malformed Content-Length falls through to the post-read check.
+    if _content_length_exceeds_cap(request.headers.get("content-length")):
+        raise HTTPException(
+            status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"request exceeds the {MAX_PHOTO_BYTES // (1024 * 1024)} MB upload limit",
+        )
+
+    certificate = _get_or_404(session, Certificate, certificate_id, "certificate")
+
+    content_type = (file.content_type or "").split(";")[0].strip().lower()
+    extension = _PHOTO_EXTENSIONS.get(content_type)
+    if extension is None:
+        raise HTTPException(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=(
+                f"unsupported content type {content_type or '(none)'}; accepted: "
+                + ", ".join(sorted(_PHOTO_EXTENSIONS))
+            ),
+        )
+
+    data = file.file.read(MAX_PHOTO_BYTES + 1)
+    if len(data) > MAX_PHOTO_BYTES:
+        raise HTTPException(
+            status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"file exceeds the {MAX_PHOTO_BYTES // (1024 * 1024)} MB limit",
+        )
+    if not data:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="empty file")
+    if not _magic_bytes_match(content_type, data[:16]):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"file signature does not match declared content type {content_type}; "
+                "the header alone is not trusted"
+            ),
+        )
+
+    sha256 = hashlib.sha256(data).hexdigest()
+    duplicate = session.scalar(
+        select(CertificateEvidencePhoto.id).where(
+            CertificateEvidencePhoto.certificate_id == certificate.id,
+            CertificateEvidencePhoto.sha256 == sha256,
+        )
+    )
+    if duplicate is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail=f"an identical file is already uploaded for this certificate ({duplicate})",
+        )
+
+    storage_key = f"cert-evidence/{certificate.id}/{uuid.uuid4()}.{extension}"
+    photo = CertificateEvidencePhoto(
+        certificate_id=certificate.id,
+        storage_key=storage_key,
+        content_type=content_type,
+        size_bytes=len(data),
+        sha256=sha256,
+        uploaded_by=f"moderator:{actor}",
+        uploaded_at=dt.datetime.now(dt.UTC),
+        status=EvidencePhotoStatus.PENDING_REVIEW,
+    )
+    session.add(photo)
+    try:
+        session.flush()  # assign the id before auditing; a DB failure aborts pre-upload
+    except IntegrityError:
+        # Dedupe race: a concurrent identical upload won between our pre-check and the
+        # flush. The unique (certificate_id, sha256) constraint is the backstop —
+        # surface it as the same 409 the pre-check gives, not a 500.
+        session.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="an identical file is already uploaded for this certificate",
+        ) from None
+    storage.put(storage_key, data, content_type)
+
+    try:
+        _audit(
+            session,
+            "certificate_evidence_photo",
+            photo.id,
+            AuditAction.CREATE,
+            {
+                field: {"before": None, "after": _jsonable(getattr(photo, field))}
+                for field in ("certificate_id", "storage_key", "content_type", "size_bytes", "sha256", "status")
+            },
+            actor,
+            {
+                "action": "upload_photo",
+                "certificate_id": certificate.id,
+                "filename": file.filename,
+            },
+        )
+        return _photo_out(photo, storage)
+    except Exception:
+        # The object is already in storage but this request will not commit its DB
+        # row — best-effort cleanup so it does not become an orphan. (Commit failures
+        # after this handler returns, and cascade deletes, can still orphan objects;
+        # accepted ops debt — see NOTES.md, orphan sweep.)
+        try:
+            storage.delete(storage_key)
+        except Exception:  # noqa: BLE001 - cleanup must never mask the real error
+            pass
+        raise
+
+
+@router.get("/certificates/{certificate_id}/photos", response_model=list[EvidencePhotoOut])
+def list_certificate_photos(
+    certificate_id: uuid.UUID,
+    actor: str = Depends(require_moderator),
+    session: Session = Depends(get_session),
+    storage: MediaStorage = Depends(get_media_storage),
+) -> list[EvidencePhotoOut]:
+    """All evidence photos of a certificate (any status), oldest first, each with a
+    short-lived presigned view URL.
+    """
+    _get_or_404(session, Certificate, certificate_id, "certificate")
+    photos = session.scalars(
+        select(CertificateEvidencePhoto)
+        .where(CertificateEvidencePhoto.certificate_id == certificate_id)
+        .order_by(
+            CertificateEvidencePhoto.uploaded_at.asc(), CertificateEvidencePhoto.id.asc()
+        )
+    ).all()
+    return [_photo_out(p, storage) for p in photos]
+
+
+@router.post("/photos/{photo_id}/review", response_model=EvidencePhotoOut)
+def review_photo(
+    photo_id: uuid.UUID,
+    body: ReviewPhotoRequest,
+    actor: str = Depends(require_moderator),
+    session: Session = Depends(get_session),
+    storage: MediaStorage = Depends(get_media_storage),
+) -> EvidencePhotoOut:
+    """Moderator review of an evidence photo — the entry point for source-hierarchy
+    level 2 facts (PRD §13). The moderator records what the certificate *actually
+    says*; nothing is inferred.
+
+    * ``accept`` — the photo genuinely shows this certificate. Optionally writes onto
+      the certificate exactly the facts the photo shows: ``attributes`` (tri-state —
+      a sent key overrides the previous value because the photo is fresher evidence,
+      an explicit null clears the key back to unknown per doubt → UNKNOWN, and absent
+      keys are untouched) and ``valid_until``
+      (strictly future civil date in Israel). The certificate's ``source`` is upgraded
+      to the photo-verified level ONLY when that is a strict upgrade per
+      SOURCE_AUTHORITY — provenance is never downgraded. ``verified_at`` /
+      ``verified_by_label`` / ``evidence_photo_key`` are stamped. The certificate
+      ``state`` is deliberately untouched: restoring an expired certificate remains
+      the exclusive job of ``verify-renewal`` (fail-safe).
+    * ``reject`` — the photo is unusable/mismatched: the photo is marked and the
+      certificate is not touched in any way (the schema already refuses
+      attributes/valid_until on reject).
+
+    Concurrency: photo and certificate rows are read FOR UPDATE and the photo status
+    is re-checked, so a double review 409s instead of double-writing.
+    """
+    photo = _get_or_404(
+        session, CertificateEvidencePhoto, photo_id, "photo", for_update=True
+    )
+    if photo.status is not EvidencePhotoStatus.PENDING_REVIEW:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, detail=f"photo is already {photo.status.value}"
+        )
+    certificate = session.get(Certificate, photo.certificate_id, with_for_update=True)
+    if certificate is None:  # pragma: no cover - FK guarantees existence
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="certificate not found")
+
+    now = dt.datetime.now(dt.UTC)
+    evidence: dict[str, Any] = {
+        "action": "review_photo",
+        "photo_id": photo.id,
+        "decision": body.decision,
+        "note": body.note,
+    }
+
+    if body.decision == "accept":
+        if body.valid_until is not None and body.valid_until <= _today():
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "valid_until must be strictly in the future (civil date in "
+                    "Israel); an expired date is not a renewal"
+                ),
+            )
+        values: dict[str, Any] = {
+            "verified_at": now,
+            "verified_by_label": f"moderator:{actor}",
+            "evidence_photo_key": photo.storage_key,
+        }
+        if body.attributes:
+            # Tri-state merge: true/false records the fact, explicit null CLEARS the
+            # key back to unknown (doubt → UNKNOWN), absent keys are untouched.
+            merged = dict(certificate.attributes)
+            for key, value in body.attributes.items():
+                if value is None:
+                    merged.pop(key, None)
+                else:
+                    merged[key] = value
+            values["attributes"] = merged
+        if body.valid_until is not None:
+            values["valid_until"] = body.valid_until
+        if SOURCE_AUTHORITY[_PHOTO_VERIFIED_SOURCE] > SOURCE_AUTHORITY[certificate.source]:
+            values["source"] = _PHOTO_VERIFIED_SOURCE
+        cert_changes = _apply(certificate, values)
+        _audit(
+            session,
+            "certificate",
+            certificate.id,
+            AuditAction.UPDATE,
+            cert_changes,
+            actor,
+            evidence,
+        )
+
+    photo_changes = _apply(
+        photo,
+        {
+            "status": (
+                EvidencePhotoStatus.ACCEPTED
+                if body.decision == "accept"
+                else EvidencePhotoStatus.REJECTED
+            ),
+            "reviewed_by": f"moderator:{actor}",
+            "reviewed_at": now,
+            "review_note": body.note,
+        },
+    )
+    _audit(
+        session,
+        "certificate_evidence_photo",
+        photo.id,
+        AuditAction.STATE_CHANGE,
+        photo_changes,
+        actor,
+        evidence,
+    )
+    return _photo_out(photo, storage)

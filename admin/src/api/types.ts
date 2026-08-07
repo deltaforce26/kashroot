@@ -47,6 +47,42 @@ export type FlagState = "open" | "in_review" | "resolved" | "rejected";
 
 export type AuditAction = "create" | "update" | "delete" | "state_change";
 
+export type EvidencePhotoStatus = "pending_review" | "accepted" | "rejected";
+
+/** Keys allowed in Certificate.attributes (CertificateAttribute in enums.py). */
+export type CertificateAttribute =
+  | "glatt"
+  | "chalav_yisrael"
+  | "pas_yisrael"
+  | "bishul_yisrael"
+  | "yashan"
+  | "kitniyot_pesach"
+  | "sheruya";
+
+/** Enum order from app/models/enums.py — drives the tri-state attribute editor. */
+export const CERTIFICATE_ATTRIBUTES: readonly CertificateAttribute[] = [
+  "glatt",
+  "chalav_yisrael",
+  "pas_yisrael",
+  "bishul_yisrael",
+  "yashan",
+  "kitniyot_pesach",
+  "sheruya",
+];
+
+/**
+ * SOURCE_AUTHORITY from app/models/enums.py — higher = more authoritative.
+ * Used only to *predict* whether an accepted photo review will upgrade the
+ * certificate source (the server enforces the actual rule).
+ */
+export const SOURCE_AUTHORITY: Record<CertificateSource, number> = {
+  certifier_portal: 5,
+  moderator_verified: 4,
+  official_list: 3,
+  field_verification: 2,
+  owner_submitted: 1,
+};
+
 // ------------------------------------------------------------- responses
 
 export interface Page<T> {
@@ -126,6 +162,29 @@ export interface ExpiryQueueItem {
   days_until_expiry: number;
 }
 
+export interface EvidencePhotoOut {
+  id: string;
+  certificate_id: string;
+  storage_key: string;
+  content_type: string;
+  size_bytes: number;
+  sha256: string;
+  status: EvidencePhotoStatus;
+  uploaded_by: string;
+  uploaded_at: string; // ISO datetime (UTC)
+  reviewed_by: string | null;
+  reviewed_at: string | null; // ISO datetime (UTC)
+  review_note: string | null;
+  /** Presigned GET URL (short-lived), minted per response — never stored. */
+  view_url: string | null;
+}
+
+export interface PhotoQueueItem {
+  photo: EvidencePhotoOut;
+  certificate: CertificateOut;
+  restaurant: RestaurantBrief;
+}
+
 export interface AuditChange {
   before: unknown;
   after: unknown;
@@ -174,9 +233,37 @@ export interface VerifyRenewalRequest {
   evidence_photo_key?: string | null;
 }
 
+export type PhotoReviewDecision = "accept" | "reject";
+
+/**
+ * ReviewPhotoRequest (schemas.py). Fail-safe, mirrored client-side:
+ * `attributes` / `valid_until` are only expressible on an "accept" decision.
+ * `attributes` is tri-state — send ONLY the keys the photo actually shows;
+ * an absent key stays untouched on the certificate. An explicit `null` CLEARS
+ * a previously recorded attribute back to unknown (doubt → UNKNOWN fail-safe).
+ */
+export interface ReviewPhotoRequest {
+  decision: PhotoReviewDecision;
+  /** Required by the API: min 5 chars after trim. */
+  note: string;
+  attributes?: Partial<Record<CertificateAttribute, boolean | null>>;
+  valid_until?: string; // ISO date, strictly future (civil date in Israel)
+}
+
 // ---------------------------------------------------------------- limits
 
 /** Server-side page cap (MAX_PAGE_LIMIT in app/api/admin.py). */
 export const MAX_PAGE_LIMIT = 200;
 export const DEFAULT_PAGE_LIMIT = 50;
 export const DEFAULT_EXPIRY_WINDOW_DAYS = 14;
+
+/** Server-side upload cap (MAX_PHOTO_BYTES in app/api/admin.py). */
+export const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
+
+/** Accepted evidence upload types (_PHOTO_EXTENSIONS in app/api/admin.py). */
+export const ACCEPTED_PHOTO_TYPES: readonly string[] = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+];

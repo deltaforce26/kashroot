@@ -1,15 +1,24 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 import { api, ApiError } from "../api/client";
 import type {
   CertificateOut,
   DegradeRequest,
+  EvidencePhotoOut,
   ExpiryQueueItem,
   VerifyRenewalRequest,
 } from "../api/types";
 import { DEFAULT_EXPIRY_WINDOW_DAYS } from "../api/types";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { CertificateSummary, certifierName, restaurantName, Data } from "../components/data";
+import { PhotoUploadButton } from "../components/PhotoUploadButton";
+import {
+  CertificateSummary,
+  certifierName,
+  restaurantName,
+  Data,
+  shortId,
+  todayInIsrael,
+} from "../components/data";
 import { CityFilter, Pager } from "../components/QueueControls";
 import { EmptyState, ErrorState, LoadingState } from "../components/states";
 import { useToast } from "../components/Toast";
@@ -125,8 +134,27 @@ function ExpiryDetail({ item, onDone }: { item: ExpiryQueueItem; onDone: () => v
   const [validUntil, setValidUntil] = useState("");
   const [evidenceNote, setEvidenceNote] = useState("");
   const [evidenceUrl, setEvidenceUrl] = useState("");
+  const [photoKey, setPhotoKey] = useState("");
   const [renewalValidation, setRenewalValidation] = useState<string | null>(null);
   const [confirmingRenewal, setConfirmingRenewal] = useState(false);
+
+  // This certificate's evidence photos; only ACCEPTED ones qualify as renewal
+  // evidence (the server enforces the same rule with a 409).
+  const [photos, setPhotos] = useState<EvidencePhotoOut[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    api<EvidencePhotoOut[]>(`/api/admin/certificates/${cert.id}/photos`)
+      .then((list) => {
+        if (!cancelled) setPhotos(list);
+      })
+      .catch(() => {
+        // Selector stays empty — note/URL evidence still works.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cert.id]);
+  const acceptedPhotos = photos.filter((p) => p.status === "accepted");
 
   async function degradeNow() {
     setActionError(null);
@@ -153,7 +181,8 @@ function ExpiryDetail({ item, onDone }: { item: ExpiryQueueItem; onDone: () => v
   function validateRenewal(): boolean {
     const note = evidenceNote.trim();
     const url = evidenceUrl.trim();
-    const today = new Date().toISOString().slice(0, 10);
+    // Civil date in Israel, matching the server's ISRAEL_TZ rule.
+    const today = todayInIsrael();
     if (!validUntil) {
       setRenewalValidation("A new valid-until date is required.");
       return false;
@@ -162,9 +191,9 @@ function ExpiryDetail({ item, onDone }: { item: ExpiryQueueItem; onDone: () => v
       setRenewalValidation("Valid-until must be strictly in the future.");
       return false;
     }
-    if (!note && !url) {
+    if (!note && !url && !photoKey) {
       setRenewalValidation(
-        "Renewal evidence required: provide an evidence note or an evidence URL (fail-safe: no evidence, no restore).",
+        "Renewal evidence required: provide an evidence note, URL or accepted photo (fail-safe: no evidence, no restore).",
       );
       return false;
     }
@@ -187,6 +216,7 @@ function ExpiryDetail({ item, onDone }: { item: ExpiryQueueItem; onDone: () => v
       valid_until: validUntil,
       evidence_note: evidenceNote.trim() || null,
       evidence_url: evidenceUrl.trim() || null,
+      evidence_photo_key: photoKey || null,
     };
     try {
       await api<CertificateOut>(`/api/admin/certificates/${cert.id}/verify-renewal`, {
@@ -206,6 +236,10 @@ function ExpiryDetail({ item, onDone }: { item: ExpiryQueueItem; onDone: () => v
   return (
     <div className="detail">
       <CertificateSummary certificate={cert} />
+      <PhotoUploadButton
+        certificateId={cert.id}
+        onUploaded={(photo) => setPhotos((prev) => [...prev, photo])}
+      />
       {actionError && <p className="field-error">{actionError}</p>}
       <div className="expiry-forms">
         <div className="expiry-form">
@@ -263,6 +297,17 @@ function ExpiryDetail({ item, onDone }: { item: ExpiryQueueItem; onDone: () => v
               onChange={(e) => setEvidenceUrl(e.target.value)}
               placeholder="https://…"
             />
+          </label>
+          <label className="note-label">
+            Evidence photo (accepted only)
+            <select value={photoKey} onChange={(e) => setPhotoKey(e.target.value)}>
+              <option value="">none</option>
+              {acceptedPhotos.map((p) => (
+                <option key={p.id} value={p.storage_key}>
+                  {p.content_type} · uploaded {p.uploaded_at.slice(0, 10)} · {shortId(p.id)}
+                </option>
+              ))}
+            </select>
           </label>
           {renewalValidation && <p className="field-error">{renewalValidation}</p>}
           <button

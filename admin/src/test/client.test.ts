@@ -113,6 +113,20 @@ describe("api client requests", () => {
     expect(url).toBe("/api/admin/queues/expiry?days=14&limit=50&offset=0");
   });
 
+  it("POSTs a FormData body untouched, with auth but WITHOUT a manual Content-Type", async () => {
+    setToken("t");
+    const fetchMock = mockFetch(201, { id: "photo-1" });
+    const form = new FormData();
+    form.append("file", new File(["x"], "cert.jpg", { type: "image/jpeg" }));
+    await api("/api/admin/certificates/abc/photos", { method: "POST", body: form });
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const headers = init.headers as Record<string, string>;
+    // The browser must set multipart/form-data + boundary itself.
+    expect(headers).not.toHaveProperty("Content-Type");
+    expect(headers["Authorization"]).toBe("Bearer t");
+    expect(init.body).toBe(form);
+  });
+
   it("POSTs a JSON body with Content-Type set and returns the parsed response", async () => {
     setToken("t");
     const fetchMock = mockFetch(200, { id: "abc", state: "rejected" });

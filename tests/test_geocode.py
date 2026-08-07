@@ -749,7 +749,7 @@ def test_shared_query_between_branches_costs_one_api_call(session):
 # --------------------------------------------------------------------------------------
 
 
-def test_migration_chain_heads_at_0003():
+def test_migration_chain_heads_at_0004():
     from pathlib import Path
 
     from alembic.config import Config
@@ -757,7 +757,11 @@ def test_migration_chain_heads_at_0003():
 
     root = Path(__file__).resolve().parents[1]
     script = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert script.get_heads() == ["0003_audit_log_seq"]
+    assert script.get_heads() == ["0004_certificate_evidence_photo"]
+    assert (
+        script.get_revision("0004_certificate_evidence_photo").down_revision
+        == "0003_audit_log_seq"
+    )
     assert script.get_revision("0003_audit_log_seq").down_revision == "0002_geocode_cache"
     assert script.get_revision("0002_geocode_cache").down_revision == "0001_initial_schema"
 

@@ -18,16 +18,19 @@ from pydantic import (
     ConfigDict,
     Field,
     HttpUrl,
+    StrictBool,
     field_validator,
     model_validator,
 )
 
 from app.models.enums import (
     AuditAction,
+    CertificateAttribute,
     CertificateSource,
     CertificateState,
     CertificationLevel,
     DietType,
+    EvidencePhotoStatus,
     FlagState,
     FlagType,
     RecordState,
@@ -149,6 +152,29 @@ class ExpiryQueueItem(BaseModel):
     days_until_expiry: int
 
 
+class EvidencePhotoOut(APIModel):
+    id: uuid.UUID
+    certificate_id: uuid.UUID
+    storage_key: str
+    content_type: str
+    size_bytes: int
+    sha256: str
+    status: EvidencePhotoStatus
+    uploaded_by: str
+    uploaded_at: UTCDateTime
+    reviewed_by: str | None
+    reviewed_at: UTCDateTime | None
+    review_note: str | None
+    #: Presigned GET URL (short-lived), minted per response — never stored.
+    view_url: str | None = None
+
+
+class PhotoQueueItem(BaseModel):
+    photo: EvidencePhotoOut
+    certificate: CertificateOut
+    restaurant: RestaurantBrief
+
+
 class AuditLogOut(APIModel):
     id: uuid.UUID
     #: Monotonic append order — the authoritative "newest first" sort key.
@@ -222,6 +248,58 @@ class DegradeRequest(BaseModel):
         if not value:
             raise ValueError("reason must not be blank")
         return value
+
+
+class ReviewPhotoRequest(BaseModel):
+    """Moderator review of a certificate evidence photo — the core of source-hierarchy
+    level 2 (PRD §13). The moderator records what the certificate *actually says*.
+
+    Fail-safe, enforced at validation time: ``attributes`` and ``valid_until`` are only
+    expressible on an ``accept`` decision — a rejected photo can never write anything
+    onto the certificate. ``attributes`` is tri-state: send only the keys the photo
+    actually rules on — ``true``/``false`` records the fact, an explicit ``null``
+    CLEARS the key back to unknown (doubt → UNKNOWN), and an absent key is untouched.
+    Keys are validated against :class:`app.models.enums.CertificateAttribute`.
+    """
+
+    decision: Literal["accept", "reject"]
+    note: str
+    #: StrictBool: "yes"/1 must not be coerced — a kashrut fact is true, false, or
+    #: explicitly null (= clear to unknown). Absent keys are untouched.
+    attributes: dict[str, StrictBool | None] | None = None
+    valid_until: dt.date | None = None
+
+    @field_validator("note")
+    @classmethod
+    def _note_not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < MIN_NOTE_LENGTH:
+            raise ValueError(f"note must be at least {MIN_NOTE_LENGTH} characters")
+        return value
+
+    @field_validator("attributes")
+    @classmethod
+    def _attributes_are_known_keys(
+        cls, value: dict[str, bool | None] | None
+    ) -> dict[str, bool | None] | None:
+        if value is None:
+            return None
+        allowed = {a.value for a in CertificateAttribute}
+        unknown = sorted(set(value) - allowed)
+        if unknown:
+            raise ValueError(
+                f"unknown certificate attribute keys {unknown}; allowed: {sorted(allowed)}"
+            )
+        return value
+
+    @model_validator(mode="after")
+    def _certificate_facts_require_accept(self) -> ReviewPhotoRequest:
+        if self.decision == "reject" and (self.attributes is not None or self.valid_until is not None):
+            raise ValueError(
+                "attributes/valid_until can only accompany an 'accept' decision — "
+                "a rejected photo never writes anything onto the certificate (fail-safe)"
+            )
+        return self
 
 
 class VerifyRenewalRequest(BaseModel):

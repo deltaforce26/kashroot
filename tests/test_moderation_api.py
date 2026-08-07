@@ -667,7 +667,8 @@ def test_verify_renewal_restores_expired_certificate(client, session) -> None:
         json={
             "valid_until": str(new_until),
             "evidence_note": "renewal certificate photographed on site",
-            "evidence_photo_key": "evidence/2026/renewal-123.jpg",
+            # evidence_photo_key must reference an ACCEPTED evidence photo of this
+            # certificate — that path is exercised in tests/test_photo_flow.py.
         },
     )
     assert response.status_code == 200
@@ -685,7 +686,6 @@ def test_verify_renewal_restores_expired_certificate(client, session) -> None:
     assert entry.changes["state"] == {"before": "expired", "after": "active"}
     assert entry.changes["valid_until"]["after"] == str(new_until)
     assert entry.evidence["evidence_note"] == "renewal certificate photographed on site"
-    assert entry.evidence["evidence_photo_key"] == "evidence/2026/renewal-123.jpg"
 
 
 def test_verify_renewal_cannot_restore_revoked(client, session) -> None:

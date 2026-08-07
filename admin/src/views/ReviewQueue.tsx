@@ -9,6 +9,7 @@ import type {
 } from "../api/types";
 import { CertificateSummary, certifierName, Data, restaurantName } from "../components/data";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { PhotoUploadButton } from "../components/PhotoUploadButton";
 import { CityFilter, Pager } from "../components/QueueControls";
 import { EmptyState, ErrorState, LoadingState } from "../components/states";
 import { useToast } from "../components/Toast";
@@ -181,7 +182,10 @@ function ReviewDetail({
         <dd>{item.created_at}</dd>
       </dl>
       {item.certificates.map((c) => (
-        <CertificateSummary key={c.id} certificate={c} />
+        <div key={c.id} className="cert-block">
+          <CertificateSummary certificate={c} />
+          <PhotoUploadButton certificateId={c.id} />
+        </div>
       ))}
       <label className="note-label">
         Resolution note (required)

@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     s3_bucket: str = "kashroot-evidence"
     s3_access_key: str | None = None
     s3_secret_key: str | None = None
+    # Pinned explicitly (presigned URLs embed the region; MinIO ignores it but boto3
+    # requires one). Override for a real AWS bucket outside us-east-1.
+    s3_region: str = "us-east-1"
 
     # Google Geocoding API (geocoding pipeline). No key → the pipeline can still run
     # against its response cache; it just cannot make new API calls.

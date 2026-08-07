@@ -1,4 +1,4 @@
-"""API dependencies: moderator authentication.
+"""API dependencies: moderator authentication + media storage.
 
 TEMPORARY AUTH — until real moderator accounts exist (PRD FR8 / UserRole.MODERATOR),
 the admin API authenticates with static bearer tokens from
@@ -15,13 +15,33 @@ Rules:
 from __future__ import annotations
 
 import hmac
+from functools import lru_cache
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import settings
+from app.storage import MediaStorage
 
 _bearer_scheme = HTTPBearer(auto_error=False)
+
+
+@lru_cache
+def _default_media_storage() -> MediaStorage:
+    """One S3 client per process. Settings are read only here, at construction —
+    lazily, so importing the app never opens an S3 client (or requires boto3 config).
+    """
+    from app.storage import s3_storage_from_settings
+
+    return s3_storage_from_settings(settings)
+
+
+def get_media_storage() -> MediaStorage:
+    """FastAPI dependency for the media backend. Tests override this with the
+    in-memory fake (``app.dependency_overrides[get_media_storage]``) — no test may
+    ever reach S3.
+    """
+    return _default_media_storage()
 
 
 def _unauthorized() -> HTTPException:

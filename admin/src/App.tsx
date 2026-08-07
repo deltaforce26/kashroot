@@ -7,6 +7,7 @@ import { AuditLog } from "./views/AuditLog";
 import { Expiry } from "./views/Expiry";
 import { Flags } from "./views/Flags";
 import { Login } from "./views/Login";
+import { Photos } from "./views/Photos";
 import { ReviewQueue } from "./views/ReviewQueue";
 
 export default function App() {
@@ -46,6 +47,7 @@ export default function App() {
           <NavLink to="/review">Review queue</NavLink>
           <NavLink to="/flags">Flags</NavLink>
           <NavLink to="/expiry">Expiry</NavLink>
+          <NavLink to="/photos">Photos</NavLink>
           <NavLink to="/audit">Audit log</NavLink>
         </nav>
         <button type="button" className="logout" onClick={handleLogout}>
@@ -58,6 +60,7 @@ export default function App() {
           <Route path="/review" element={<ReviewQueue />} />
           <Route path="/flags" element={<Flags />} />
           <Route path="/expiry" element={<Expiry />} />
+          <Route path="/photos" element={<Photos />} />
           <Route path="/audit" element={<AuditLog />} />
           <Route path="*" element={<Navigate to="/review" replace />} />
         </Routes>

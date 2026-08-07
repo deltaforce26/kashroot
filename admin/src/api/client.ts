@@ -79,6 +79,7 @@ function normalizeDetail(body: unknown, status: number): string {
 export interface RequestOptions {
   method?: "GET" | "POST";
   query?: QueryParams;
+  /** JSON-serializable body, or a FormData for multipart uploads. */
   body?: unknown;
 }
 
@@ -87,14 +88,17 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   const headers: Record<string, string> = {};
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  // A FormData body must NOT get a manual Content-Type: the browser sets
+  // multipart/form-data together with the boundary it generated.
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+  if (body !== undefined && !isFormData) headers["Content-Type"] = "application/json";
 
   let response: Response;
   try {
     response = await fetch(`${path}${buildQuery(query)}`, {
       method,
       headers,
-      body: body === undefined ? null : JSON.stringify(body),
+      body: body === undefined ? null : isFormData ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(0, "Network error — is the API server running?");
