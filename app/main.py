@@ -13,6 +13,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app import __version__
+from app.api.admin import router as admin_router
 from app.core.config import settings
 from app.db.session import get_session
 
@@ -40,6 +41,7 @@ def create_app() -> FastAPI:
         ),
     )
     application.include_router(router)
+    application.include_router(admin_router)
     return application
 
 

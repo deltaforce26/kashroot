@@ -10,7 +10,7 @@ import datetime as dt
 import uuid
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Identity, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -125,6 +125,13 @@ class AuditLog(UUIDPrimaryKeyMixin, Base):
     __table_args__ = (
         Index("ix_audit_log_entity_type_entity_id", "entity_type", "entity_id"),
         Index("ix_audit_log_created_at", "created_at"),
+    )
+
+    #: Monotonic append order — a total ordering for the trail even when created_at
+    #: ties within a transaction. BIGINT identity in PostgreSQL; the SQLite test shim
+    #: feeds it from a process-local counter (see tests/conftest.py).
+    seq: Mapped[int] = mapped_column(
+        BigInteger, Identity(always=False), nullable=False, index=True
     )
 
     entity_type: Mapped[str] = mapped_column(String(60), nullable=False)

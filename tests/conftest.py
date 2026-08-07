@@ -13,6 +13,7 @@ against `docker compose up db`.
 from __future__ import annotations
 
 import datetime as dt
+import itertools
 import uuid
 
 import pytest
@@ -21,6 +22,7 @@ from sqlalchemy import ColumnDefault, Text, create_engine, event
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import StaticPool
 
 import app.models  # noqa: F401  registers every table
 from app.db.base import Base
@@ -65,12 +67,27 @@ def sqlite_metadata():
                 column.default = ColumnDefault(lambda _ctx: uuid.uuid4())
             else:  # now() / CURRENT_TIMESTAMP
                 column.default = ColumnDefault(lambda _ctx: dt.datetime.now(dt.UTC))
+
+    # audit_log.seq is a PG BIGINT identity column; SQLite has no non-PK autoincrement,
+    # so tests feed it from a process-local counter (monotonic ordering is what the
+    # column exists for — the concrete values are irrelevant).
+    seq_column = Base.metadata.tables["audit_log"].columns["seq"]
+    seq_column.identity = None
+    _audit_seq = itertools.count(1)
+    seq_column.default = ColumnDefault(lambda _ctx: next(_audit_seq))
     return Base.metadata
 
 
 @pytest.fixture
 def session(sqlite_metadata) -> Session:
-    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    # StaticPool + check_same_thread=False: one shared in-memory connection usable from
+    # FastAPI TestClient worker threads as well as the test thread.
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        future=True,
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
+    )
 
     @event.listens_for(engine, "connect")
     def _fk_on(dbapi_connection, _record):  # noqa: ANN001, ANN202

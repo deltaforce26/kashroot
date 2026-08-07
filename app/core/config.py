@@ -1,7 +1,10 @@
 """Application settings. Everything env-driven; no secrets in code."""
 
+import json
 from functools import lru_cache
+from typing import Any
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -35,6 +38,22 @@ class Settings(BaseSettings):
     # sourced from a published list goes stale this many days after its list date unless the
     # certifier overrides it. Staleness degrades to UNKNOWN — never to MATCH.
     default_freshness_days: int = 90
+
+    # TEMPORARY moderator auth for the admin/moderation API, until real moderator
+    # accounts exist (PRD FR8). Maps bearer token -> moderator actor name; the actor
+    # name flows into every AuditLog entry the moderator writes. Configure via
+    # KASHROOT_ADMIN_API_TOKENS='{"some-long-token": "alice"}' (JSON). Empty = the
+    # admin API rejects everything. Tokens are secrets: never log them.
+    admin_api_tokens: dict[str, str] | str = {}
+
+    @field_validator("admin_api_tokens", mode="before")
+    @classmethod
+    def _parse_admin_api_tokens(cls, value: Any) -> Any:
+        """Accept either a dict or a JSON string (the env-var form)."""
+        if isinstance(value, str):
+            value = value.strip()
+            return json.loads(value) if value else {}
+        return value
 
 
 @lru_cache
