@@ -13,7 +13,7 @@ export const DIR: Record<Lang, "rtl" | "ltr"> = { he: "rtl", en: "ltr" };
 
 const he = {
   appName: "Kashroot",
-  nav: { home: "בית", search: "חיפוש", saved: "שמורים", profile: "פרופיל" },
+  nav: { home: "בית", search: "חיפוש", map: "מפה", saved: "שמורים", profile: "פרופיל" },
 
   onboarding: {
     skip: "דילוג",
@@ -288,7 +288,7 @@ export type Strings = typeof he;
 
 const en: Strings = {
   appName: "Kashroot",
-  nav: { home: "Home", search: "Search", saved: "Saved", profile: "Profile" },
+  nav: { home: "Home", search: "Search", map: "Map", saved: "Saved", profile: "Profile" },
 
   onboarding: {
     skip: "Skip",
