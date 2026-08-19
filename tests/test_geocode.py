@@ -49,14 +49,22 @@ def google_result(
     components = [
         {"long_name": number, "short_name": number, "types": ["street_number"]},
         {"long_name": street, "short_name": street, "types": ["route"]},
-        {"long_name": "מחוז תל אביב", "short_name": "מחוז תל אביב",
-         "types": ["administrative_area_level_1", "political"]},
+        {
+            "long_name": "מחוז תל אביב",
+            "short_name": "מחוז תל אביב",
+            "types": ["administrative_area_level_1", "political"],
+        },
         {"long_name": "ישראל", "short_name": "IL", "types": ["country", "political"]},
     ]
     if locality is not None:
-        components.insert(2, {
-            "long_name": locality, "short_name": locality, "types": ["locality", "political"],
-        })
+        components.insert(
+            2,
+            {
+                "long_name": locality,
+                "short_name": locality,
+                "types": ["locality", "political"],
+            },
+        )
     result: dict[str, Any] = {
         "address_components": components,
         "formatted_address": formatted_address,
@@ -204,9 +212,7 @@ class TestClassification:
         assert decision.reason == "no_expected_city"
 
     def test_partial_match_needs_review(self):
-        decision = classify_response(
-            ok_response(google_result(partial_match=True)), self.CITIES
-        )
+        decision = classify_response(ok_response(google_result(partial_match=True)), self.CITIES)
         assert not decision.accept
         assert decision.reason == "partial_match"
 
@@ -222,31 +228,23 @@ class TestClassification:
         response = ok_response(google_result(locality="פתח תקווה"))
         no_alias = classify_response(response, ("פתח תקוה", "Petah Tikva"))
         assert not no_alias.accept  # exact match alone over-flags…
-        decision = classify_response(
-            response, ("פתח תקוה", "Petah Tikva"), city_slug="petah-tikva"
-        )
+        decision = classify_response(response, ("פתח תקוה", "Petah Tikva"), city_slug="petah-tikva")
         assert decision.accept  # …the alias table fixes exactly this
 
     def test_kiryat_gat_plene_alias_accepted(self):
         response = ok_response(google_result(locality="קריית גת"))
-        decision = classify_response(
-            response, ("קרית גת", "Kiryat Gat"), city_slug="kiryat-gat"
-        )
+        decision = classify_response(response, ("קרית גת", "Kiryat Gat"), city_slug="kiryat-gat")
         assert decision.accept
 
     def test_tel_aviv_yafo_alias_accepted(self):
         response = ok_response(google_result(locality="תל אביב-יפו"))
-        decision = classify_response(
-            response, ("תל אביב", "Tel Aviv"), city_slug="tel-aviv"
-        )
+        decision = classify_response(response, ("תל אביב", "Tel Aviv"), city_slug="tel-aviv")
         assert decision.accept
 
     def test_alias_table_never_accepts_a_different_city(self):
         # Aliases widen spellings of the same city, not the set of acceptable cities.
         response = ok_response(google_result(locality="חולון"))
-        decision = classify_response(
-            response, ("תל אביב", "Tel Aviv"), city_slug="tel-aviv"
-        )
+        decision = classify_response(response, ("תל אביב", "Tel Aviv"), city_slug="tel-aviv")
         assert not decision.accept
         assert decision.reason == "city_mismatch"
 
@@ -354,9 +352,7 @@ def test_accepted_point_written_with_provenance_and_audit(session):
     restaurant = make_restaurant(session)
     stub = StubGeocoder({QUERY: ok_response(google_result())})
 
-    stats = geocode_restaurants(
-        session, stub, dry_run=False, allow_api_calls=True, actor="pytest"
-    )
+    stats = geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
 
     assert stats.candidates == 1
     assert stats.accepted == 1
@@ -402,9 +398,7 @@ def test_ambiguous_results_flag_needs_review_and_write_no_point(session, respons
     restaurant = make_restaurant(session)
     stub = StubGeocoder({QUERY: response})
 
-    stats = geocode_restaurants(
-        session, stub, dry_run=False, allow_api_calls=True, actor="pytest"
-    )
+    stats = geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
 
     assert stats.accepted == 0
     assert stats.flagged_needs_review == 1
@@ -424,9 +418,7 @@ def test_missing_address_flags_without_calling_api(session):
     make_restaurant(session, address_he=None)
     stub = StubGeocoder()
 
-    stats = geocode_restaurants(
-        session, stub, dry_run=False, allow_api_calls=True, actor="pytest"
-    )
+    stats = geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
 
     assert stub.calls == []
     assert stats.review_reasons == {"missing_address": 1}
@@ -441,9 +433,7 @@ def test_existing_point_is_never_touched(session):
     original_geo = str(verified.geo)
     stub = StubGeocoder()  # any call would raise
 
-    stats = geocode_restaurants(
-        session, stub, dry_run=False, allow_api_calls=True, actor="pytest"
-    )
+    stats = geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
 
     assert stats.candidates == 0
     assert stats.already_geocoded == 1
@@ -457,9 +447,7 @@ def test_restaurants_already_flagged_are_excluded(session):
     make_restaurant(session, needs_review=True)
     stub = StubGeocoder()
 
-    stats = geocode_restaurants(
-        session, stub, dry_run=False, allow_api_calls=True, actor="pytest"
-    )
+    stats = geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
 
     assert stats.candidates == 0
     assert stats.excluded_needs_review == 1
@@ -468,15 +456,11 @@ def test_restaurants_already_flagged_are_excluded(session):
 
 def test_cache_hit_skips_geocoder_entirely(session):
     restaurant = make_restaurant(session)
-    session.add(
-        GeocodeCache(query=QUERY, status="OK", response=ok_response(google_result()))
-    )
+    session.add(GeocodeCache(query=QUERY, status="OK", response=ok_response(google_result())))
     session.commit()
     stub = StubGeocoder()  # empty: any call would raise
 
-    stats = geocode_restaurants(
-        session, stub, dry_run=False, allow_api_calls=True, actor="pytest"
-    )
+    stats = geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
 
     assert stub.calls == []
     assert stats.cache_hits == 1
@@ -491,9 +475,7 @@ def test_dry_run_writes_no_restaurant_data(session):
     restaurant = make_restaurant(session)
     stub = StubGeocoder({QUERY: ok_response(google_result())})
 
-    stats = geocode_restaurants(
-        session, stub, dry_run=True, allow_api_calls=True, actor="pytest"
-    )
+    stats = geocode_restaurants(session, stub, dry_run=True, allow_api_calls=True, actor="pytest")
 
     assert stats.accepted == 1  # it planned the work…
     session.expire_all()
@@ -533,9 +515,7 @@ def test_rerun_is_idempotent(session):
     session.refresh(restaurant)
     first_geo, first_at = str(restaurant.geo), restaurant.geocoded_at
 
-    second = geocode_restaurants(
-        session, stub, dry_run=False, allow_api_calls=True, actor="pytest"
-    )
+    second = geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
 
     assert stub.calls == [QUERY], "the API is called exactly once across re-runs"
     assert second.candidates == 0
@@ -547,15 +527,17 @@ def test_rerun_is_idempotent(session):
 
 
 def test_duplicate_place_id_flags_instead_of_writing(session):
-    make_restaurant(session, google_place_id="ChIJd8kRVoJHHRURn5W2jCzHIcE",
-                    geo="SRID=4326;POINT(34.83 32.08)", name_he="הסניף הראשון")
+    make_restaurant(
+        session,
+        google_place_id="ChIJd8kRVoJHHRURn5W2jCzHIcE",
+        geo="SRID=4326;POINT(34.83 32.08)",
+        name_he="הסניף הראשון",
+    )
     second = make_restaurant(session, name_he="הסניף השני")
     query = build_geocode_query(second.address_he, second.city_he)
     stub = StubGeocoder({query: ok_response(google_result())})
 
-    stats = geocode_restaurants(
-        session, stub, dry_run=False, allow_api_calls=True, actor="pytest"
-    )
+    stats = geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
 
     assert stats.accepted == 0
     assert stats.review_reasons == {"duplicate_place_id": 1}
@@ -570,9 +552,7 @@ def test_abort_statuses_fail_the_run_cleanly(session, response):
     stub = StubGeocoder({QUERY: response})
 
     with pytest.raises(GeocodeAbort, match=response["status"]):
-        geocode_restaurants(
-            session, stub, dry_run=False, allow_api_calls=True, actor="pytest"
-        )
+        geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
 
     assert stub.calls == [QUERY], "no retry spinning on a quota/key failure"
     session.expire_all()
@@ -594,9 +574,7 @@ def test_abort_mid_run_keeps_responses_already_paid_for(session):
     stub = StubGeocoder({q_ok: ok_response(google_result()), q_bad: OVER_QUERY_LIMIT})
 
     with pytest.raises(GeocodeAbort):
-        geocode_restaurants(
-            session, stub, dry_run=False, allow_api_calls=True, actor="pytest"
-        )
+        geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
 
     # The first (good, paid-for) response was cached; the aborting one was not.
     session.expire_all()
@@ -623,15 +601,11 @@ def test_point_placed_mid_run_is_never_overwritten(session):
 
     def moderator_places_point():
         session.execute(
-            sa_update(Restaurant)
-            .where(Restaurant.id == restaurant.id)
-            .values(geo=moderator_point)
+            sa_update(Restaurant).where(Restaurant.id == restaurant.id).values(geo=moderator_point)
         )
 
     stub = MutatingGeocoder({QUERY: ok_response(google_result())}, moderator_places_point)
-    stats = geocode_restaurants(
-        session, stub, dry_run=False, allow_api_calls=True, actor="pytest"
-    )
+    stats = geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
 
     assert stats.skipped_concurrent == 1
     assert stats.accepted == 0
@@ -646,15 +620,11 @@ def test_flag_raced_by_moderator_is_skipped_not_doubled(session):
 
     def moderator_flags_row():
         session.execute(
-            sa_update(Restaurant)
-            .where(Restaurant.id == restaurant.id)
-            .values(needs_review=True)
+            sa_update(Restaurant).where(Restaurant.id == restaurant.id).values(needs_review=True)
         )
 
     stub = MutatingGeocoder({QUERY: ZERO_RESULTS}, moderator_flags_row)
-    stats = geocode_restaurants(
-        session, stub, dry_run=False, allow_api_calls=True, actor="pytest"
-    )
+    stats = geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
 
     assert stats.skipped_concurrent == 1
     assert stats.flagged_needs_review == 0
@@ -679,9 +649,7 @@ def test_cache_conflict_mid_run_does_not_discard_the_batch(session):
     stub = MutatingGeocoder(
         {QUERY: ok_response(google_result())}, concurrent_writer_caches_same_query
     )
-    stats = geocode_restaurants(
-        session, stub, dry_run=False, allow_api_calls=True, actor="pytest"
-    )
+    stats = geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
 
     # The unique-key conflict was contained to its savepoint: run completed, one cache
     # row, and the concurrently-written response is the one used.
@@ -704,9 +672,7 @@ def test_would_call_api_counts_unique_queries_not_restaurants(session):
 def test_api_calls_allowed_without_geocoder_is_an_error(session):
     make_restaurant(session)
     with pytest.raises(GeocodeError, match="no geocoder"):
-        geocode_restaurants(
-            session, None, dry_run=False, allow_api_calls=True, actor="pytest"
-        )
+        geocode_restaurants(session, None, dry_run=False, allow_api_calls=True, actor="pytest")
     run = session.scalar(select(IngestionRun))
     assert run.state is IngestionRunState.FAILED
 
@@ -715,7 +681,10 @@ def test_city_and_limit_filters(session):
     for i in range(3):
         make_restaurant(session, name_he=f"מסעדה {i}", address_he=f"רבי עקיבא {i}")
     make_restaurant(
-        session, name_he="ירושלמית", city_he="ירושלים", city_en="Jerusalem",
+        session,
+        name_he="ירושלמית",
+        city_he="ירושלים",
+        city_en="Jerusalem",
         address_he="יפו 1",
     )
 
@@ -733,9 +702,7 @@ def test_shared_query_between_branches_costs_one_api_call(session):
     make_restaurant(session, name_he="סניף ב")
     stub = StubGeocoder({QUERY: ok_response(google_result())})
 
-    stats = geocode_restaurants(
-        session, stub, dry_run=False, allow_api_calls=True, actor="pytest"
-    )
+    stats = geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
 
     assert stub.calls == [QUERY]
     assert stats.api_calls == 1
@@ -749,7 +716,7 @@ def test_shared_query_between_branches_costs_one_api_call(session):
 # --------------------------------------------------------------------------------------
 
 
-def test_migration_chain_heads_at_0004():
+def test_migration_chain_heads_at_0005():
     from pathlib import Path
 
     from alembic.config import Config
@@ -757,10 +724,13 @@ def test_migration_chain_heads_at_0004():
 
     root = Path(__file__).resolve().parents[1]
     script = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert script.get_heads() == ["0004_certificate_evidence_photo"]
+    assert script.get_heads() == ["0005_certificate_is_demo_seed"]
     assert (
-        script.get_revision("0004_certificate_evidence_photo").down_revision
-        == "0003_audit_log_seq"
+        script.get_revision("0005_certificate_is_demo_seed").down_revision
+        == "0004_certificate_evidence_photo"
+    )
+    assert (
+        script.get_revision("0004_certificate_evidence_photo").down_revision == "0003_audit_log_seq"
     )
     assert script.get_revision("0003_audit_log_seq").down_revision == "0002_geocode_cache"
     assert script.get_revision("0002_geocode_cache").down_revision == "0001_initial_schema"

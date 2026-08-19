@@ -29,6 +29,6 @@
 
 ### Known gaps — important
 - **No certificate-level attributes** (glatt, pas yisrael…) and **no expiry dates** — none exist in these sources. These lists establish *status + certifier* only (source-hierarchy level 1 per PRD §13). Certificate photos / field verification required for attributes.
-- List dates are snapshots with no validity window → a per-certifier freshness/staleness rule is needed (suggested: stale after 90 days without re-scrape).
+- List dates are snapshots with no validity window → a per-certifier freshness/staleness rule is needed (configured: stale after 365 days without re-scrape, see `KASHROOT_DEFAULT_FRESHNESS_DAYS`).
 - Records with `needs_review=TRUE` must be manually verified before serving.
 - No geocoding yet — `geo point` population via Google Places is the next pipeline step.

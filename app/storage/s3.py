@@ -52,9 +52,7 @@ class S3MediaStorage:
         )
 
     def put(self, key: str, data: bytes, content_type: str) -> None:
-        self._client.put_object(
-            Bucket=self.bucket, Key=key, Body=data, ContentType=content_type
-        )
+        self._client.put_object(Bucket=self.bucket, Key=key, Body=data, ContentType=content_type)
 
     def get_url(self, key: str, *, expires_in: int = DEFAULT_URL_EXPIRY_SECONDS) -> str:
         return self._client.generate_presigned_url(

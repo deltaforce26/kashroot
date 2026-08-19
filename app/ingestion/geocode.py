@@ -102,10 +102,18 @@ CITY_LOCALITY_ALIASES: dict[str, frozenset[str]] = {
     "kiryat-shmuel": frozenset({"קרית שמואל", "קריית שמואל", "חיפה"}),
     "kiryat-yam": frozenset({"קרית ים", "קריית ים"}),
     # "Krayot" in the source lists means "one of the Krayot" — accept each of them.
-    "krayot": frozenset({
-        "קרית ים", "קריית ים", "קרית מוצקין", "קריית מוצקין",
-        "קרית אתא", "קריית אתא", "קרית ביאליק", "קריית ביאליק",
-    }),
+    "krayot": frozenset(
+        {
+            "קרית ים",
+            "קריית ים",
+            "קרית מוצקין",
+            "קריית מוצקין",
+            "קרית אתא",
+            "קריית אתא",
+            "קרית ביאליק",
+            "קריית ביאליק",
+        }
+    ),
     "lod": frozenset({"לוד"}),
     "meron": frozenset({"מירון"}),
     "migdal-haemek": frozenset({"מגדל העמק"}),
@@ -132,7 +140,9 @@ CITY_LOCALITY_ALIASES: dict[str, frozenset[str]] = {
     "shilat": frozenset({"שילת"}),
     "tiberias": frozenset({"טבריה"}),
     "yitzhar": frozenset({"יצהר"}),
-    "yokneam": frozenset({"יוקנעם", "יקנעם", "יקנעם עילית"}),
+    # Google returns the plene compound "יוקנעם עילית" for this address set; the
+    # defective compound "יקנעם עילית" was already covered but not its plene form.
+    "yokneam": frozenset({"יוקנעם", "יקנעם", "יקנעם עילית", "יוקנעם עילית"}),
     "zikhron-ya-akov": frozenset({"זכרון יעקב", "זיכרון יעקב"}),
 }
 
@@ -209,8 +219,7 @@ class GoogleGeocoder:
                 continue  # retry with backoff
             if response.is_error:  # non-retryable 4xx — sanitized, never raise_for_status
                 raise GeocodeError(
-                    f"Google Geocoding API returned HTTP {response.status_code} "
-                    f"for {query!r}"
+                    f"Google Geocoding API returned HTTP {response.status_code} for {query!r}"
                 )
             return response.json()
         raise GeocodeAbort(
@@ -302,15 +311,21 @@ def classify_response(
 
     if result.get("partial_match"):
         return GeocodeDecision(
-            accept=False, reason="partial_match",
-            location_type=location_type, locality=locality,
-            place_id=place_id, formatted_address=formatted,
+            accept=False,
+            reason="partial_match",
+            location_type=location_type,
+            locality=locality,
+            place_id=place_id,
+            formatted_address=formatted,
         )
     if location_type not in PRECISE_LOCATION_TYPES:
         return GeocodeDecision(
-            accept=False, reason="imprecise_location",
-            location_type=location_type, locality=locality,
-            place_id=place_id, formatted_address=formatted,
+            accept=False,
+            reason="imprecise_location",
+            location_type=location_type,
+            locality=locality,
+            place_id=place_id,
+            formatted_address=formatted,
         )
     if location.get("lat") is None or location.get("lng") is None:
         return GeocodeDecision(accept=False, reason="missing_location")
@@ -321,29 +336,42 @@ def classify_response(
     if not expected:
         # We have no trusted city to check against — accepting would be a guess.
         return GeocodeDecision(
-            accept=False, reason="no_expected_city",
-            location_type=location_type, locality=locality,
-            place_id=place_id, formatted_address=formatted,
+            accept=False,
+            reason="no_expected_city",
+            location_type=location_type,
+            locality=locality,
+            place_id=place_id,
+            formatted_address=formatted,
         )
     if locality is None:
         # The result names no locality at all — different failure than a wrong city.
         return GeocodeDecision(
-            accept=False, reason="no_locality",
-            location_type=location_type, locality=None,
-            place_id=place_id, formatted_address=formatted,
+            accept=False,
+            reason="no_locality",
+            location_type=location_type,
+            locality=None,
+            place_id=place_id,
+            formatted_address=formatted,
         )
     if normalize_for_key(locality) not in expected:
         return GeocodeDecision(
-            accept=False, reason="city_mismatch",
-            location_type=location_type, locality=locality,
-            place_id=place_id, formatted_address=formatted,
+            accept=False,
+            reason="city_mismatch",
+            location_type=location_type,
+            locality=locality,
+            place_id=place_id,
+            formatted_address=formatted,
         )
 
     return GeocodeDecision(
-        accept=True, reason="ok",
-        lat=float(location["lat"]), lng=float(location["lng"]),
-        place_id=place_id, formatted_address=formatted,
-        location_type=location_type, locality=locality,
+        accept=True,
+        reason="ok",
+        lat=float(location["lat"]),
+        lng=float(location["lng"]),
+        place_id=place_id,
+        formatted_address=formatted,
+        location_type=location_type,
+        locality=locality,
     )
 
 
@@ -413,8 +441,13 @@ def geocode_restaurants(
     stats = GeocodeStats()
     try:
         _run_geocode(
-            session, geocoder, run_id, stats,
-            allow_api_calls=allow_api_calls, limit=limit, city=city,
+            session,
+            geocoder,
+            run_id,
+            stats,
+            allow_api_calls=allow_api_calls,
+            limit=limit,
+            city=city,
         )
     except Exception as exc:
         session.rollback()
@@ -523,9 +556,7 @@ def _run_geocode(
                 with session.begin_nested():
                     session.add(entry)
             except IntegrityError:
-                existing = session.scalar(
-                    select(GeocodeCache).where(GeocodeCache.query == q)
-                )
+                existing = session.scalar(select(GeocodeCache).where(GeocodeCache.query == q))
                 if existing is None:  # pragma: no cover - conflict implies a row
                     raise
                 entry = existing  # the concurrent writer's response wins

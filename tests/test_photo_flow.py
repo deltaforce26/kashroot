@@ -35,7 +35,7 @@ from app.models import (
     Restaurant,
     RestaurantStatus,
 )
-from app.storage import InMemoryMediaStorage, MediaStorage
+from app.storage import InMemoryMediaStorage
 
 TOKENS = {"tok-alice": "alice", "tok-bob": "bob"}
 ALICE = {"Authorization": "Bearer tok-alice"}
@@ -289,19 +289,16 @@ def test_upload_oversize_413(client, session, storage) -> None:
 def test_upload_content_length_header_precheck() -> None:
     """The declared Content-Length is judged before the body is touched; absent or
     malformed headers fall through to the post-read check instead of erroring."""
-    from app.api.admin import (
-        _MULTIPART_OVERHEAD_ALLOWANCE,
-        MAX_PHOTO_BYTES,
-        _content_length_exceeds_cap,
-    )
+    from app.api.admin.consts import MAX_PHOTO_BYTES, MULTIPART_OVERHEAD_ALLOWANCE
+    from app.api.admin.photos import content_length_exceeds_cap
 
-    cap = MAX_PHOTO_BYTES + _MULTIPART_OVERHEAD_ALLOWANCE
-    assert _content_length_exceeds_cap(str(cap + 1)) is True
-    assert _content_length_exceeds_cap(str(cap)) is False
-    assert _content_length_exceeds_cap(str(MAX_PHOTO_BYTES)) is False
-    assert _content_length_exceeds_cap("123") is False
-    assert _content_length_exceeds_cap(None) is False
-    assert _content_length_exceeds_cap("not-a-number") is False
+    cap = MAX_PHOTO_BYTES + MULTIPART_OVERHEAD_ALLOWANCE
+    assert content_length_exceeds_cap(str(cap + 1)) is True
+    assert content_length_exceeds_cap(str(cap)) is False
+    assert content_length_exceeds_cap(str(MAX_PHOTO_BYTES)) is False
+    assert content_length_exceeds_cap("123") is False
+    assert content_length_exceeds_cap(None) is False
+    assert content_length_exceeds_cap("not-a-number") is False
 
 
 def test_upload_oversize_content_length_rejected_before_body_read(
@@ -417,14 +414,14 @@ def test_upload_cleans_up_stored_object_when_request_fails_after_put(
 ) -> None:
     """If the request dies after the object landed in storage but before the response,
     the object is deleted best-effort — no orphan for a row that will never commit."""
-    import app.api.admin as admin_module
+    import app.api.admin.photos as photos_module
 
     _, certificate = make_cert_chain(session)
 
     def explode(photo, storage_):
         raise RuntimeError("presign exploded")
 
-    monkeypatch.setattr(admin_module, "_photo_out", explode)
+    monkeypatch.setattr(photos_module, "photo_out", explode)
     with pytest.raises(RuntimeError):
         upload(client, certificate.id)
     assert storage.objects == {}  # the stored object was cleaned up

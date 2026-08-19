@@ -155,5 +155,118 @@ def geocode(
         typer.secho("\n  nothing written — re-run with --apply to commit", fg=typer.colors.YELLOW)
 
 
+@app.command("db-check")
+def db_check() -> None:
+    """Verify the configured database is reachable and correctly provisioned.
+
+    Reports how the connection was tuned (Supabase TLS, transaction-pooler prepared
+    statement handling), whether PostGIS is installed and reachable on the current
+    search_path, and which Alembic revision the database is at.
+    """
+    from sqlalchemy import text
+
+    from app.core.config import settings as app_settings
+    from app.db.connection import profile_for_url
+    from app.db.consts import (
+        ALEMBIC_REVISION_QUERY,
+        DIRECT_HOST_HINT,
+        POSTGIS_VERSION_QUERY,
+        SERVER_VERSION_QUERY,
+    )
+    from app.db.session import engine
+
+    profile = profile_for_url(app_settings.database_url)
+    typer.secho("\ndb-check", fg=typer.colors.CYAN, bold=True)
+    typer.echo(f"  host                   {engine.url.host}:{engine.url.port}")
+    typer.echo(f"  supabase-hosted        {profile.is_supabase}")
+    typer.echo(f"  transaction pooler     {profile.is_transaction_pooler}")
+    typer.echo(f"  prepared statements    {not profile.is_transaction_pooler}")
+    if profile.is_direct_host:
+        typer.secho(
+            f"  WARNING: {DIRECT_HOST_HINT.format(host=engine.url.host)}",
+            fg=typer.colors.YELLOW,
+        )
+
+    try:
+        with engine.connect() as connection:
+            server = connection.execute(text(SERVER_VERSION_QUERY)).scalar_one()
+            postgis = connection.execute(text(POSTGIS_VERSION_QUERY)).scalar_one_or_none()
+            revision = connection.execute(text(ALEMBIC_REVISION_QUERY)).scalar_one_or_none()
+    except Exception as exc:
+        typer.secho(f"  connection FAILED: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.secho(f"  server                 {server.split(',')[0]}", fg=typer.colors.GREEN)
+    if postgis:
+        typer.secho(f"  postgis                {postgis}", fg=typer.colors.GREEN)
+    else:
+        typer.secho(
+            "  postgis                NOT INSTALLED — run `alembic upgrade head`",
+            fg=typer.colors.RED,
+        )
+    typer.echo(f"  alembic revision       {revision or 'none — run `alembic upgrade head`'}")
+
+    if postgis is None or revision is None:
+        raise typer.Exit(code=1)
+
+
+@app.command("storage-check")
+def storage_check(
+    create_bucket: Annotated[
+        bool,
+        typer.Option("--create-bucket", help="Create the bucket (private) if missing."),
+    ] = False,
+) -> None:
+    """Round-trip a probe object through the configured media-storage backend.
+
+    Writes a throwaway object under a dedicated `_healthcheck/` prefix, signs it,
+    confirms it exists and deletes it again — so a green run proves the credentials,
+    the bucket and the signing endpoint all work before any evidence photo depends
+    on them. `--create-bucket` provisions a fresh Supabase project's bucket first.
+    """
+    import uuid as uuid_module
+
+    from app.core.config import settings as app_settings
+    from app.storage import (
+        SupabaseMediaStorage,
+        media_storage_from_settings,
+        resolve_storage_backend,
+    )
+    from app.storage.consts import (
+        HEALTHCHECK_BODY,
+        HEALTHCHECK_CONTENT_TYPE,
+        HEALTHCHECK_KEY_TEMPLATE,
+    )
+
+    backend = resolve_storage_backend(app_settings)
+    typer.secho("\nstorage-check", fg=typer.colors.CYAN, bold=True)
+    typer.echo(f"  backend                {backend.value}")
+
+    try:
+        storage = media_storage_from_settings(app_settings)
+    except Exception as exc:
+        typer.secho(f"  configuration FAILED: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+
+    key = HEALTHCHECK_KEY_TEMPLATE.format(token=uuid_module.uuid4())
+    try:
+        if create_bucket and isinstance(storage, SupabaseMediaStorage):
+            created = storage.ensure_bucket()
+            typer.echo(f"  bucket                 {'created' if created else 'already existed'}")
+
+        storage.put(key, HEALTHCHECK_BODY, HEALTHCHECK_CONTENT_TYPE)
+        url = storage.get_url(key)
+        present = storage.exists(key)
+        storage.delete(key)
+    except Exception as exc:
+        typer.secho(f"  round-trip FAILED: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.secho(f"  put/sign/stat/delete   OK (signed URL {len(url)} chars)", fg=typer.colors.GREEN)
+    if not present:
+        typer.secho("  exists() returned False after put", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+
 if __name__ == "__main__":  # pragma: no cover
     app()

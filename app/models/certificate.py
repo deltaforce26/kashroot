@@ -18,6 +18,7 @@ import uuid
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
+    Boolean,
     Date,
     DateTime,
     ForeignKey,
@@ -26,6 +27,8 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -70,6 +73,14 @@ class Certificate(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         # Expiry queue: surface certs expiring in the next 14 days (PRD §13 SLA).
         Index("ix_certificate_valid_until", "valid_until"),
         Index("ix_certificate_attributes", "attributes", postgresql_using="gin"),
+        # Partial: demo rows are a small, occasional subset (POC-only), so indexing
+        # only the true side keeps the index tiny while still making "which certs are
+        # synthetic" / "delete all demo rows" trivial lookups.
+        Index(
+            "ix_certificate_is_demo_seed_true",
+            "is_demo_seed",
+            postgresql_where=text("is_demo_seed"),
+        ),
     )
 
     restaurant_id: Mapped[uuid.UUID] = mapped_column(
@@ -84,9 +95,7 @@ class Certificate(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
         server_default=CertificationLevel.UNKNOWN.value,
     )
-    attributes: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, server_default="{}"
-    )
+    attributes: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default="{}")
 
     valid_from: Mapped[dt.date | None] = mapped_column(Date)
     #: NULL = expiry unknown (published lists carry no validity window). Freshness, not
@@ -118,6 +127,13 @@ class Certificate(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     #: Idempotency key for ingestion pipelines, e.g. ``seed:<restaurant>:<certifier>``.
     import_key: Mapped[str | None] = mapped_column(String(400), unique=True)
     notes: Mapped[str | None] = mapped_column(Text)
+
+    #: True only for rows fabricated by ``scripts/seed_demo_attributes.py`` (POC demo
+    #: data). Orthogonal to ``source``: a demo row can carry ``MODERATOR_VERIFIED`` the
+    #: same way a genuine photo-reviewed row does, so this flag — not ``source`` — is
+    #: the structured way to tell fabricated rows from real provenance and to find or
+    #: purge them later.
+    is_demo_seed: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
 
     restaurant: Mapped[Restaurant] = relationship(back_populates="certificates")
     certifier: Mapped[Certifier] = relationship(back_populates="certificates")

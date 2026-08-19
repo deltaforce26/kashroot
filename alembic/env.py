@@ -1,19 +1,25 @@
 """Alembic environment.
 
 The URL comes from app settings (KASHROOT_DATABASE_URL), never from alembic.ini, so
-there is exactly one source of truth for which database is being migrated.
+there is exactly one source of truth for which database is being migrated. It is put
+through app.db.connection so migrations reach a Supabase-hosted database on exactly
+the same terms as the running app (TLS forced on, prepared statements handled).
+
+Run migrations through Supabase's *session* pooler or direct connection (port 5432),
+not the transaction pooler: DDL and advisory locks want one stable server session.
 """
 
 from __future__ import annotations
 
 from logging.config import fileConfig
 
-from alembic import context
 from geoalchemy2 import alembic_helpers
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import create_engine, pool
 
+from alembic import context
 from app.core.config import settings
 from app.db.base import Base
+from app.db.connection import build_connect_args, normalized_url
 
 # Importing the models package registers every table on Base.metadata.
 import app.models  # noqa: F401  isort:skip
@@ -22,7 +28,9 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", settings.database_url)
+#: Never written back into alembic.ini: a password containing '%' would be eaten
+#: by ConfigParser interpolation. The engine below is built from this directly.
+DATABASE_URL = normalized_url(settings.database_url)
 
 target_metadata = Base.metadata
 
@@ -39,7 +47,7 @@ def include_object(obj, name, type_, reflected, compare_to):  # noqa: ANN001, AN
 
 def run_migrations_offline() -> None:
     context.configure(
-        url=settings.database_url,
+        url=DATABASE_URL.render_as_string(hide_password=False),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -55,10 +63,14 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    connectable = create_engine(
+        DATABASE_URL,
         poolclass=pool.NullPool,
+        connect_args=build_connect_args(
+            DATABASE_URL,
+            prepared_statements=settings.db_prepared_statements,
+            search_path=settings.db_search_path,
+        ),
     )
     with connectable.connect() as connection:
         context.configure(

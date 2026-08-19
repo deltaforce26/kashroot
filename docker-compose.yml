@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: kashroot
       POSTGRES_DB: kashroot
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - kashroot_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -21,6 +21,9 @@ services:
       - "6379:6379"
 
   # S3-compatible object storage for certificate evidence photos (local dev).
+  # This is the fallback backend: the app uses Supabase Storage whenever
+  # KASHROOT_SUPABASE_URL + KASHROOT_SUPABASE_SERVICE_KEY are set, and MinIO
+  # otherwise, so `docker compose up` stays a complete offline stack.
   # Point the app at it with:
   #   KASHROOT_S3_ENDPOINT_URL=http://localhost:9000
   #   KASHROOT_S3_BUCKET=kashroot-evidence

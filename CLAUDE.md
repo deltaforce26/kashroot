@@ -30,7 +30,9 @@ An app that answers "Can I eat here according to MY standards?" — user defines
 3. App beta in Jerusalem, then public launch Israel.
 
 ## Conventions
-- Python 3.11+, type hints everywhere, pytest. Match engine gets exhaustive unit tests before anything else.
+**Read `STANDARDS.md` — mandatory Python coding standards (file size, consts.py, docstrings, unittest, ruff). Applies to Python only.**
+
+- Python 3.11+. Match engine gets exhaustive unit tests before anything else.
 - Hebrew text: UTF-8 everywhere; CSV outputs use utf-8-sig for Excel compatibility.
 - Never hardcode kashrut logic conclusions; everything derives from Certificate records + Profile.
 - Migrations via Alembic only; never edit schema manually.

@@ -61,9 +61,7 @@ def make_cert(**overrides) -> CertificateInput:
     return CertificateInput(**defaults)
 
 
-def make_profile(
-    *entries: WhitelistEntry, required: tuple[str, ...] = ()
-) -> ProfileInput:
+def make_profile(*entries: WhitelistEntry, required: tuple[str, ...] = ()) -> ProfileInput:
     if not entries:
         entries = (WhitelistEntry(BADATZ),)
     return ProfileInput(whitelist=entries, required_attributes=required)
@@ -331,7 +329,7 @@ class TestFreshness:
 
     def test_freshness_days_parameter_is_respected(self):
         cert = make_cert(valid_until=None, verified_at=NOW - dt.timedelta(days=31))
-        assert run([cert]).verdict == Verdict.MATCH  # default 90
+        assert run([cert]).verdict == Verdict.MATCH  # default 365
         assert run([cert], freshness_days=30).verdict == Verdict.UNKNOWN
 
     def test_no_freshness_evidence_at_all_is_unknown(self):
@@ -505,9 +503,7 @@ class TestReasons:
         # "✗ not in your list" alongside the facts that *were* established.
         result = run(
             [make_cert(certifier_id=OTHER, attributes={"glatt": True})],
-            ProfileInput(
-                whitelist=(WhitelistEntry(BADATZ),), required_attributes=("glatt",)
-            ),
+            ProfileInput(whitelist=(WhitelistEntry(BADATZ),), required_attributes=("glatt",)),
         )
         assert result.verdict == Verdict.NO_MATCH
         assert Reason(ReasonCode.ATTRIBUTE_PRESENT, "glatt") in result.reasons
@@ -527,7 +523,7 @@ class TestConfidence:
             (CertificateSource.MODERATOR_VERIFIED, 2, 2, Confidence.HIGH),
             (CertificateSource.MODERATOR_VERIFIED, 1, 2, Confidence.MEDIUM),
             (CertificateSource.OFFICIAL_LIST, 1, 2, Confidence.MEDIUM),
-            (CertificateSource.OFFICIAL_LIST, 1, 80, Confidence.LOW),
+            (CertificateSource.OFFICIAL_LIST, 1, 200, Confidence.LOW),
             (CertificateSource.OWNER_SUBMITTED, 1, 2, Confidence.LOW),
         ],
     )

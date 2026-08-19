@@ -817,12 +817,12 @@ def test_degrade_state_recheck_guards_concurrent_revocation(client, session, mon
     revocation landing between the read and the action: the re-check must 409 rather
     than overwrite REVOKED with EXPIRED (which would be a raise).
     """
-    import app.api.admin as admin_module
+    import app.api.admin.actions as actions_module
 
     certifier = make_certifier(session)
     restaurant = make_restaurant(session)
     certificate = make_certificate(session, restaurant, certifier)  # ACTIVE at read time
-    real_get = admin_module._get_or_404
+    real_get = actions_module.get_or_404
 
     def get_then_race(session_, model, entity_id, label, *, for_update=False):
         obj = real_get(session_, model, entity_id, label, for_update=for_update)
@@ -830,7 +830,7 @@ def test_degrade_state_recheck_guards_concurrent_revocation(client, session, mon
             obj.state = CertificateState.REVOKED  # concurrent revocation commits here
         return obj
 
-    monkeypatch.setattr(admin_module, "_get_or_404", get_then_race)
+    monkeypatch.setattr(actions_module, "get_or_404", get_then_race)
     response = client.post(
         f"/api/admin/certificates/{certificate.id}/degrade",
         headers=ALICE,

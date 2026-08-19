@@ -28,12 +28,13 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 
 @lru_cache
 def _default_media_storage() -> MediaStorage:
-    """One S3 client per process. Settings are read only here, at construction —
-    lazily, so importing the app never opens an S3 client (or requires boto3 config).
+    """One storage client per process, of whichever backend the configuration selects
+    (Supabase Storage, S3/MinIO, or memory). Settings are read only here, at
+    construction — lazily, so importing the app never opens a storage client.
     """
-    from app.storage import s3_storage_from_settings
+    from app.storage import media_storage_from_settings
 
-    return s3_storage_from_settings(settings)
+    return media_storage_from_settings(settings)
 
 
 def get_media_storage() -> MediaStorage:

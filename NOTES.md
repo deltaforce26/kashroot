@@ -4,6 +4,55 @@ Running notes on decisions, gotchas, and open items that are not obvious from th
 code or the PRD. Newest sections first. (Locked product decisions live in
 CLAUDE.md; this file is for everything worth remembering that isn't locked.)
 
+## Shared-building addresses defeat one-point-per-restaurant (Aug 2026)
+
+- `Restaurant.google_place_id` is **unique**, and Google returns one place for a whole
+  building. So when several distinct kosher businesses occupy one address — a mall, an
+  office block (שמגר 16, ירמיהו, פארן, המרפא in Jerusalem) — **only the first can ever
+  hold the geo point**; the rest are permanently `duplicate_place_id`, no matter how good
+  the address text is. This is a schema/precision ceiling, not an OCR or data-quality
+  problem, and no amount of address cleanup moves it.
+- It is not rare: Israeli malls and commercial centres routinely host several certified
+  businesses, so this scales with the corpus rather than washing out. 6 unrecoverable
+  Jerusalem rows came from exactly this, and all 16 Jerusalem `duplicate_place_id` cases
+  resolved the same way.
+- Fixing it properly means decoupling "the place Google knows" from "the venue we list" —
+  a shared `Place`/`Address` entity that many restaurants can reference, with an optional
+  unit/floor discriminator — rather than storing `google_place_id` uniquely on
+  `Restaurant`. Deferred past the POC; note it before the next city's ingestion, because
+  retrofitting it after more corpora land will be worse.
+
+## Layout bugs are invisible to the test suite (Aug 2026)
+
+- The home list rendered every card vertically compressed with the **verdict pill clipped
+  out of view entirely**, while all 68 `web/` tests passed. jsdom does not perform layout,
+  so assertions that the pill "renders" pass against a pill no human can see.
+- Cause: `.shell__scroll` is a scrolling flex column, and flex items default to
+  `flex-shrink: 1` — content taller than the viewport compresses the children instead of
+  scrolling. `.card { overflow: hidden }` then clips them. Fixed with
+  `.shell__scroll > * { flex-shrink: 0 }`.
+- Takeaway: for this app the test suite proves structure and logic only. Anything about
+  *visibility* needs a human or a real browser. Worth remembering that the bug was found
+  by one glance at a screenshot after the suite had been green for hours.
+
+## Python coding standards (Aug 2026)
+
+- `STANDARDS.md` is now the mandatory Python style contract (500-line file cap,
+  no plain strings — everything in `consts.py`, no inline comments, full type
+  annotations + docstrings on every function, blank line before `return`,
+  unittest, Pydantic field validators, ruff). CLAUDE.md's Conventions section
+  points at it. **Python only** — `admin/` (TS/React) is not governed by it.
+- **The unittest rule contradicts the existing suite:** all 9 files under
+  `tests/` are pytest-style (bare `test_*` functions, fixtures, `conftest.py`);
+  zero `import unittest`. Nothing has been migrated. Decide whether to convert
+  them, grandfather them, or relax the rule — until then the standard and the
+  repo disagree.
+- The old CLAUDE.md line "type hints everywhere, pytest" was removed so
+  STANDARDS.md is the single source; the pytest→unittest conflict above is the
+  live consequence.
+- Two other rules are aspirational against current code: consts extraction and
+  the 500-line cap have not been audited across `app/`.
+
 ## Certificate photo flow (Aug 2026)
 
 - **Photo review is the only door for attributes/expiry** (source level 2, PRD §13):
@@ -114,6 +163,15 @@ CLAUDE.md; this file is for everything worth remembering that isn't locked.)
 - Layer 2 default weights (PRD gives components, not numbers): distance 0.35
   (exp decay, half-distance 1.5 km), open-now 0.25, price 0.15, amenities 0.15,
   diet 0.10. Contexts may pass custom weights; missing soft data scores 0.5.
+
+## Public search API (Aug 2026)
+
+- **Known future limitation:** `MAX_QUERY_ROWS = 1000` (`app/api/consts.py`) caps rows
+  pulled from the DB for `/v1/search` *before* the amenities filter and Layer 1/Layer 2
+  evaluation run in Python — a search that matches more than 1000 rows pre-amenities
+  would silently truncate. Not a problem at the current ~517-record corpus; revisit
+  (push amenities into SQL, or paginate the DB query itself) once corpus size or filter
+  selectivity make it reachable. Not implemented — flagging only.
 
 ## Corpus / launch-gate risks (not code)
 

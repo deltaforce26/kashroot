@@ -60,7 +60,7 @@ from app.models.enums import (
 
 #: Mirrors ``Settings.default_freshness_days`` (app/core/config.py). Kept as a plain
 #: constant so the engine never imports settings; callers pass the configured value.
-DEFAULT_FRESHNESS_DAYS = 90
+DEFAULT_FRESHNESS_DAYS = 365
 
 #: PRD §13 SLA: expiring certificates are surfaced 14 days early.
 DEFAULT_EXPIRES_SOON_DAYS = 14

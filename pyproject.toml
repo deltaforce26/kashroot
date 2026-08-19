@@ -13,6 +13,7 @@ dependencies = [
     "sqlalchemy>=2.0.30",
     "alembic>=1.13",
     "geoalchemy2>=0.15",
+    "shapely>=2.0",
     "psycopg[binary]>=3.2",
     "pydantic-settings>=2.3",
     "typer>=0.12",
@@ -40,6 +41,14 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's Depends()/Query()/Path()-in-default-argument idiom is correct, idiomatic
+# usage (the callable is a sentinel FastAPI's dependency-injection system recognizes
+# at declaration time, not a mutable default) — silence B008 for these rather than
+# contorting endpoint signatures. File() is included because it is actually used the
+# same way in app/api/admin.py.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.File"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
