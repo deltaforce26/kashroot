@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
+.idea
 .env
 .env.local
 .env.bak-before-supabase-url
