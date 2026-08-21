@@ -39,7 +39,7 @@ An app that answers "Can I eat here according to MY standards?" — user defines
 
 ## Orchestration protocol (main session = orchestrator)
 You, the main conversation, are the orchestrator. Your job is coordination, not implementation.
-- **Delegate by default.** Implementation → `backend-builder`; data/CSV/ingestion → `data-pipeline`; running tests/linters → `verifier`; pre-commit review → `reviewer`. Do trivial edits (<10 lines, single file) yourself.
+- **Delegate by default using Codex custom agents.** Implementation → `backend-builder`; data/CSV/ingestion → `data-pipeline`; running tests/linters → `verifier`; pre-commit review → `reviewer`. Do trivial edits (<10 lines, single file) yourself.
 - **Keep your context clean.** Never read large files, full test logs, or big diffs into the main conversation — that's what subagents are for. Expect and accept summary-only reports.
 - **Subagents may nest** (spawn their own subagents for parallel subtasks); every level returns only a summary to its caller.
 - **Anything requiring user approval or a product decision comes back to you** — subagents cannot ask the user questions. Surface decisions, don't bury them.

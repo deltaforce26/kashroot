@@ -6,7 +6,7 @@ sessions (a deliberate POC shortcut around the still-open PRD §21.4 user-auth
 decision; see ``POC_PLAN.md`` B3).
 
 Layer 1 (kashrut verdict) and Layer 2 (fit score) are kept in visibly separate
-response objects everywhere (CLAUDE.md, locked): :class:`KashrutVerdictOut` carries a
+response objects everywhere (AGENTS.md, locked): :class:`KashrutVerdictOut` carries a
 categorical verdict plus reason codes and is never a number; :class:`FitScoreOut`
 carries a 0-100 ranking aid over soft preferences only. Neither is derived from the
 other and a client must never combine them into one figure.
@@ -198,7 +198,7 @@ class FreshnessOut(BaseModel):
 
 
 class KashrutVerdictOut(BaseModel):
-    """Layer 1 — categorical, explainable, never a percentage (CLAUDE.md locked
+    """Layer 1 — categorical, explainable, never a percentage (AGENTS.md locked
     decision). This is the only field a client may render as a kashrut judgement.
     """
 
@@ -218,7 +218,7 @@ class FitComponentOut(BaseModel):
 class FitScoreOut(BaseModel):
     """Layer 2 — a 0-100 ranking aid over soft preferences only (distance, open-now,
     price, amenities, diet). Cannot see and is never blended with the kashrut verdict
-    (CLAUDE.md locked decision).
+    (AGENTS.md locked decision).
     """
 
     score: int = Field(ge=0, le=100)
@@ -309,7 +309,7 @@ class RestaurantDetailRequest(BaseModel):
 
 
 class ProvenanceOut(BaseModel):
-    """Provenance the product's core claim depends on (CLAUDE.md: every
+    """Provenance the product's core claim depends on (AGENTS.md: every
     kashrut-relevant field carries provenance).
     """
 

@@ -64,7 +64,7 @@ class Certifier(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 class SourceDocument(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """Provenance anchor: the published list / poster / portal payload a record came from.
 
-    Every kashrut-relevant field carries provenance (CLAUDE.md); certificates point here.
+    Every kashrut-relevant field carries provenance (AGENTS.md); certificates point here.
     """
 
     __tablename__ = "source_document"

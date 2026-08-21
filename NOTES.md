@@ -2,7 +2,7 @@
 
 Running notes on decisions, gotchas, and open items that are not obvious from the
 code or the PRD. Newest sections first. (Locked product decisions live in
-CLAUDE.md; this file is for everything worth remembering that isn't locked.)
+AGENTS.md; this file is for everything worth remembering that isn't locked.)
 
 ## Shared-building addresses defeat one-point-per-restaurant (Aug 2026)
 
@@ -40,14 +40,14 @@ CLAUDE.md; this file is for everything worth remembering that isn't locked.)
 - `STANDARDS.md` is now the mandatory Python style contract (500-line file cap,
   no plain strings — everything in `consts.py`, no inline comments, full type
   annotations + docstrings on every function, blank line before `return`,
-  unittest, Pydantic field validators, ruff). CLAUDE.md's Conventions section
+  unittest, Pydantic field validators, ruff). AGENTS.md's Conventions section
   points at it. **Python only** — `admin/` (TS/React) is not governed by it.
 - **The unittest rule contradicts the existing suite:** all 9 files under
   `tests/` are pytest-style (bare `test_*` functions, fixtures, `conftest.py`);
   zero `import unittest`. Nothing has been migrated. Decide whether to convert
   them, grandfather them, or relax the rule — until then the standard and the
   repo disagree.
-- The old CLAUDE.md line "type hints everywhere, pytest" was removed so
+- The old AGENTS.md line "type hints everywhere, pytest" was removed so
   STANDARDS.md is the single source; the pytest→unittest conflict above is the
   live consequence.
 - Two other rules are aspirational against current code: consts extraction and

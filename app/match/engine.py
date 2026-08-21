@@ -8,7 +8,7 @@ PRD §17 semantics::
     NO_MATCH iff data sufficient and condition fails
     UNKNOWN  otherwise (missing / expired / stale data)
 
-Fail-safe rules (PRD §13, CLAUDE.md — locked):
+Fail-safe rules (PRD §13, AGENTS.md — locked):
 
 * Doubt → UNKNOWN, never doubt → MATCH.
 * Past expiry with no renewal evidence → UNKNOWN (auto-degrade), even if the stored

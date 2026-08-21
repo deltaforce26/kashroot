@@ -424,7 +424,7 @@ def _certifier_chip(certifier: Certifier) -> CertifierChip:
     """Serialize a certifier's display identity only — no attributes.
 
     Guarantees only id/name/type are exposed, never certificate-level facts (level,
-    attributes) — those live on ``Certificate`` per CLAUDE.md, not ``Certifier``.
+    attributes) — those live on ``Certificate`` per AGENTS.md, not ``Certifier``.
 
     Parameters:
         certifier (Certifier): the certifier row.
@@ -538,7 +538,7 @@ def list_certifiers(session: Session = Depends(get_session)) -> list[CertifierLi
     """All active certifiers, for the client's whitelist picker (POC_PLAN.md B2).
 
     ``levels`` is computed from what certificates actually carry (not a static list on
-    ``Certifier``, per CLAUDE.md — attributes and published levels live on
+    ``Certifier``, per AGENTS.md — attributes and published levels live on
     ``Certificate``), excluding UNKNOWN since that means "not published" rather than a
     selectable level.
     """

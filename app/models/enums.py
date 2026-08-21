@@ -1,7 +1,7 @@
 """Domain enums.
 
 Every value here is a *fact as published* — a label a certifier or a source document
-uses. Nothing in this module ranks certifiers or rules on halacha (PRD §13, CLAUDE.md).
+uses. Nothing in this module ranks certifiers or rules on halacha (PRD §13, AGENTS.md).
 The one ordering that exists (CERTIFICATION_LEVEL_ORDER) is *within* a single certifier,
 which publishes its own levels; it is never used to compare one certifier to another.
 """
@@ -140,7 +140,7 @@ class AmenityKey(StrEnum):
 
 
 class HoursRuleType(StrEnum):
-    """Israel hours logic (CLAUDE.md): weekly grid + Shabbat/chag overrides."""
+    """Israel hours logic (AGENTS.md): weekly grid + Shabbat/chag overrides."""
 
     WEEKLY = "weekly"
     EREV_SHABBAT = "erev_shabbat"

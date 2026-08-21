@@ -1,6 +1,6 @@
 """Kashroot match engine — pure functions over (Certificate × Profile).
 
-Two layers, never blended (PRD §17, CLAUDE.md locked decisions):
+Two layers, never blended (PRD §17, AGENTS.md locked decisions):
 
 * **Layer 1 — kashrut gate** (:func:`evaluate_kashrut`): binary, deterministic,
   explainable. Verdict is MATCH / NO_MATCH / UNKNOWN plus machine-readable reason

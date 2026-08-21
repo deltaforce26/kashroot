@@ -2,7 +2,7 @@
 
 The match engine is a pure function over (Certificate × Profile); nothing here touches
 a database. Every rule from PRD §17 (gate semantics), §13 (fail-safe/trust) and the
-CLAUDE.md locked decisions has a test. Read top to bottom as the specification:
+AGENTS.md locked decisions has a test. Read top to bottom as the specification:
 
 * MATCH iff an active, unexpired, fresh certificate from a whitelisted certifier (at
   the required level) explicitly carries every required attribute.

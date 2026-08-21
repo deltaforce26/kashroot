@@ -141,7 +141,7 @@ remaining UNKNOWNs come from expiry, missing attributes, revocation and unpublis
 - **Jerusalem stays the demo city**, with its coverage raised rather than switching to
   Bnei Brak (82.4%).
 - **Preset copy relabelled** for halachic neutrality — "Rabbanut Mehadrin and above"
-  asserted a cross-certifier ranking that CLAUDE.md forbids.
+  asserted a cross-certifier ranking that AGENTS.md forbids.
 
 ### Environment gotchas discovered (bite anyone cloning this repo)
 
@@ -262,7 +262,7 @@ reuse its visual design — this is a consumer surface.
 - [ ] **D1.** Full end-to-end pass against real Postgres — first time in the project.
       Budget real hours here; do not schedule it as a 30-minute formality.
 - [ ] **D2.** `verifier` agent: full test suite + `admin/` and `web/` builds green.
-- [ ] **D3.** `reviewer` agent: check against CLAUDE.md locked decisions — layer
+- [ ] **D3.** `reviewer` agent: check against AGENTS.md locked decisions — layer
       separation, fail-safe defaults, no hardcoded kashrut conclusions, provenance intact.
 - [ ] **D4.** **Rehearse the demo end to end, twice.** Script it:
       preset profile → search → a MATCH → a NO_MATCH (whitelist excludes that certifier) →

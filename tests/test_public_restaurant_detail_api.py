@@ -149,7 +149,7 @@ def test_detail_returns_full_evidence_per_certificate(client, session) -> None:
 
 
 def test_detail_layer1_and_layer2_are_separate_objects(client, session) -> None:
-    """CLAUDE.md locked decision: the two layers are never blended. Assert the
+    """AGENTS.md locked decision: the two layers are never blended. Assert the
     contract shape directly — kashrut.verdict is a string enum with no numeric
     field alongside it, fit.score is a plain 0-100 int in its own object.
     """

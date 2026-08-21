@@ -111,7 +111,7 @@ state — not an error.
 
 ---
 
-## Non-negotiables carried from CLAUDE.md
+## Non-negotiables carried from AGENTS.md
 
 - Kashrut is **never** a percentage, a score, a star rating, or a sorted "kashrut ranking".
   The Fit Score (0–100) ranks soft preferences only and must be visually separate from the

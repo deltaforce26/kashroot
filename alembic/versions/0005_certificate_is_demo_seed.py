@@ -9,7 +9,7 @@ Structured provenance flag for fabricated POC demo certificates
 may legitimately carry ``MODERATOR_VERIFIED`` the same way a genuine photo-reviewed
 row does, so ``source`` alone cannot tell them apart. ``is_demo_seed`` is the
 structured, queryable way to find or purge synthetic rows without touching
-``SOURCE_AUTHORITY`` ordering (CLAUDE.md: every kashrut-relevant field carries
+``SOURCE_AUTHORITY`` ordering (AGENTS.md: every kashrut-relevant field carries
 provenance).
 """
 

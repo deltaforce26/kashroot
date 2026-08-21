@@ -1,7 +1,7 @@
 """Certificate — the row the whole product hangs on.
 
 Attributes (glatt, chalav yisrael, …) live **here**, not on Certifier: the same badatz
-certifies different restaurants at different attribute sets (PRD §16, CLAUDE.md).
+certifies different restaurants at different attribute sets (PRD §16, AGENTS.md).
 
 ``attributes`` is tri-state JSONB::
 

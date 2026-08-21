@@ -3,7 +3,7 @@
 ``scripts/seed_demo_attributes.py`` fabricates certificates and, like the real photo
 review flow, may set ``source = CertificateSource.MODERATOR_VERIFIED`` on them. Without
 a structured flag, a fabricated row and a genuinely moderator-verified row are
-indistinguishable by ``source`` alone — this violates CLAUDE.md's "every
+indistinguishable by ``source`` alone — this violates AGENTS.md's "every
 kashrut-relevant field carries provenance" rule. ``is_demo_seed`` is that flag; these
 tests assert it actually distinguishes the two cases, both at the DB layer and in the
 public API's provenance output.

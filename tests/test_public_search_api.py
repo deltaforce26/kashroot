@@ -300,7 +300,7 @@ def test_search_ranks_by_fit_score_descending(client, session) -> None:
 
 
 def test_search_ranks_verdict_before_fit_score(client, session) -> None:
-    """PRD FR3 / CLAUDE.md locked decision: the Layer 1 verdict is the PRIMARY sort
+    """PRD FR3 / AGENTS.md locked decision: the Layer 1 verdict is the PRIMARY sort
     key across restaurants, fit score only breaks ties within a verdict class. Pins
     the exact bug a naive fit-score-only sort allowed: a low-fit-score MATCH must
     still outrank a high-fit-score NO_MATCH.
