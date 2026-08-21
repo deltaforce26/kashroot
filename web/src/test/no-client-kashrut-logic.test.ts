@@ -92,22 +92,48 @@ describe("no client-side kashrut logic", () => {
    * A server validation dump once reached a Hebrew consumer screen — English
    * Pydantic output about our own request body, rendered as if it were an answer.
    * Nothing in the UI layer may interpolate a server-supplied string.
+   *
+   * `views/ErrorPage.tsx` is the single exception, and the test below it is the
+   * price of that exception: it may print a caught error, but only inside a block
+   * a production build drops. A crash screen with no detail is unusable to whoever
+   * is fixing the crash; one that prints a stack to a user is the app failing twice.
    */
+  const TECHNICAL_DETAIL_ALLOWED = "views/ErrorPage.tsx";
+
   it("never renders a server-supplied error message", () => {
     const offenders = files
-      .filter((file) => isUiLayer(file.rel))
-      .filter((file) => /(error|caught)\??\.message/.test(file.text))
+      .filter((file) => isUiLayer(file.rel) && file.rel !== TECHNICAL_DETAIL_ALLOWED)
+      .filter((file) => /(error|caught)\??\.(message|stack)/.test(file.text))
       .map((file) => file.rel);
     expect(offenders).toEqual([]);
   });
 
-  it("keeps the technical detail to exactly one console.error, in the data layer", () => {
+  it("shows the crash screen's technical detail only in a dev build", () => {
+    const page = files.find((file) => file.rel === TECHNICAL_DETAIL_ALLOWED);
+    expect(page).toBeDefined();
+    // Every line touching the error object sits under the DEV guard: the guard opens
+    // before the first such line and the JSX block closes after the last.
+    const guard = page!.text.indexOf("import.meta.env.DEV");
+    expect(guard).toBeGreaterThan(-1);
+    const firstDetail = page!.text.search(/\berror\??\.(message|stack)/);
+    expect(firstDetail).toBeGreaterThan(guard);
+  });
+
+  /**
+   * Two owners of the technical detail, both of them logging it rather than showing
+   * it: the data layer for a failed request, the boundary for a failed render.
+   */
+  it("keeps the technical detail to a console.error in the files that own it", () => {
     const logging = files
       .filter((file) => !file.rel.startsWith("test/"))
       .filter((file) => /console\.error/.test(file.text))
       .map((file) => file.rel)
       .sort();
-    expect(logging).toEqual(["hooks/useApi.ts", "profile/ProfileProvider.tsx"]);
+    expect(logging).toEqual([
+      "components/ErrorBoundary.tsx",
+      "hooks/useApi.ts",
+      "profile/ProfileProvider.tsx",
+    ]);
   });
 
   /**

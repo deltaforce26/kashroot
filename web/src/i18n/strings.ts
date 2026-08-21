@@ -44,11 +44,35 @@ const he = {
   },
 
   home: {
-    yourLocation: "המיקום שלך",
+    nearYou: "מחפשים ליד",
     changeCity: "שינוי עיר",
+    searchPlaceholder: "חיפוש מקום, עיר או מסעדה…",
+    openFilters: "סינון תוצאות",
+    filtersActive: "סינון פעיל",
     resultsTitle: (n: number) => `${n} מסעדות נבדקו עבורך`,
     resultsSub: "לפי הפרופיל שלך · במרחק הליכה ונסיעה קצרה",
-    tabs: { all: "הכל", meat: "בשרי", dairy: "חלבי", pareve: "פרווה", map: "מפה" },
+    tabs: { all: "הכל", meat: "בשרי", dairy: "חלבי", pareve: "פרווה" },
+  },
+
+  // The soft-filter screen. Only facets the corpus can actually answer appear here:
+  // price level, opening hours and amenities are unpopulated for nearly every seed
+  // record, so offering them would ship controls that can only empty the list.
+  filters: {
+    title: "סינון",
+    lead: "מצמצם את התוצאות. לא קובע כשרות.",
+    city: "עיר",
+    diet: "סוג מטבח",
+    anyDiet: "הכל",
+    radius: "מרחק ממרכז העיר",
+    radiusValue: (km: number) => `${km} ק״מ`,
+    kashrutTitle: "כשרות אינה מסנן",
+    kashrutBody:
+      "ההתאמה נקבעת מהפרופיל שלכם, ותוצאה שאינה מתאימה לא נעלמת מהרשימה — היא מוצגת עם התווית שלה.",
+    kashrutLink: "עריכת הפרופיל הכשרותי ›",
+    unavailable:
+      "טווח מחירים, ״פתוח עכשיו״ ונגישות עדיין לא נאספו ברוב הרשומות, ולכן אינם מוצעים כאן.",
+    reset: "איפוס",
+    apply: "הצגת התוצאות",
   },
 
   search: {
@@ -180,9 +204,6 @@ const he = {
     notificationsValue: "מקומות שמורים בלבד",
     darkMode: "מצב כהה",
     darkModeSub: "נוח יותר לעיניים בערב",
-    privacyTitle: "הפרופיל שלכם נשאר פרטי.",
-    privacyBody:
-      "זהו מידע דתי אישי: מוצפן, לא נמכר, לא משמש לפרסום ולא משותף עם אף אחד.",
     neutrality: "האפליקציה לא פוסקת הלכה — אתם בוחרים, אנחנו מציגים ראיות.",
     resetProfile: "איפוס הפרופיל",
   },
@@ -248,6 +269,28 @@ const he = {
       "המקומות מוצגים כמו שהם, עם מה שידוע לנו על כל אחד. ״לא מאומת״ אינו ״לא כשר״ — פשוט אין בידינו ראיה שעונה על מה שהגדרתם.",
     notFound: "העסק הזה לא נמצא במאגר.",
     back: "חזרה",
+  },
+
+  // Two page-level states, distinct from the in-screen ones above. Everything in
+  // `states` is a caveat drawn inside a working screen; these two replace the screen
+  // entirely — an address that leads nowhere, and a screen that crashed rendering.
+  notFoundPage: {
+    title: "אין כאן מסך כזה",
+    body: "הכתובת שהגעתם אליה לא קיימת באפליקציה. ייתכן שהקישור ישן, או שנפלה בו טעות הקלדה.",
+    path: (path: string) => `הכתובת שביקשתם: ${path}`,
+    home: "מעבר למסך הבית",
+    back: "חזרה למסך הקודם",
+  },
+
+  // No server text reaches this page either — the crash goes to the console, the
+  // user gets the sentence we wrote, plus the one fact that matters to them: the
+  // profile and the saved lists live in localStorage and survive the crash.
+  errorPage: {
+    title: "המסך הזה נפל",
+    body: "התקלה אצלנו. שום דבר שהגדרתם לא אבד — הפרופיל והרשימות השמורות נשמרים במכשיר.",
+    retry: "טעינה מחדש של המסך",
+    home: "מעבר למסך הבית",
+    devDetails: "פרטים טכניים (בנייה מקומית בלבד)",
   },
 
   install: {
@@ -318,11 +361,32 @@ const en: Strings = {
   },
 
   home: {
-    yourLocation: "Your location",
+    nearYou: "Searching near",
     changeCity: "Change city",
+    searchPlaceholder: "Search a place, city or restaurant…",
+    openFilters: "Filter results",
+    filtersActive: "Filters on",
     resultsTitle: (n: number) => `${n} restaurants checked for you`,
     resultsSub: "Against your profile · within a short walk or drive",
-    tabs: { all: "All", meat: "Meat", dairy: "Dairy", pareve: "Pareve", map: "Map" },
+    tabs: { all: "All", meat: "Meat", dairy: "Dairy", pareve: "Pareve" },
+  },
+
+  filters: {
+    title: "Filters",
+    lead: "Narrows the results. Never decides kashrut.",
+    city: "City",
+    diet: "Kitchen",
+    anyDiet: "All",
+    radius: "Distance from the city centre",
+    radiusValue: (km: number) => `${km} km`,
+    kashrutTitle: "Kashrut is not a filter",
+    kashrutBody:
+      "Your profile decides the verdict, and a result that does not match is never hidden — it stays in the list with its own label.",
+    kashrutLink: "Edit your kashrut profile ›",
+    unavailable:
+      "Price range, open-now and accessibility are not recorded for most entries yet, so they are not offered here.",
+    reset: "Reset",
+    apply: "Show results",
   },
 
   search: {
@@ -452,9 +516,6 @@ const en: Strings = {
     notificationsValue: "Saved places only",
     darkMode: "Dark mode",
     darkModeSub: "Easier on the eyes after dark",
-    privacyTitle: "Your profile stays private.",
-    privacyBody:
-      "It is religious personal data: encrypted, never sold, never used for ads, never shared.",
     neutrality: "The app never rules on halacha — you choose, we show evidence.",
     resetProfile: "Reset profile",
   },
@@ -514,6 +575,22 @@ const en: Strings = {
       "The places below are shown as they are, with whatever we know about each. “Not verified” is not “not kosher” — we simply hold no evidence meeting what you set.",
     notFound: "This business is not in our records.",
     back: "Back",
+  },
+
+  notFoundPage: {
+    title: "There is no screen here",
+    body: "The address you landed on doesn't exist in the app. The link may be old, or have a typo in it.",
+    path: (path: string) => `You asked for: ${path}`,
+    home: "Go to the home screen",
+    back: "Back to the previous screen",
+  },
+
+  errorPage: {
+    title: "This screen crashed",
+    body: "That is on us. Nothing you set is lost — your profile and your saved lists stay on this device.",
+    retry: "Reload the screen",
+    home: "Go to the home screen",
+    devDetails: "Technical details (local builds only)",
   },
 
   install: {

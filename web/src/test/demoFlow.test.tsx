@@ -104,7 +104,9 @@ describe("demo flow", () => {
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
-    const link = await screen.findAllByText("מזנון הפסגה");
+    // The home tile is one stretched anchor over the whole card, so the name is a
+    // span inside it — the link is what gets clicked.
+    const link = await screen.findAllByRole("link", { name: "מזנון הפסגה" });
     await user.click(link[0] as HTMLElement);
 
     const panel = await screen.findByLabelText(he.verdict.whyMatch);
@@ -126,7 +128,9 @@ describe("demo flow", () => {
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
-    const link = await screen.findAllByText("קפה עלית");
+    // The home tile is one stretched anchor over the whole card, so the name is a
+    // span inside it — the link is what gets clicked.
+    const link = await screen.findAllByRole("link", { name: "קפה עלית" });
     await user.click(link[0] as HTMLElement);
 
     const panel = await screen.findByLabelText(he.verdict.whyUnknown);
@@ -188,7 +192,7 @@ describe("demo flow", () => {
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
-    await user.click(await screen.findByRole("button", { name: he.home.tabs.map }));
+    await user.click(await screen.findByRole("link", { name: he.nav.map }));
 
     expect(await screen.findByText(he.map.unavailableTitle)).toBeInTheDocument();
     expect(screen.getByText(he.map.unavailableNoKey)).toBeInTheDocument();
@@ -201,7 +205,7 @@ describe("demo flow", () => {
     await screen.findByText(he.presets.any.title);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
-    await user.click(await screen.findByRole("button", { name: he.home.tabs.map }));
+    await user.click(await screen.findByRole("link", { name: he.nav.map }));
 
     // No geolocation permission has been asked for, so it is the city centre — and
     // the screen says so rather than showing a bare "400 m".
@@ -221,7 +225,13 @@ describe("demo flow", () => {
     expect(await screen.findByText(he.states.coverageNoteNearby)).toBeInTheDocument();
   });
 
-  it("keeps the Layer 2 score visually separate from the verdict pill", async () => {
+  /**
+   * Home's grid tiles carry Layer 1 only. At half a row card's width there is
+   * nowhere for a Fit Score to sit except beside the verdict pill, so it is not
+   * drawn here at all — and that is asserted rather than assumed, because "we left
+   * it out" stays true only until someone adds it back without a `.fit-row`.
+   */
+  it("shows the verdict but no Fit Score on the home tiles", async () => {
     const user = userEvent.setup();
     const { container } = renderApp("/");
 
@@ -229,8 +239,49 @@ describe("demo flow", () => {
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
-    await waitFor(() => expect(container.querySelector(".verdict")).not.toBeNull());
-    expectLayersSeparated(container, ".card--row");
+    await waitFor(() => expect(container.querySelector(".card--grid")).not.toBeNull());
+
+    const tiles = [...container.querySelectorAll(".card--grid")];
+    expect(tiles.length).toBeGreaterThan(0);
+    for (const tile of tiles) {
+      expect(tile.querySelector(".verdict")).not.toBeNull();
+      expect(tile.querySelector(".fit")).toBeNull();
+    }
+    expect(container.querySelector(".fit")).toBeNull();
+  });
+
+  /**
+   * The sliders button opens the soft filters, not the profile — the two are
+   * different powers and must not be reachable through the same control. Filters
+   * narrow which restaurants get asked about; the profile decides what the answer
+   * is. Nothing on the filters screen can hide, sort or soften a verdict, which is
+   * why it renders no verdict pill at all.
+   */
+  it("opens the soft filters from home, and keeps kashrut out of them", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp("/");
+
+    await screen.findByText(he.presets.any.title);
+    await user.click(screen.getByText(he.presets.any.title));
+    await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
+
+    await user.click(await screen.findByRole("button", { name: he.home.openFilters }));
+    expect(await screen.findByText(he.filters.title)).toBeInTheDocument();
+    // Kashrut is named here only to say it is not one of these controls.
+    expect(screen.getByText(he.filters.kashrutTitle)).toBeInTheDocument();
+    expect(container.querySelector(".verdict")).toBeNull();
+
+    // A kitchen picked here is the one home shows as picked — one state, two views.
+    await user.click(screen.getByRole("button", { name: he.diet.dairy, pressed: false }));
+    await user.click(screen.getByRole("button", { name: he.filters.apply }));
+
+    expect(await screen.findByRole("button", { name: he.home.tabs.dairy })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    // …and home says so without being asked, so a narrowed list is never read as an
+    // empty corpus.
+    expect(screen.getByRole("button", { name: he.home.filtersActive })).toBeInTheDocument();
   });
 
   /**
@@ -249,7 +300,8 @@ describe("demo flow", () => {
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
-    await user.click(await screen.findByRole("link", { name: he.nav.search }));
+    // Search is reached from home's search field now, not from a tab of its own.
+    await user.click(await screen.findByRole("button", { name: he.nav.search }));
     await waitFor(() => expect(container.querySelector(".card--tile")).not.toBeNull());
 
     // The tiles really do show both layers — otherwise the assertions below pass
@@ -271,7 +323,9 @@ describe("demo flow", () => {
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
-    const link = await screen.findAllByText("מזנון הפסגה");
+    // The home tile is one stretched anchor over the whole card, so the name is a
+    // span inside it — the link is what gets clicked.
+    const link = await screen.findAllByRole("link", { name: "מזנון הפסגה" });
     await user.click(link[0] as HTMLElement);
     await screen.findByLabelText(he.verdict.whyMatch);
 

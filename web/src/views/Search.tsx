@@ -12,7 +12,7 @@
  */
 
 import { useDeferredValue, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { MAX_QUERY_LENGTH, type DietType, type SearchRequest } from "../api/types";
 import { hasVerifiedMatch } from "../api/viewmodel";
 import { PinIcon, SearchIcon, SlidersIcon } from "../components/icons";
@@ -28,6 +28,7 @@ import {
 } from "../components/states";
 import { TabBar } from "../components/TabBar";
 import { CITIES } from "../config";
+import { useFilters } from "../filters/useFilters";
 import { useCity } from "../location/useCity";
 import { isNetworkError, useSearch } from "../hooks/useApi";
 import { useI18n } from "../i18n/I18nProvider";
@@ -42,9 +43,15 @@ export function Search() {
   const navigate = useNavigate();
   const { profile } = useProfile();
   const { toggle, isSaved } = useSaveToggle();
-  const [query, setQuery] = useState("");
+  // Home hands its query over in the URL, so arriving from there opens on the term
+  // already typed rather than asking for it a second time.
+  const [params] = useSearchParams();
+  const [query, setQuery] = useState(() => params.get("q") ?? "");
   const { slug: city, setSlug: setCity } = useCity();
-  const [diet, setDiet] = useState<DietType | null>(null);
+  // Shared with home and /filters, so the kitchen picked here is the one picked there.
+  const { filters, setFilters } = useFilters();
+  const diet = filters.diet;
+  const setDiet = (next: DietType | null) => setFilters({ diet: next });
   const deferredQuery = useDeferredValue(query);
 
   const trimmedQuery = deferredQuery.trim();
@@ -78,44 +85,30 @@ export function Search() {
           <div style={{ fontSize: 11.5, color: "var(--sub)" }}>{t.search.searchingNear}</div>
           <div style={{ fontWeight: 700, fontSize: 15.5 }}>{cityLabel(city)}</div>
         </div>
-        <span className="circle glass" aria-hidden="true">
+        <button
+          type="button"
+          className="circle glass"
+          aria-label={t.home.openFilters}
+          onClick={() => navigate("/filters")}
+        >
           <SlidersIcon />
-        </span>
+        </button>
       </header>
 
-      <div style={{ margin: "14px 20px 0", flex: "none" }}>
-        <label
-          className="glass"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            borderRadius: 99,
-            padding: "13px 16px",
-          }}
-        >
-          <span style={{ color: "var(--sub)", display: "flex" }} aria-hidden="true">
-            <SearchIcon size={17} />
-          </span>
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t.search.placeholder}
-            aria-label={t.search.placeholder}
-            maxLength={MAX_QUERY_LENGTH}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              border: 0,
-              background: "transparent",
-              font: "14px Assistant, sans-serif",
-              color: "var(--ink)",
-              outline: "none",
-            }}
-          />
-        </label>
-      </div>
+      <label className="searchbar glass" style={{ margin: "14px 20px 0" }}>
+        <span className="searchbar__icon" aria-hidden="true">
+          <SearchIcon size={17} />
+        </span>
+        <input
+          type="search"
+          className="searchbar__input"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t.search.placeholder}
+          aria-label={t.search.placeholder}
+          maxLength={MAX_QUERY_LENGTH}
+        />
+      </label>
 
       <div className="chips" role="tablist" aria-label={t.search.searchingNear}>
         {CITIES.map((entry) => (

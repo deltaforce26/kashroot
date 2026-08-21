@@ -13,10 +13,10 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { SearchRequest, Verdict } from "../api/types";
 import { certifierLabel, type ResultView } from "../api/viewmodel";
-import { ArrowIcon, ChevronIcon, PinIcon, SlidersIcon } from "../components/icons";
+import { ChevronIcon, PinIcon, SlidersIcon } from "../components/icons";
 import { tintClass } from "../components/RestaurantCard";
 import { VerdictPill } from "../components/VerdictPill";
 import { ErrorState, LoadingList } from "../components/states";
@@ -46,6 +46,11 @@ export function MapView() {
 
   const [activeIndex, setActiveIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  // True while the track is being scrolled by us (marker tap), so the scroll
+  // handler does not fight the user's finger or echo the selection back.
+  const syncingRef = useRef(false);
+  const settleRef = useRef<number | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const meMarkerRef = useRef<google.maps.Marker | null>(null);
@@ -66,6 +71,58 @@ export function MapView() {
   const active: ResultView | undefined = plotted[Math.min(activeIndex, plotted.length - 1)];
 
   useEffect(() => setActiveIndex(0), [city.slug, source]);
+
+  /**
+   * Distance between two consecutive cards, measured rather than assumed so the
+   * gap and side padding cannot drift out of sync with the CSS. It is negative
+   * under RTL, which is exactly the sign scrollLeft uses there, so the same
+   * arithmetic works in both directions.
+   */
+  function strideOf(track: HTMLDivElement): number {
+    const [first, second] = [track.children[0], track.children[1]] as HTMLElement[];
+    if (!first || !second) return 0;
+    return second.offsetLeft - first.offsetLeft;
+  }
+
+  /** Index of the card currently filling the track, from its scroll offset. */
+  function indexFromScroll(track: HTMLDivElement): number {
+    const stride = strideOf(track);
+    return stride === 0 ? 0 : Math.round(track.scrollLeft / stride);
+  }
+
+  // Finger swipe -> selection. Debounced so the marker only moves once the
+  // swipe settles on a card, not on every intermediate frame.
+  function onTrackScroll() {
+    const track = trackRef.current;
+    if (!track || syncingRef.current) return;
+    if (settleRef.current !== null) window.clearTimeout(settleRef.current);
+    settleRef.current = window.setTimeout(() => {
+      settleRef.current = null;
+      const next = Math.min(indexFromScroll(track), Math.max(plotted.length - 1, 0));
+      setActiveIndex((current) => (current === next ? current : next));
+    }, 90);
+  }
+
+  // Selection -> track, for the other direction: tapping a marker brings its
+  // card into view. Skipped when the track is already there.
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track || plotted.length === 0) return;
+    if (indexFromScroll(track) === activeIndex) return;
+    syncingRef.current = true;
+    track.scrollTo({ left: strideOf(track) * activeIndex, behavior: "smooth" });
+    const done = window.setTimeout(() => {
+      syncingRef.current = false;
+    }, 400);
+    return () => window.clearTimeout(done);
+  }, [activeIndex, plotted.length]);
+
+  useEffect(
+    () => () => {
+      if (settleRef.current !== null) window.clearTimeout(settleRef.current);
+    },
+    [],
+  );
 
   // Create the map once the script is ready and the container is mounted.
   useEffect(() => {
@@ -207,49 +264,63 @@ export function MapView() {
           <ErrorState isNetwork={isNetworkError(error)} onRetry={reload} />
         ) : active ? (
           <>
-            <article
-              className={`card card--row ${tintClass(active.dietType)}`}
-              style={{ boxShadow: "0 6px 24px rgba(0,0,0,.14)" }}
+            <div
+              className="map__track"
+              ref={trackRef}
+              onScroll={onTrackScroll}
+              aria-label={t.map.list}
             >
-              <span className="card__photo stripe" aria-hidden="true">
-                {t.photoPlaceholder}
-              </span>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                <span className="card__title">{pickName(lang, active.nameHe, active.nameEn)}</span>
-                <VerdictPill verdict={active.kashrut.verdict} />
-              </div>
-              <div className="card__meta on-tint">
-                {[certifierLabel(active, lang), formatDistance(active.distanceKm, t)]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </div>
-              <div className="card__foot">
-                <button
-                  type="button"
-                  className="cta"
-                  style={{ flex: 1, padding: 9, fontSize: 13 }}
-                  onClick={() => navigate(`/r/${active.id}`)}
+              {plotted.map((item, index) => (
+                <article
+                  key={item.id}
+                  className={`card card--row map__slide ${tintClass(item.dietType)}`}
+                  style={{ boxShadow: "0 6px 24px rgba(0,0,0,.14)" }}
                 >
-                  {t.restaurant.navigate}
-                </button>
-                <span className="circle circle--sm" style={{ background: "var(--pill)" }}>
-                  <ArrowIcon />
-                </span>
-              </div>
-            </article>
+                  {/* The carousel card is itself the link to the restaurant. One
+                      stretched anchor over the card, with the navigate button raised
+                      above it — same shape as the search tile. */}
+                  <Link
+                    to={`/r/${item.id}`}
+                    className="card__link"
+                    aria-label={pickName(lang, item.nameHe, item.nameEn)}
+                    tabIndex={index === activeIndex ? undefined : -1}
+                  />
+                  <span className="card__photo stripe" aria-hidden="true">
+                    {t.photoPlaceholder}
+                  </span>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                    <span className="card__title">{pickName(lang, item.nameHe, item.nameEn)}</span>
+                    <VerdictPill verdict={item.kashrut.verdict} />
+                  </div>
+                  <div className="card__meta on-tint">
+                    {[certifierLabel(item, lang), formatDistance(item.distanceKm, t)]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </div>
+                  <div className="card__foot">
+                    <a
+                      className="cta card__above"
+                      style={{ flex: 1, padding: 9, fontSize: 13 }}
+                      href={
+                        item.geo
+                          ? `https://www.google.com/maps/dir/?api=1&destination=${item.geo.lat},${item.geo.lon}`
+                          : "#"
+                      }
+                      target="_blank"
+                      rel="noreferrer"
+                      tabIndex={index === activeIndex ? undefined : -1}
+                    >
+                      {t.restaurant.navigate}
+                    </a>
+                  </div>
+                </article>
+              ))}
+            </div>
             <div className="dots" aria-hidden="true">
               {plotted.slice(0, 6).map((item, index) => (
                 <span key={item.id} data-on={index === activeIndex} />
               ))}
             </div>
-            <p className="hint" style={{ marginTop: 6 }}>
-              {t.map.pinsShown(plotted.length)} ·{" "}
-              {source === "device"
-                ? t.origin.fromDevice
-                : t.origin.fromCity(lang === "en" ? city.en : city.he)}
-              {"\n"}
-              {t.map.note}
-            </p>
           </>
         ) : null}
       </div>

@@ -1,5 +1,9 @@
 /**
  * The floating glass tab bar from every full screen in the design.
+ *
+ * The second slot is the map, not search: home now carries the search field itself,
+ * so a search tab would only lead to the screen the user is already on. The map is
+ * the one view of the same results home cannot give.
  */
 
 import { NavLink } from "react-router-dom";

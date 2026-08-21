@@ -1,21 +1,28 @@
 /**
- * Home — tinted list cards, verdict pill + certifier evidence (design 3a).
+ * Home — location header, search field, category chips, 2-up tinted result grid.
  *
- * The headline counts what was *checked*, not what "matched": with this corpus a
+ * The count of what was *checked* — never of what "matched": with this corpus a
  * large share of results are UNKNOWN, and a "23 restaurants match you" banner over
- * a list of grey pills would be the one dishonest sentence in the app.
+ * a list of grey pills would be the one dishonest sentence in the app — is no longer
+ * drawn as a headline, because the search field takes that band. It stays as the
+ * screen's `<h1>`, visually hidden, so the page keeps a real heading and the count
+ * is still there for anyone reading with a screen reader.
  *
  * Two design elements are dropped rather than faked: the "14 open now" subtitle and
  * the "open now" chip. Israel hours logic is out of POC scope, so the API returns no
  * open-now state and a chip that silently did nothing would be worse than no chip.
+ *
+ * The chips filter by published diet type. The comp draws category chips (bakeries,
+ * ice cream, cafés) and the corpus has no category field, so those would be chips
+ * that cannot filter anything — see the note on `search.allFilter` in strings.ts.
  */
 
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { DietType, SearchRequest } from "../api/types";
+import { MAX_QUERY_LENGTH, type DietType, type SearchRequest } from "../api/types";
 import { hasVerifiedMatch } from "../api/viewmodel";
-import { BellIcon, PinIcon } from "../components/icons";
-import { RestaurantRowCard } from "../components/RestaurantCard";
+import { BellIcon, PinIcon, SearchIcon, SlidersIcon } from "../components/icons";
+import { RestaurantGridCard } from "../components/RestaurantCard";
 import {
   EmptyResults,
   ErrorState,
@@ -25,7 +32,8 @@ import {
 } from "../components/states";
 import { TabBar } from "../components/TabBar";
 import { InstallPrompt } from "../components/InstallPrompt";
-import { CITIES, NEARBY_RADIUS_KM, PAGE_SIZE } from "../config";
+import { CITIES, PAGE_SIZE } from "../config";
+import { isDefault, useFilters } from "../filters/useFilters";
 import { useCity } from "../location/useCity";
 import { isNetworkError, useSearch } from "../hooks/useApi";
 import { useI18n } from "../i18n/I18nProvider";
@@ -41,29 +49,37 @@ export function Home() {
   const { profile } = useProfile();
   const { toggle, isSaved } = useSaveToggle();
   const { city, slug, setSlug } = useCity();
-  const [filter, setFilter] = useState<HomeFilter>("all");
+  // The chips and the filters screen are two views of one state, so a kitchen picked
+  // in either shows as picked in the other.
+  const { filters, setFilters } = useFilters();
+  const filter: HomeFilter = filters.diet ?? "all";
   const [pickingCity, setPickingCity] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const setFilter = (next: HomeFilter) => setFilters({ diet: next === "all" ? null : next });
 
   const request = useMemo<SearchRequest>(
     () => ({
       profile: toPayload(profile),
       center: city.center,
-      radius_km: NEARBY_RADIUS_KM,
+      radius_km: filters.radiusKm,
       page_size: PAGE_SIZE,
-      ...(filter === "all" ? {} : { filters: { diet_type: filter } }),
+      ...(filters.diet ? { filters: { diet_type: filters.diet } } : {}),
     }),
-    [profile, filter, city],
+    [profile, filters, city],
   );
 
   const { data, loading, error, reload } = useSearch(request);
   const results = data?.items ?? [];
 
-  const chips: Array<[HomeFilter | "map", string]> = [
+  // The four kitchens, as a shortcut for the same control on /filters. The map used
+  // to sit here as a sixth chip; it is a tab now, so a chip that navigated away
+  // would be the odd one out in a row of filters.
+  const chips: Array<[HomeFilter, string]> = [
     ["all", t.home.tabs.all],
     ["meat", t.home.tabs.meat],
     ["dairy", t.home.tabs.dairy],
     ["pareve", t.home.tabs.pareve],
-    ["map", t.home.tabs.map],
   ];
 
   return (
@@ -86,7 +102,7 @@ export function Home() {
           onClick={() => setPickingCity((open) => !open)}
         >
           <span style={{ display: "block", fontSize: 11.5, color: "var(--sub)" }}>
-            {t.home.yourLocation}
+            {t.home.nearYou}
           </span>
           <span style={{ display: "block", fontWeight: 700, fontSize: 15.5 }}>
             {lang === "en" ? city.areaEn : city.areaHe}
@@ -96,6 +112,47 @@ export function Home() {
           <BellIcon />
         </span>
       </header>
+
+      {/* Home does not search by name itself — it answers "what is near me". The
+          field hands the query to /search, the screen that can filter by name, city
+          and diet type together. */}
+      <form
+        className="searchbar glass"
+        style={{ margin: "14px 20px 0" }}
+        role="search"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const trimmed = query.trim();
+          navigate(trimmed ? "/search?q=" + encodeURIComponent(trimmed) : "/search");
+        }}
+      >
+        <span className="searchbar__icon" aria-hidden="true">
+          <SearchIcon size={17} />
+        </span>
+        <input
+          type="search"
+          className="searchbar__input"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t.home.searchPlaceholder}
+          aria-label={t.home.searchPlaceholder}
+          maxLength={MAX_QUERY_LENGTH}
+        />
+        {/* The comp draws no submit control — you press Enter — but a form whose
+            only submit path is a keypress is unusable by anyone driving it another
+            way, so the button exists and is simply not drawn. */}
+        <button type="submit" className="sr-only">
+          {t.nav.search}
+        </button>
+        <button
+          type="button"
+          className={`searchbar__icon${isDefault(filters) ? "" : " searchbar__flag"}`}
+          aria-label={isDefault(filters) ? t.home.openFilters : t.home.filtersActive}
+          onClick={() => navigate("/filters")}
+        >
+          <SlidersIcon size={17} />
+        </button>
+      </form>
 
       {pickingCity && (
         <div className="chips" role="group" aria-label={t.home.changeCity}>
@@ -117,32 +174,19 @@ export function Home() {
       )}
 
       {/*
-        The count is a finding, so it may only appear when there is one. A failed
-        request rendering "0 restaurants checked for you" claims we looked and found
-        nothing, when we never got an answer at all — the same class of dishonesty as
-        calling an empty city a kashrut result. While loading or after an error, the
-        headline is simply absent and the state below speaks instead.
+        The page heading. The comp draws no headline — the search field takes that
+        band — but the screen still needs one, and the count of what was *checked* is
+        the honest thing to put in it. It is a finding, so it may only be stated when
+        there is one: a failed request announcing "0 restaurants checked for you"
+        would claim we looked and found nothing, when we never got an answer at all.
       */}
-      <div style={{ padding: "16px 20px 0", flex: "none" }}>
-        {error ? (
-          <h1 style={{ font: "700 22px/1.25 Assistant, sans-serif", margin: 0 }}>
-            {t.states.errorTitle}
-          </h1>
-        ) : loading ? (
-          <h1 style={{ font: "700 22px/1.25 Assistant, sans-serif", margin: 0 }}>
-            {t.states.loading}
-          </h1>
-        ) : (
-          <>
-            <h1 style={{ font: "700 22px/1.25 Assistant, sans-serif", margin: 0 }}>
-              {t.home.resultsTitle(data?.total ?? 0)}
-            </h1>
-            <div style={{ fontSize: 12.5, color: "var(--sub)", marginTop: 2 }}>
-              {t.home.resultsSub}
-            </div>
-          </>
-        )}
-      </div>
+      <h1 className="sr-only">
+        {error
+          ? t.states.errorTitle
+          : loading
+            ? t.states.loading
+            : t.home.resultsTitle(data?.total ?? 0)}
+      </h1>
 
       <div className="chips" role="tablist">
         {chips.map(([key, label]) => (
@@ -151,7 +195,7 @@ export function Home() {
             type="button"
             className="chip"
             aria-pressed={key === filter}
-            onClick={() => (key === "map" ? navigate("/map") : setFilter(key as HomeFilter))}
+            onClick={() => setFilter(key)}
           >
             {label}
           </button>
@@ -171,17 +215,17 @@ export function Home() {
           />
         ) : (
           <>
-            {!hasVerifiedMatch(results) && (
-              <NoVerifiedMatchesBanner />
-            )}
-            {results.map((item) => (
-            <RestaurantRowCard
-              key={item.id}
-              item={item}
-              saved={isSaved(item.id)}
-              onToggleSave={toggle}
-              />
-            ))}
+            {!hasVerifiedMatch(results) && <NoVerifiedMatchesBanner />}
+            <div className="grid">
+              {results.map((item) => (
+                <RestaurantGridCard
+                  key={item.id}
+                  item={item}
+                  saved={isSaved(item.id)}
+                  onToggleSave={toggle}
+                />
+              ))}
+            </div>
             {/* The count above comes from a distance search, which can only see
                 geocoded venues. Say so, quietly, rather than letting it read as
                 "this is everything here". */}

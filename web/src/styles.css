@@ -418,6 +418,42 @@ a {
   font-weight: 600;
 }
 
+/* ── Search bar ────────────────────────────────────────────────────────── */
+
+/*
+ * The glass pill on home and search. It is a real <form> with a real <input>: the
+ * design draws a search field, and a button dressed as one would lie to a screen
+ * reader about what pressing it does.
+ */
+.searchbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: var(--radius-pill);
+  padding: 12px 16px;
+  flex: none;
+}
+
+.searchbar__icon {
+  display: flex;
+  color: var(--sub);
+  flex: none;
+}
+
+.searchbar__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font: 14px Assistant, sans-serif;
+  color: var(--ink);
+  outline: none;
+}
+
+.searchbar__input::placeholder {
+  color: var(--sub);
+}
+
 /* ── Cards ─────────────────────────────────────────────────────────────── */
 
 .card {
@@ -498,6 +534,32 @@ a {
   margin-inline-start: auto;
 }
 
+/*
+ * The whole-card link (search tile, map carousel card). It is a stretched anchor
+ * laid over the card rather than a click handler on the <article>, so the card
+ * keeps real link semantics: keyboard focus, middle-click, open-in-new-tab.
+ *
+ * It sits above the card's z-index:1 content layers, so anything that must stay
+ * independently clickable — the save button, the map card's Navigate link — is
+ * raised over it with `.card__above`.
+ */
+.card__link {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+}
+
+.card__link:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -3px;
+}
+
+.card__above {
+  position: relative;
+  z-index: 3;
+}
+
 /* Search grid card (3e) */
 .grid {
   display: grid;
@@ -547,6 +609,61 @@ a {
 /* Inside the tile stack the gap already spaces the rows. */
 .card--tile .fit-row {
   margin-top: 0;
+}
+
+/*
+ * Home grid card (2-up). Same tinted ground and striped photo circle as the search
+ * tile, but a shorter body: one meta line, then the verdict pill alone on the foot
+ * row — the whole card is the link, so it carries no go button. No `.fit-row`
+ * appears here — see `RestaurantGridCard`.
+ */
+.card--grid {
+  padding: 13px 14px;
+  min-height: 188px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Centred on the card's lower edge and clipped by it, so the placeholder reads as a
+   photo well rather than a decoration. Centring is symmetric, so it needs no
+   mirroring: `inset-inline: 0` + `margin-inline: auto` centres in both directions. */
+.card--grid .card__photo {
+  top: auto;
+  bottom: -22px;
+  inset-inline: 0;
+  margin-inline: auto;
+  transform: none;
+  width: 116px;
+  height: 116px;
+}
+
+/* `position: relative` with no z-index: the head paints above the absolutely
+   positioned photo by tree order without opening a stacking context, so the save
+   button's `.card__above` still resolves against the card and stays above the
+   stretched `.card__link`. Giving this a z-index would trap the button underneath
+   the link and make it unclickable. */
+.card--grid .card__head {
+  position: relative;
+}
+
+.card--grid .card__foot {
+  position: relative;
+  z-index: 1;
+}
+
+.card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* The foot is pinned to the bottom of the tile, so cards of differing text length
+   still line their pills up across the row. */
+.card--grid .card__foot {
+  margin-top: auto;
+  flex-wrap: nowrap;
+  gap: 6px;
 }
 
 /* ── Chips / tabs ──────────────────────────────────────────────────────── */
@@ -606,6 +723,40 @@ a {
   background: var(--pill);
   border: 1px solid var(--hair);
   color: var(--ink);
+}
+
+/* ── Filters screen ───────────────────────────────────────────────────── */
+
+.filter-group__title {
+  font: 700 14.5px Assistant, sans-serif;
+  margin: 0 0 10px;
+}
+
+.filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/*
+ * The sliders button wears a dot whenever a soft filter is off its default. Without
+ * it a narrowed list looks exactly like a thin corpus, and "there is nothing here"
+ * is the one wrong impression this product must never leave by accident.
+ */
+.searchbar__flag {
+  position: relative;
+}
+
+.searchbar__flag::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  inset-inline-end: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  border: 1.5px solid var(--bg-ink);
 }
 
 /* ── Panels ────────────────────────────────────────────────────────────── */
@@ -1162,6 +1313,43 @@ a {
   inset-inline: 0;
   padding: 0 20px;
   z-index: 3;
+}
+
+/* One card per viewport, swiped horizontally. Snap points make a flick land on
+   a card rather than anywhere; the vertical padding is there so the card's drop
+   shadow is not clipped by the scroll container, and is cancelled by the
+   matching negative margin so nothing moves. */
+.map__track {
+  display: flex;
+  /* 40px = twice the side inset, so the next card starts exactly where the
+     current card's photo stops overhanging. Nothing peeks past the edge and the
+     stride is one full screen. */
+  gap: 40px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 20px 14px;
+  margin: -10px -20px -14px;
+  scrollbar-width: none;
+}
+
+.map__track::-webkit-scrollbar {
+  display: none;
+}
+
+.map__slide {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map__track {
+    scroll-behavior: auto;
+  }
 }
 
 .dots {

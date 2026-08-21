@@ -121,13 +121,6 @@ export function Profile() {
           </button>
         </section>
 
-        <section className="panel tint-dairy" style={{ border: "1px solid var(--glass-line)" }}>
-          <p style={{ fontSize: 12, color: "var(--on-tint)", lineHeight: 1.55, margin: 0 }}>
-            <span style={{ fontWeight: 700, color: "var(--ink)" }}>{t.profile.privacyTitle}</span>{" "}
-            {t.profile.privacyBody}
-          </p>
-        </section>
-
         <p className="hint">{t.profile.neutrality}</p>
 
         <button

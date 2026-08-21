@@ -10,11 +10,14 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { API_MODE } from "./api";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useI18n } from "./i18n/I18nProvider";
 import { isProfileUsable } from "./profile/profile";
 import { useProfile } from "./profile/ProfileProvider";
+import { Filters } from "./views/Filters";
 import { Home } from "./views/Home";
 import { MapView } from "./views/MapView";
+import { NotFound } from "./views/NotFound";
 import { OnboardingCertifiers } from "./views/OnboardingCertifiers";
 import { OnboardingPreset } from "./views/OnboardingPreset";
 import { Profile } from "./views/Profile";
@@ -40,7 +43,7 @@ function MockRibbon() {
 
 export default function App() {
   return (
-    <>
+    <ErrorBoundary>
       <MockRibbon />
       <Routes>
         <Route path="/onboarding/preset" element={<OnboardingPreset />} />
@@ -50,6 +53,14 @@ export default function App() {
           element={
             <RequireProfile>
               <Home />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/filters"
+          element={
+            <RequireProfile>
+              <Filters />
             </RequireProfile>
           }
         />
@@ -93,8 +104,12 @@ export default function App() {
             </RequireProfile>
           }
         />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/*
+          * A bad address gets a page that says so, not a silent bounce home. The
+          * redirect it replaces made every broken link look like a working one.
+          */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
-    </>
+    </ErrorBoundary>
   );
 }
