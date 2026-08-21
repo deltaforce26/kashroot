@@ -54,6 +54,23 @@ const he = {
     tabs: { all: "הכל", meat: "בשרי", dairy: "חלבי", pareve: "פרווה" },
   },
 
+  locationPicker: {
+    open: "בחירת מיקום לחיפוש",
+    title: "איפה לחפש?",
+    close: "סגירה",
+    addressLabel: "כתובת",
+    addressPlaceholder: "הקלדת רחוב, כתובת או מקום…",
+    loadingAddresses: "טוענים חיפוש כתובות…",
+    addressUnavailableNoKey: "חיפוש כתובות אינו מוגדר בגרסה הזו. אפשר לבחור עיר או להשתמש במיקום הנוכחי.",
+    addressUnavailable: "לא הצלחנו לחפש כתובות כרגע. אפשר לבחור עיר או לנסות שוב.",
+    suggestions: "הצעות לכתובות",
+    googleDisclosure: "הטקסט שמקלידים בחיפוש הכתובות נשלח ל-Google כדי להציג הצעות.",
+    devicePrivacy: "מיקום המכשיר נשלח רק לשרת שלנו לצורך החיפוש ואינו נשמר.",
+    locationDenied: "הגישה למיקום נדחתה. אפשר לאפשר אותה בהגדרות הדפדפן או לבחור עיר.",
+    locationUnavailable: "לא הצלחנו לאתר את המיקום. אפשר לבחור עיר או לנסות שוב.",
+    cityFallback: "בחירת מרכז עיר",
+  },
+
   // The soft-filter screen. Only facets the corpus can actually answer appear here:
   // price level, opening hours and amenities are unpopulated for nearly every seed
   // record, so offering them would ship controls that can only empty the list.
@@ -369,6 +386,25 @@ const en: Strings = {
     resultsTitle: (n: number) => `${n} restaurants checked for you`,
     resultsSub: "Against your profile · within a short walk or drive",
     tabs: { all: "All", meat: "Meat", dairy: "Dairy", pareve: "Pareve" },
+  },
+
+  locationPicker: {
+    open: "Choose search location",
+    title: "Where should we search?",
+    close: "Close",
+    addressLabel: "Address",
+    addressPlaceholder: "Type a street, address or place…",
+    loadingAddresses: "Loading address search…",
+    addressUnavailableNoKey:
+      "Address search is not configured in this build. Choose a city or use your location.",
+    addressUnavailable: "We couldn't search addresses right now. Choose a city or try again.",
+    suggestions: "Address suggestions",
+    googleDisclosure: "Address text you type is sent to Google to provide suggestions.",
+    devicePrivacy: "Your device coordinates go only to our server for this search and are not stored.",
+    locationDenied:
+      "Location access was denied. Allow it in your browser settings or choose a city.",
+    locationUnavailable: "We couldn't find your location. Choose a city or try again.",
+    cityFallback: "Choose a city centre",
   },
 
   filters: {

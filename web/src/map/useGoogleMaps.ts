@@ -28,7 +28,9 @@ export type MapsStatus = "absent" | "loading" | "ready" | "error";
 const BROWSER_KEY: string = import.meta.env["VITE_GOOGLE_MAPS_BROWSER_KEY"] ?? "";
 
 export function hasMapsKey(): boolean {
-  return BROWSER_KEY.trim().length > 0;
+  // Unit tests must never fetch Google scripts merely because a developer has a
+  // local browser key; map/Places behavior is exercised through explicit mocks.
+  return import.meta.env.MODE !== "test" && BROWSER_KEY.trim().length > 0;
 }
 
 export interface MapsLibs {
@@ -36,7 +38,19 @@ export interface MapsLibs {
   marker: google.maps.MarkerLibrary;
 }
 
+export interface PlacesLibs {
+  places: google.maps.PlacesLibrary;
+}
+
 let libsPromise: Promise<MapsLibs> | null = null;
+let placesPromise: Promise<PlacesLibs> | null = null;
+let loaderConfigured = false;
+
+function configureLoader(language: "he" | "en"): void {
+  if (loaderConfigured) return;
+  setOptions({ key: BROWSER_KEY, v: "weekly", language, region: "IL" });
+  loaderConfigured = true;
+}
 
 /**
  * One load for the app's lifetime — mounting the map screen twice must not pull the
@@ -45,12 +59,20 @@ let libsPromise: Promise<MapsLibs> | null = null;
  */
 function loadLibs(language: "he" | "en"): Promise<MapsLibs> {
   if (!libsPromise) {
-    setOptions({ key: BROWSER_KEY, v: "weekly", language, region: "IL" });
+    configureLoader(language);
     libsPromise = Promise.all([importLibrary("maps"), importLibrary("marker")]).then(
       ([maps, marker]) => ({ maps, marker }),
     );
   }
   return libsPromise;
+}
+
+function loadPlaces(language: "he" | "en"): Promise<PlacesLibs> {
+  if (!placesPromise) {
+    configureLoader(language);
+    placesPromise = importLibrary("places").then((places) => ({ places }));
+  }
+  return placesPromise;
 }
 
 export function useGoogleMaps(language: "he" | "en"): {
@@ -78,6 +100,39 @@ export function useGoogleMaps(language: "he" | "en"): {
         // Offline, blocked, bad key, quota — all the same to the user: no map.
         // Cleared so a later mount can retry once the network is back.
         libsPromise = null;
+        setStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [language]);
+
+  return { status, libs };
+}
+
+export function useGooglePlaces(language: "he" | "en"): {
+  status: MapsStatus;
+  libs: PlacesLibs | null;
+} {
+  const [status, setStatus] = useState<MapsStatus>(() => (hasMapsKey() ? "loading" : "absent"));
+  const [libs, setLibs] = useState<PlacesLibs | null>(null);
+
+  useEffect(() => {
+    if (!hasMapsKey()) {
+      setStatus("absent");
+      return;
+    }
+    let cancelled = false;
+    setStatus("loading");
+    loadPlaces(language)
+      .then((loaded) => {
+        if (cancelled) return;
+        setLibs(loaded);
+        setStatus("ready");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        placesPromise = null;
         setStatus("error");
       });
     return () => {

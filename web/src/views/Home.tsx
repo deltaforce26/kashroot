@@ -17,11 +17,12 @@
  * that cannot filter anything — see the note on `search.allFilter` in strings.ts.
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MAX_QUERY_LENGTH, type DietType, type SearchRequest } from "../api/types";
 import { hasVerifiedMatch } from "../api/viewmodel";
 import { BellIcon, PinIcon, SearchIcon, SlidersIcon } from "../components/icons";
+import { LocationPicker } from "../components/LocationPicker";
 import { RestaurantGridCard } from "../components/RestaurantCard";
 import {
   EmptyResults,
@@ -32,9 +33,10 @@ import {
 } from "../components/states";
 import { TabBar } from "../components/TabBar";
 import { InstallPrompt } from "../components/InstallPrompt";
-import { CITIES, PAGE_SIZE } from "../config";
+import { PAGE_SIZE } from "../config";
 import { isDefault, useFilters } from "../filters/useFilters";
 import { useCity } from "../location/useCity";
+import { useOrigin } from "../location/useOrigin";
 import { isNetworkError, useSearch } from "../hooks/useApi";
 import { useI18n } from "../i18n/I18nProvider";
 import { toPayload } from "../profile/profile";
@@ -49,24 +51,36 @@ export function Home() {
   const { profile } = useProfile();
   const { toggle, isSaved } = useSaveToggle();
   const { city, slug, setSlug } = useCity();
+  const { origin, source, label: originLabel } = useOrigin(city);
   // The chips and the filters screen are two views of one state, so a kitchen picked
   // in either shows as picked in the other.
   const { filters, setFilters } = useFilters();
   const filter: HomeFilter = filters.diet ?? "all";
-  const [pickingCity, setPickingCity] = useState(false);
+  const [pickingLocation, setPickingLocation] = useState(false);
+  const locationTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [query, setQuery] = useState("");
+
+  const closeLocationPicker = useCallback(() => {
+    setPickingLocation(false);
+    window.requestAnimationFrame(() => locationTriggerRef.current?.focus());
+  }, []);
+
+  const openLocationPicker = (trigger: HTMLButtonElement) => {
+    locationTriggerRef.current = trigger;
+    setPickingLocation(true);
+  };
 
   const setFilter = (next: HomeFilter) => setFilters({ diet: next === "all" ? null : next });
 
   const request = useMemo<SearchRequest>(
     () => ({
       profile: toPayload(profile),
-      center: city.center,
+      center: origin,
       radius_km: filters.radiusKm,
       page_size: PAGE_SIZE,
       ...(filters.diet ? { filters: { diet_type: filters.diet } } : {}),
     }),
-    [profile, filters, city],
+    [profile, filters, origin],
   );
 
   const { data, loading, error, reload } = useSearch(request);
@@ -88,24 +102,30 @@ export function Home() {
         <button
           type="button"
           className="circle glass"
-          aria-label={t.home.changeCity}
-          aria-expanded={pickingCity}
-          onClick={() => setPickingCity((open) => !open)}
+          aria-label={t.locationPicker.open}
+          aria-expanded={pickingLocation}
+          onClick={(event) => openLocationPicker(event.currentTarget)}
         >
           <PinIcon />
         </button>
         <button
           type="button"
           style={{ flex: 1, textAlign: "start" }}
-          aria-label={t.home.changeCity}
-          aria-expanded={pickingCity}
-          onClick={() => setPickingCity((open) => !open)}
+          aria-label={t.locationPicker.open}
+          aria-expanded={pickingLocation}
+          onClick={(event) => openLocationPicker(event.currentTarget)}
         >
           <span style={{ display: "block", fontSize: 11.5, color: "var(--sub)" }}>
             {t.home.nearYou}
           </span>
           <span style={{ display: "block", fontWeight: 700, fontSize: 15.5 }}>
-            {lang === "en" ? city.areaEn : city.areaHe}
+            {source === "address"
+              ? originLabel
+              : source === "device"
+                ? t.origin.fromDevice
+                : lang === "en"
+                  ? city.areaEn
+                  : city.areaHe}
           </span>
         </button>
         <span className="circle glass" aria-hidden="true">
@@ -154,23 +174,13 @@ export function Home() {
         </button>
       </form>
 
-      {pickingCity && (
-        <div className="chips" role="group" aria-label={t.home.changeCity}>
-          {CITIES.map((option) => (
-            <button
-              key={option.slug}
-              type="button"
-              className="chip"
-              aria-pressed={option.slug === slug}
-              onClick={() => {
-                setSlug(option.slug);
-                setPickingCity(false);
-              }}
-            >
-              {lang === "en" ? option.en : option.he}
-            </button>
-          ))}
-        </div>
+      {pickingLocation && (
+        <LocationPicker
+          city={city}
+          selectedCitySlug={slug}
+          onChooseCity={setSlug}
+          onClose={closeLocationPicker}
+        />
       )}
 
       {/*

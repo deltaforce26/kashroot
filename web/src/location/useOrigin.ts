@@ -6,73 +6,133 @@
  * Layer 2 fit score are computed server-side from one source — the client never
  * calculates a distance, which is what keeps list and detail agreeing.
  *
- * Permission is requested at the point of use, never on load, and never twice
- * unprompted. Denied, dismissed, unavailable or timed out all fall back silently to
- * the city centre: refusing to share your location is a legitimate choice, not an
- * error state, and the app says nothing about it beyond labelling what it measured
- * from.
+ * Permission is requested at the point of use, never on load or unprompted. A failed
+ * request falls back to the city centre, while the picker retains an honest state so
+ * it can distinguish permission denial from an unavailable position.
  *
  * Privacy: coordinates go to our own API and nowhere else. They are never persisted,
  * never logged, and never placed in a URL or query string.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import type { GeoPoint } from "../api/types";
 import type { CityOption } from "../config";
 
-export type OriginSource = "device" | "city";
+export type OriginSource = "device" | "city" | "address";
 
-export type GeoState = "idle" | "requesting" | "granted" | "unavailable";
+export type GeoState = "idle" | "requesting" | "granted" | "denied" | "unavailable";
+
+interface SelectedOrigin {
+  point: GeoPoint;
+  source: Exclude<OriginSource, "city">;
+  label: string | null;
+}
 
 const TIMEOUT_MS = 8000;
+let selected: SelectedOrigin | null = null;
+let geoState: GeoState = "idle";
+let requestNumber = 0;
+let revision = 0;
+const listeners = new Set<() => void>();
+
+function emit(): void {
+  revision += 1;
+  for (const listener of listeners) listener();
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function getSnapshot(): number {
+  return revision;
+}
 
 export function useOrigin(city: CityOption): {
   origin: GeoPoint;
   source: OriginSource;
+  label: string | null;
   state: GeoState;
   /** Ask for the device position. Safe to call when unsupported — resolves to city. */
   requestDeviceLocation: () => void;
+  /** Invalidate a pending browser callback without changing the selected origin. */
+  cancelPendingRequest: () => void;
+  /** Use an address selected from Places for this browser session. */
+  useAddress: (point: GeoPoint, label: string) => void;
   /** Go back to measuring from the city centre. */
   useCityCentre: () => void;
 } {
-  const [devicePoint, setDevicePoint] = useState<GeoPoint | null>(null);
-  const [state, setState] = useState<GeoState>("idle");
+  useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   const requestDeviceLocation = useCallback(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setState("unavailable");
+      selected = null;
+      geoState = "unavailable";
+      emit();
       return;
     }
-    setState("requesting");
+    const currentRequest = ++requestNumber;
+    geoState = "requesting";
+    emit();
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setDevicePoint({
-          lat: position.coords.latitude,
-          lon: position.coords.longitude,
-        });
-        setState("granted");
+        if (currentRequest !== requestNumber) return;
+        selected = {
+          point: { lat: position.coords.latitude, lon: position.coords.longitude },
+          source: "device",
+          label: null,
+        };
+        geoState = "granted";
+        emit();
       },
-      () => {
-        // Denied, dismissed, position unavailable, or timed out. All the same
-        // outcome, and none of them is worth a message: we simply measure from the
-        // city instead and say so.
-        setDevicePoint(null);
-        setState("unavailable");
+      (error) => {
+        if (currentRequest !== requestNumber) return;
+        selected = null;
+        geoState = error.code === error.PERMISSION_DENIED ? "denied" : "unavailable";
+        emit();
       },
       { enableHighAccuracy: false, timeout: TIMEOUT_MS, maximumAge: 60_000 },
     );
   }, []);
 
+  const useAddress = useCallback((point: GeoPoint, label: string) => {
+    requestNumber += 1;
+    selected = { point, source: "address", label };
+    geoState = "idle";
+    emit();
+  }, []);
+
+  const cancelPendingRequest = useCallback(() => {
+    if (geoState !== "requesting") return;
+    requestNumber += 1;
+    geoState = "idle";
+    emit();
+  }, []);
+
   const useCityCentre = useCallback(() => {
-    setDevicePoint(null);
-    setState("idle");
+    requestNumber += 1;
+    selected = null;
+    geoState = "idle";
+    emit();
   }, []);
 
   return {
-    origin: devicePoint ?? city.center,
-    source: devicePoint ? "device" : "city",
-    state,
+    origin: selected?.point ?? city.center,
+    source: selected?.source ?? "city",
+    label: selected?.label ?? null,
+    state: geoState,
     requestDeviceLocation,
+    cancelPendingRequest,
+    useAddress,
     useCityCentre,
   };
+}
+
+/** Clears the non-persistent selection when starting a fresh app/test session. */
+export function resetSessionOrigin(): void {
+  requestNumber += 1;
+  selected = null;
+  geoState = "idle";
+  emit();
 }

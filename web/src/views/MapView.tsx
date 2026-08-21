@@ -41,7 +41,7 @@ export function MapView() {
   const navigate = useNavigate();
   const { profile } = useProfile();
   const { city } = useCity();
-  const { origin, source, requestDeviceLocation } = useOrigin(city);
+  const { origin, source, label: originLabel, requestDeviceLocation } = useOrigin(city);
   const { status: mapsStatus, libs } = useGoogleMaps(lang);
 
   const [activeIndex, setActiveIndex] = useState(0);
@@ -70,7 +70,7 @@ export function MapView() {
   const plotted = useMemo(() => (data?.items ?? []).filter((item) => item.geo !== null), [data]);
   const active: ResultView | undefined = plotted[Math.min(activeIndex, plotted.length - 1)];
 
-  useEffect(() => setActiveIndex(0), [city.slug, source]);
+  useEffect(() => setActiveIndex(0), [city.slug, source, origin]);
 
   /**
    * Distance between two consecutive cards, measured rather than assumed so the
@@ -255,6 +255,14 @@ export function MapView() {
         >
           {source === "device" ? <PinIcon size={16} /> : <SlidersIcon size={16} />}
         </button>
+      </div>
+
+      <div className="map__origin glass" role="status">
+        {source === "device"
+          ? t.origin.fromDevice
+          : source === "address" && originLabel
+            ? originLabel
+            : t.origin.fromCity(lang === "en" ? city.en : city.he)}
       </div>
 
       <div className="map__carousel">

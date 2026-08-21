@@ -227,6 +227,134 @@ a {
   padding: 22px 24px 0;
 }
 
+.location-picker__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.location-picker {
+  width: min(100%, 520px);
+  max-height: min(720px, calc(100dvh - 32px));
+  overflow-y: auto;
+  border-radius: 24px;
+  padding: 20px;
+  background: var(--bg);
+}
+
+.location-picker__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.location-picker__head h2 {
+  font: 700 21px Assistant, sans-serif;
+}
+
+.location-picker__close {
+  color: var(--sub);
+  text-decoration: underline;
+}
+
+.location-picker__label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.location-picker__search {
+  margin: 0;
+}
+
+.location-picker__status,
+.location-picker__privacy {
+  margin-top: 9px;
+  color: var(--sub);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.location-picker__status--error {
+  color: var(--red);
+}
+
+.location-picker__results {
+  margin-top: 8px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.location-picker__results li + li {
+  border-top: 1px solid var(--hair);
+}
+
+.location-picker__results button {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 12px;
+  text-align: start;
+  line-height: 1.35;
+}
+
+.location-picker__results [role="option"][aria-selected="true"] {
+  background: var(--pill);
+}
+
+.location-picker__google {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+  color: var(--ink);
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.location-picker__device {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.location-picker__cities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.map__origin {
+  position: absolute;
+  z-index: 4;
+  top: calc(env(safe-area-inset-top) + 78px);
+  inset-inline: 20px;
+  width: fit-content;
+  max-width: calc(100% - 40px);
+  margin-inline: auto;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  color: var(--sub);
+  font-size: 11.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── Primitives ────────────────────────────────────────────────────────── */
 
 .glass {

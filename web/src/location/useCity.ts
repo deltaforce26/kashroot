@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CITIES, DEFAULT_CITY_SLUG, cityBySlug, type CityOption } from "../config";
+import { resetSessionOrigin } from "./useOrigin";
 
 const KEY = "kashroot.city";
 
@@ -38,6 +39,7 @@ export function useCity(): {
   }, []);
 
   const setSlug = useCallback((next: string) => {
+    resetSessionOrigin();
     try {
       localStorage.setItem(KEY, next);
     } catch {
