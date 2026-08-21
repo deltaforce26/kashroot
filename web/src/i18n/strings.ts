@@ -46,6 +46,7 @@ const he = {
   home: {
     nearYou: "מחפשים ליד",
     changeCity: "שינוי עיר",
+    changeLocation: "שינוי מיקום החיפוש",
     searchPlaceholder: "חיפוש מקום, עיר או מסעדה…",
     openFilters: "סינון תוצאות",
     filtersActive: "סינון פעיל",
@@ -230,6 +231,16 @@ const he = {
     unavailable: "מודדים ממרכז העיר",
     backToCity: "מדידה ממרכז העיר",
     privacy: "המיקום נשלח רק לשרת שלנו, לא נשמר במכשיר ולא משותף.",
+    title: "מאיפה לחפש?",
+    close: "סגירה",
+    addressLabel: "כתובת",
+    addressPlaceholder: "רחוב, שכונה או עיר…",
+    addressSubmit: "חיפוש הכתובת",
+    searching: "מחפשים כתובת…",
+    results: "כתובות שנמצאו",
+    noResults: "לא מצאנו כתובת כזו בישראל. נסו לנסח אחרת.",
+    lookupFailed: "לא הצלחנו לחפש את הכתובת. בדקו את החיבור ונסו שוב.",
+    denied: "לא קיבלנו את המיקום שלכם. אפשר להקליד כתובת במקום.",
   },
 
   states: {
@@ -363,6 +374,7 @@ const en: Strings = {
   home: {
     nearYou: "Searching near",
     changeCity: "Change city",
+    changeLocation: "Change where we search from",
     searchPlaceholder: "Search a place, city or restaurant…",
     openFilters: "Filter results",
     filtersActive: "Filters on",
@@ -542,6 +554,16 @@ const en: Strings = {
     unavailable: "Measuring from the city centre",
     backToCity: "Measure from the city centre",
     privacy: "Your location goes only to our own server. It is never stored or shared.",
+    title: "Where should we search from?",
+    close: "Close",
+    addressLabel: "Address",
+    addressPlaceholder: "Street, neighbourhood or city…",
+    addressSubmit: "Look up this address",
+    searching: "Looking up that address…",
+    results: "Addresses found",
+    noResults: "We couldn't find that address in Israel. Try wording it differently.",
+    lookupFailed: "We couldn't look that address up. Check your connection and try again.",
+    denied: "We didn't get your location. You can type an address instead.",
   },
 
   states: {

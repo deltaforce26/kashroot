@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CITIES, DEFAULT_CITY_SLUG, cityBySlug, type CityOption } from "../config";
+import { clearOrigin } from "./useOrigin";
 
 const KEY = "kashroot.city";
 
@@ -38,6 +39,10 @@ export function useCity(): {
   }, []);
 
   const setSlug = useCallback((next: string) => {
+    // Picking a city answers the same question as a pinned address or the device
+    // position, so it replaces them rather than sitting behind them — otherwise the
+    // header would name one place and the results would come from another.
+    clearOrigin();
     try {
       localStorage.setItem(KEY, next);
     } catch {
