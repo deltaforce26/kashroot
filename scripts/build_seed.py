@@ -1,6 +1,7 @@
-# -*- coding: utf-8 -*-
 """Kashroot seed corpus builder — normalizes 6 source documents into one CSV."""
-import csv, re, unicodedata
+import csv
+import re
+import unicodedata
 
 R = []  # (name, address, city, phone, business_type, diet, certifier_id, source, source_date, needs_review, notes)
 
@@ -658,6 +659,7 @@ with open(OUT,"w",newline="",encoding="utf-8-sig") as f:
                     m["nr"], m["note"]])
 
 import collections
+
 cities = collections.Counter(m["city"] for m in merged.values())
 certs = collections.Counter(c for m in merged.values() for c in m["certs"])
 multi = sum(1 for m in merged.values() if len(m["srcs"])>1)

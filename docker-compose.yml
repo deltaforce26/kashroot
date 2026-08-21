@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: kashroot
+      POSTGRES_PASSWORD: kashroot
+      POSTGRES_DB: kashroot
+    ports:
+      - "5433:5432"
+    volumes:
+      - kashroot_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kashroot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # S3-compatible object storage for certificate evidence photos (local dev).
+  # This is the fallback backend: the app uses Supabase Storage whenever
+  # KASHROOT_SUPABASE_URL + KASHROOT_SUPABASE_SERVICE_KEY are set, and MinIO
+  # otherwise, so `docker compose up` stays a complete offline stack.
+  # Point the app at it with:
+  #   KASHROOT_S3_ENDPOINT_URL=http://localhost:9000
+  #   KASHROOT_S3_BUCKET=kashroot-evidence
+  #   KASHROOT_S3_ACCESS_KEY=kashroot
+  #   KASHROOT_S3_SECRET_KEY=kashroot-secret
+  # Console UI: http://localhost:9001 (same credentials). Create the bucket once via
+  # the console or `mc mb local/kashroot-evidence`.
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: kashroot
+      MINIO_ROOT_PASSWORD: kashroot-secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - kashroot_minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  kashroot_pgdata:
+  kashroot_minio:

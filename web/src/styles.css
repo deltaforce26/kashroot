@@ -1,0 +1,1423 @@
+/*
+ * Kashroot mobile — design tokens and components.
+ *
+ * Every colour, tint and gradient here is lifted from the imported design's token
+ * script (design/Kashroot Mobile.dc.html) rather than re-picked by eye, so the built
+ * app and the design doc stay the same artefact. Two additions the design does not
+ * cover are marked inline: the NO_MATCH palette and the state screens.
+ *
+ * Layout uses logical properties throughout (inline-start/end, margin-inline,
+ * inset-inline). That is the whole of the RTL story: flipping <html dir> flips the
+ * app. Nothing keys off left/right.
+ */
+
+:root {
+  color-scheme: light;
+
+  --bg-ink: #f4f4ef;
+  --bg: radial-gradient(120% 60% at 80% -5%, rgba(190, 220, 120, 0.55) 0%, rgba(190, 220, 120, 0) 55%),
+    radial-gradient(90% 55% at 0% 30%, rgba(160, 215, 190, 0.4) 0%, rgba(160, 215, 190, 0) 60%),
+    radial-gradient(90% 60% at 90% 100%, rgba(245, 200, 150, 0.35) 0%, rgba(245, 200, 150, 0) 55%),
+    #f4f4ef;
+
+  --map-bg: #eceae5;
+  --map-grid: repeating-linear-gradient(45deg, #e8e6e1, #e8e6e1 10px, #efede8 10px, #efede8 20px);
+
+  --glass: rgba(255, 255, 255, 0.62);
+  --glass-line: rgba(255, 255, 255, 0.78);
+  /* Fallback for engines without backdrop-filter: opaque enough to stay legible. */
+  --glass-solid: rgba(250, 250, 246, 0.94);
+
+  --tint-dairy: linear-gradient(160deg, rgba(215, 240, 215, 0.9), rgba(165, 210, 175, 0.75));
+  --tint-meat: linear-gradient(160deg, rgba(250, 225, 205, 0.9), rgba(240, 185, 150, 0.7));
+  --tint-sweet: linear-gradient(160deg, rgba(250, 242, 200, 0.9), rgba(240, 220, 145, 0.7));
+  --tint-neutral: linear-gradient(160deg, rgba(238, 235, 228, 0.92), rgba(220, 214, 202, 0.75));
+
+  --stripe: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.65),
+    rgba(255, 255, 255, 0.65) 5px,
+    rgba(255, 255, 255, 0.35) 5px,
+    rgba(255, 255, 255, 0.35) 10px
+  );
+  --stripe-flat: repeating-linear-gradient(45deg, #ececea, #ececea 4px, #f6f6f4 4px, #f6f6f4 8px);
+
+  --pill: rgba(255, 255, 255, 0.87);
+  --ink: #161616;
+  --sub: #6b6b6b;
+  --on-tint: #4c5c50;
+  --hair: rgba(0, 0, 0, 0.08);
+  --cta: #161616;
+  --cta-ink: #fff;
+  --green: #2f7a4d;
+  --green-soft: rgba(47, 122, 77, 0.12);
+  --amber: #96721c;
+  --amber-soft: rgba(150, 114, 28, 0.12);
+  /* Added by Track C: the design has no NO_MATCH visual. Same family, negative side. */
+  --red: #a2392c;
+  --red-soft: rgba(162, 57, 44, 0.12);
+  --step-off: rgba(0, 0, 0, 0.14);
+  --toggle-track: rgba(0, 0, 0, 0.12);
+  --toggle-knob: #fff;
+
+  --radius-card: 22px;
+  --radius-tile: 18px;
+  --radius-pill: 99px;
+  --shell-max: 430px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-ink: #121310;
+  --bg: radial-gradient(120% 60% at 80% -5%, rgba(150, 190, 80, 0.22) 0%, rgba(150, 190, 80, 0) 55%),
+    radial-gradient(90% 55% at 0% 30%, rgba(90, 165, 135, 0.18) 0%, rgba(90, 165, 135, 0) 60%),
+    radial-gradient(90% 60% at 90% 100%, rgba(210, 150, 90, 0.16) 0%, rgba(210, 150, 90, 0) 55%),
+    #121310;
+
+  --map-bg: #15160f;
+  --map-grid: repeating-linear-gradient(45deg, #1a1b16, #1a1b16 10px, #1f201a 10px, #1f201a 20px);
+
+  --glass: rgba(255, 255, 255, 0.07);
+  --glass-line: rgba(255, 255, 255, 0.14);
+  --glass-solid: rgba(38, 39, 31, 0.94);
+
+  --tint-dairy: linear-gradient(160deg, rgba(74, 124, 90, 0.5), rgba(40, 74, 54, 0.55));
+  --tint-meat: linear-gradient(160deg, rgba(134, 86, 54, 0.5), rgba(86, 50, 30, 0.55));
+  --tint-sweet: linear-gradient(160deg, rgba(132, 116, 46, 0.48), rgba(84, 70, 24, 0.55));
+  --tint-neutral: linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.045));
+
+  --stripe: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.14),
+    rgba(255, 255, 255, 0.14) 5px,
+    rgba(255, 255, 255, 0.06) 5px,
+    rgba(255, 255, 255, 0.06) 10px
+  );
+  --stripe-flat: repeating-linear-gradient(45deg, #26271f, #26271f 4px, #2e2f27 4px, #2e2f27 8px);
+
+  --pill: rgba(8, 10, 7, 0.6);
+  --ink: #f2f1ea;
+  --sub: #9d9c93;
+  --on-tint: rgba(240, 240, 228, 0.72);
+  --hair: rgba(255, 255, 255, 0.12);
+  --cta: #f2f1ea;
+  --cta-ink: #161616;
+  --green: #84d5a4;
+  --green-soft: rgba(132, 213, 164, 0.16);
+  --amber: #e6bd5e;
+  --amber-soft: rgba(230, 189, 94, 0.16);
+  --red: #f0a396;
+  --red-soft: rgba(240, 163, 150, 0.16);
+  --step-off: rgba(255, 255, 255, 0.18);
+  --toggle-track: #84d5a4;
+  --toggle-knob: #12130f;
+}
+
+/* Directional glyphs (the "go" arrow, the chevron) mirror with the document. */
+html[dir="ltr"] {
+  --arrow-flip: -1;
+}
+html[dir="rtl"] {
+  --arrow-flip: 1;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+/* Column so the dev ribbon (when present) takes its height off the shell rather
+   than pushing it past the viewport. */
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-ink);
+  color: var(--ink);
+  font-family: Assistant, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:where(button, a, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ── Shell ─────────────────────────────────────────────────────────────── */
+
+/*
+ * 390×844 is the design's viewport basis. On a phone the app is full-bleed; on a
+ * desktop it is centred at that width so the demo can be shown on a laptop without
+ * the layout stretching into something the design never described. No fake bezel.
+ */
+.shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: var(--shell-max);
+  margin-inline: auto;
+  background: var(--bg);
+  background-attachment: fixed;
+  overflow: hidden;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.shell__scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-inline: 20px;
+  padding-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/*
+ * This is a scrolling flex column, and flex items default to flex-shrink:1 — so a
+ * list taller than the viewport compresses its children to fit instead of
+ * scrolling. Cards then clip against their own overflow:hidden, and .card__foot
+ * (the verdict pill) is the first thing lost. Children must keep their natural
+ * height and let the container scroll.
+ */
+.shell__scroll > * {
+  flex-shrink: 0;
+}
+
+.shell__header {
+  padding: 22px 20px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+
+.shell__pad {
+  padding: 22px 24px 0;
+}
+
+/* ── Primitives ────────────────────────────────────────────────────────── */
+
+.glass {
+  background: var(--glass-solid);
+  border: 1px solid var(--glass-line);
+}
+
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .glass {
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(14px) saturate(180%);
+    backdrop-filter: blur(14px) saturate(180%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+}
+
+.circle {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.circle--sm {
+  width: 30px;
+  height: 30px;
+}
+
+.circle--cta {
+  background: var(--cta);
+  color: var(--cta-ink);
+  border: 0;
+}
+
+.tint-dairy {
+  background: var(--tint-dairy);
+}
+.tint-meat {
+  background: var(--tint-meat);
+}
+.tint-sweet {
+  background: var(--tint-sweet);
+}
+.tint-neutral {
+  background: var(--tint-neutral);
+}
+
+.stripe {
+  background: var(--stripe);
+}
+.stripe-flat {
+  background: var(--stripe-flat);
+}
+
+.sub {
+  color: var(--sub);
+}
+.on-tint {
+  color: var(--on-tint);
+}
+
+.display {
+  font-family: "Frank Ruhl Libre", Assistant, serif;
+  font-weight: 700;
+}
+
+.cta {
+  display: block;
+  width: 100%;
+  background: var(--cta);
+  color: var(--cta-ink);
+  border-radius: var(--radius-pill);
+  padding: 16px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 15.5px;
+}
+
+.cta[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cta--ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--hair);
+}
+
+.hint {
+  font-size: 11.5px;
+  color: var(--sub);
+  text-align: center;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Verdict pill (Layer 1) ────────────────────────────────────────────── */
+
+/*
+ * Categorical by construction: a glyph and a word, never a number. The three
+ * variants differ only in colour token, so no variant can read as "more" or "less"
+ * than another on a scale.
+ */
+.verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  background: var(--pill);
+}
+
+.verdict--lg {
+  font-size: 12.5px;
+  padding: 5px 13px;
+}
+
+.verdict--match {
+  color: var(--green);
+}
+.verdict--unknown {
+  color: var(--amber);
+}
+.verdict--no_match {
+  color: var(--red);
+}
+
+.verdict__glyph {
+  font-weight: 800;
+}
+
+/* ── Fit score (Layer 2) ───────────────────────────────────────────────── */
+
+/*
+ * Deliberately unlike the verdict pill: no pill shape, no verdict colour, a bar and
+ * a small number, always under its own label. The two must never read as one metric,
+ * so they are never placed adjacent on the same row either.
+ */
+.fit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  color: var(--sub);
+}
+
+.fit__label {
+  letter-spacing: 0.02em;
+}
+
+.fit__bar {
+  position: relative;
+  width: 46px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--hair);
+  overflow: hidden;
+}
+
+.fit__fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  background: var(--sub);
+  border-radius: 2px;
+}
+
+.fit__value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* ── Search bar ────────────────────────────────────────────────────────── */
+
+/*
+ * The glass pill on home and search. It is a real <form> with a real <input>: the
+ * design draws a search field, and a button dressed as one would lie to a screen
+ * reader about what pressing it does.
+ */
+.searchbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: var(--radius-pill);
+  padding: 12px 16px;
+  flex: none;
+}
+
+.searchbar__icon {
+  display: flex;
+  color: var(--sub);
+  flex: none;
+}
+
+.searchbar__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font: 14px Assistant, sans-serif;
+  color: var(--ink);
+  outline: none;
+}
+
+.searchbar__input::placeholder {
+  color: var(--sub);
+}
+
+/* ── Cards ─────────────────────────────────────────────────────────────── */
+
+.card {
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--glass-line);
+  overflow: hidden;
+  color: var(--ink);
+}
+
+.card--row {
+  padding: 14px 16px;
+  padding-inline-end: 96px;
+}
+
+.card__photo {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  inset-inline-end: -20px;
+  width: 104px;
+  height: 104px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 9px ui-monospace, Menlo, monospace;
+  color: var(--sub);
+  text-align: center;
+  pointer-events: none;
+}
+
+.card__title {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.card__meta {
+  font-size: 11.5px;
+  margin-top: 1px;
+}
+
+.card__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+/*
+ * Layer 2's container, everywhere it appears: the row card, the search tile and the
+ * restaurant screen. It is a full-width block holding the fit score and nothing else.
+ *
+ * This is the separation guarantee, and it is deliberately not a single property on
+ * a parent. `.fit-row` is 100% wide and `flex-basis: 100%`, so even inside a flex
+ * row it takes a line of its own and the verdict pill cannot end up beside it. A
+ * test asserts the fit score is always inside one of these and that no `.fit-row`
+ * ever contains a verdict pill — see `demoFlow.test.tsx`.
+ */
+.fit-row {
+  width: 100%;
+}
+
+/* Inside a card the row is also a flex item, and it claims a whole line of its own. */
+.card .fit-row {
+  flex: 0 0 100%;
+  margin-top: 8px;
+}
+
+.card__evidence {
+  font-size: 10.5px;
+}
+
+.card__go {
+  margin-inline-start: auto;
+}
+
+/*
+ * The whole-card link (search tile, map carousel card). It is a stretched anchor
+ * laid over the card rather than a click handler on the <article>, so the card
+ * keeps real link semantics: keyboard focus, middle-click, open-in-new-tab.
+ *
+ * It sits above the card's z-index:1 content layers, so anything that must stay
+ * independently clickable — the save button, the map card's Navigate link — is
+ * raised over it with `.card__above`.
+ */
+.card__link {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+}
+
+.card__link:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -3px;
+}
+
+.card__above {
+  position: relative;
+  z-index: 3;
+}
+
+/* Search grid card (3e) */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-content: start;
+}
+
+.card--tile {
+  padding: 14px;
+  min-height: 198px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The design draws this photo circle at the bottom-left of an RTL card, i.e. at the
+   inline-end edge — so it mirrors to bottom-right in the English UI. */
+.card--tile .card__photo {
+  top: auto;
+  bottom: -16px;
+  inset-inline-end: -14px;
+  transform: none;
+  width: 112px;
+  height: 112px;
+}
+
+/* …and the pill/fit/arrow stack sits at the opposite edge, the inline start.
+   `flex-wrap: wrap` is load-bearing, not tidiness: together with `.fit-row`'s
+   `flex: 0 0 100%` it keeps Layer 2 on a line of its own even if this container's
+   direction is ever changed to `row`. Both declarations are pinned by a test. */
+.card--tile .card__tile-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+/* The tile's verdict row carries the pill alone; the stack's gap does the spacing. */
+.card--tile .card__foot--tile {
+  margin-top: 0;
+}
+
+/* Inside the tile stack the gap already spaces the rows. */
+.card--tile .fit-row {
+  margin-top: 0;
+}
+
+/*
+ * Home grid card (2-up). Same tinted ground and striped photo circle as the search
+ * tile, but a shorter body: one meta line, then the verdict pill alone on the foot
+ * row — the whole card is the link, so it carries no go button. No `.fit-row`
+ * appears here — see `RestaurantGridCard`.
+ */
+.card--grid {
+  padding: 13px 14px;
+  min-height: 188px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Centred on the card's lower edge and clipped by it, so the placeholder reads as a
+   photo well rather than a decoration. Centring is symmetric, so it needs no
+   mirroring: `inset-inline: 0` + `margin-inline: auto` centres in both directions. */
+.card--grid .card__photo {
+  top: auto;
+  bottom: -22px;
+  inset-inline: 0;
+  margin-inline: auto;
+  transform: none;
+  width: 116px;
+  height: 116px;
+}
+
+/* `position: relative` with no z-index: the head paints above the absolutely
+   positioned photo by tree order without opening a stacking context, so the save
+   button's `.card__above` still resolves against the card and stays above the
+   stretched `.card__link`. Giving this a z-index would trap the button underneath
+   the link and make it unclickable. */
+.card--grid .card__head {
+  position: relative;
+}
+
+.card--grid .card__foot {
+  position: relative;
+  z-index: 1;
+}
+
+.card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* The foot is pinned to the bottom of the tile, so cards of differing text length
+   still line their pills up across the row. */
+.card--grid .card__foot {
+  margin-top: auto;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+/* ── Chips / tabs ──────────────────────────────────────────────────────── */
+
+.chips {
+  display: flex;
+  gap: 18px;
+  padding: 14px 20px 4px;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+  flex: none;
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  font-size: 13.5px;
+  color: var(--sub);
+  padding-bottom: 6px;
+  border-bottom: 2.5px solid transparent;
+  flex: none;
+}
+
+.chip[aria-pressed="true"] {
+  color: var(--ink);
+  font-weight: 700;
+  border-bottom-color: var(--ink);
+}
+
+.tag {
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--glass-line);
+  color: var(--sub);
+}
+
+.tag[aria-pressed="true"] {
+  background: var(--cta);
+  color: var(--cta-ink);
+  font-weight: 600;
+  border-color: transparent;
+}
+
+.tag-static {
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--cta);
+  color: var(--cta-ink);
+}
+
+.tag-static--outline {
+  background: var(--pill);
+  border: 1px solid var(--hair);
+  color: var(--ink);
+}
+
+/* ── Filters screen ───────────────────────────────────────────────────── */
+
+.filter-group__title {
+  font: 700 14.5px Assistant, sans-serif;
+  margin: 0 0 10px;
+}
+
+.filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/*
+ * The sliders button wears a dot whenever a soft filter is off its default. Without
+ * it a narrowed list looks exactly like a thin corpus, and "there is nothing here"
+ * is the one wrong impression this product must never leave by accident.
+ */
+.searchbar__flag {
+  position: relative;
+}
+
+.searchbar__flag::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  inset-inline-end: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  border: 1.5px solid var(--bg-ink);
+}
+
+/* ── Panels ────────────────────────────────────────────────────────────── */
+
+.panel {
+  border-radius: var(--radius-card);
+  padding: 14px 16px;
+}
+
+.panel__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.panel__title {
+  font: 700 16px Assistant, sans-serif;
+}
+
+.panel__badge {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  flex: none;
+}
+
+.evidence {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--on-tint);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.evidence__row {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+}
+
+.evidence__glyph {
+  font-weight: 800;
+  flex: none;
+}
+
+.evidence__glyph--positive {
+  color: var(--green);
+}
+.evidence__glyph--negative {
+  color: var(--red);
+}
+.evidence__glyph--doubt {
+  color: var(--amber);
+}
+.evidence__glyph--info {
+  color: var(--sub);
+}
+
+.evidence__note {
+  font-size: 12px;
+  color: var(--sub);
+  line-height: 1.5;
+  margin-top: 10px;
+}
+
+.rows {
+  padding: 6px 16px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--hair);
+  font-size: 14px;
+  width: 100%;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.row__value {
+  font-size: 13px;
+  color: var(--sub);
+}
+
+.segmented {
+  display: flex;
+  gap: 2px;
+  background: var(--hair);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+}
+
+.segmented button {
+  font-size: 12px;
+  padding: 3px 12px;
+  border-radius: var(--radius-pill);
+  color: var(--sub);
+}
+
+.segmented button[aria-pressed="true"] {
+  background: var(--pill);
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.toggle {
+  width: 48px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  background: var(--toggle-track);
+  border: 1px solid var(--glass-line);
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  flex: none;
+  justify-content: flex-start;
+}
+
+.toggle[aria-checked="true"] {
+  justify-content: flex-end;
+}
+
+.toggle__knob {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--toggle-knob);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+/* ── Banners and states ───────────────────────────────────────────────── */
+
+/* Not in the source design: loading, error, offline and empty (brief §Gaps 2–3). */
+.banner {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--glass-line);
+  padding: 13px 15px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.banner__title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.banner--amber .banner__title {
+  color: var(--amber);
+}
+
+.banner__body {
+  color: var(--on-tint);
+}
+
+.state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  padding: 40px 8px;
+}
+
+.state__mark {
+  width: 76px;
+  height: 76px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.state__title {
+  font: 700 19px Assistant, sans-serif;
+}
+
+.state__body {
+  font-size: 13.5px;
+  color: var(--sub);
+  line-height: 1.55;
+  max-width: 30ch;
+}
+
+.state__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 280px;
+  margin-top: 4px;
+}
+
+.skeleton {
+  border-radius: var(--radius-card);
+  background: var(--tint-neutral);
+  border: 1px solid var(--glass-line);
+  height: 92px;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--stripe);
+  opacity: 0.5;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+}
+
+/* ── Tab bar ───────────────────────────────────────────────────────────── */
+
+.tabbar {
+  display: flex;
+  margin: 10px 24px 16px;
+  border-radius: var(--radius-pill);
+  padding: 9px 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+  flex: none;
+}
+
+.tabbar a {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: var(--sub);
+  font-size: 10.5px;
+}
+
+.tabbar a[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ── Step dots (onboarding) ───────────────────────────────────────────── */
+
+.steps {
+  display: flex;
+  gap: 5px;
+}
+
+.steps span {
+  width: 18px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--step-off);
+}
+
+.steps span[data-on="true"] {
+  background: var(--ink);
+}
+
+/* ── Preset / select rows ─────────────────────────────────────────────── */
+
+.select-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-tile);
+  padding: 14px 16px;
+  text-align: start;
+}
+
+.select-row[aria-pressed="true"],
+.select-row[aria-checked="true"] {
+  border: 2px solid var(--ink);
+  padding: 13px 15px;
+}
+
+.select-row__title {
+  font-weight: 700;
+  font-size: 15.5px;
+}
+
+.select-row__sub {
+  font-size: 12.5px;
+  color: var(--sub);
+}
+
+.select-row[aria-pressed="true"] .select-row__sub,
+.select-row[aria-checked="true"] .select-row__sub {
+  color: var(--on-tint);
+}
+
+.check {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border: 1.5px solid var(--hair);
+}
+
+.check[data-on="true"] {
+  background: var(--cta);
+  color: var(--cta-ink);
+  border-color: transparent;
+}
+
+.check--sm {
+  width: 22px;
+  height: 22px;
+}
+
+.certifier-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--glass-line);
+  border-radius: 16px;
+  padding: 12px 14px;
+  width: 100%;
+  text-align: start;
+}
+
+.certifier-row__name {
+  flex: 1;
+  font-weight: 700;
+  font-size: 14.5px;
+  color: var(--sub);
+}
+
+.certifier-row[aria-checked="true"] .certifier-row__name {
+  color: var(--ink);
+}
+
+.certifier-row__mark {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-pill);
+  flex: none;
+}
+
+/* ── Restaurant detail ─────────────────────────────────────────────────── */
+
+.hero {
+  position: relative;
+  border-radius: 26px;
+  height: 150px;
+  overflow: hidden;
+  border: 1px solid var(--glass-line);
+  flex: none;
+}
+
+.hero__photo {
+  position: absolute;
+  bottom: -34px;
+  inset-inline-end: -24px;
+  width: 180px;
+  height: 180px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 9px ui-monospace, Menlo, monospace;
+  color: var(--sub);
+}
+
+.hero__verdict {
+  position: absolute;
+  top: 14px;
+  inset-inline-start: 14px;
+}
+
+.cert-card {
+  display: flex;
+  gap: 14px;
+}
+
+.cert-card__photo {
+  width: 76px;
+  height: 98px;
+  border-radius: 12px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 9px ui-monospace, Menlo, monospace;
+  color: var(--sub);
+  text-align: center;
+  white-space: pre-line;
+}
+
+.cert-card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--sub);
+  min-width: 0;
+}
+
+.cert-card__title {
+  font: 700 15px Assistant, sans-serif;
+  color: var(--ink);
+}
+
+.badge-soft {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  width: fit-content;
+}
+
+.badge-soft--green {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.badge-soft--amber {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+.badge-soft--red {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.actions .cta {
+  flex: 1;
+  padding: 14px;
+  font-size: 14px;
+}
+
+.action-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+/* ── Map (3g) ──────────────────────────────────────────────────────────── */
+
+.map {
+  position: absolute;
+  inset: 0;
+  background: var(--map-bg);
+}
+
+.map__grid {
+  position: absolute;
+  inset: 0;
+  background: var(--map-grid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 11px ui-monospace, Menlo, monospace;
+  color: var(--sub);
+}
+
+.map__pin {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-pill);
+  border: 2.5px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  /* Positioned from the inline-end edge, so the centring shift mirrors with dir. */
+  transform: translate(calc(-50% * var(--arrow-flip, 1)), -50%);
+}
+
+.map__pin--match {
+  background: var(--green);
+}
+.map__pin--unknown {
+  background: #c9a94e;
+}
+.map__pin--no_match {
+  background: var(--red);
+}
+
+.map__pin[data-active="true"] {
+  width: 34px;
+  height: 34px;
+  border-width: 3px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  z-index: 2;
+}
+
+.map__overlay {
+  position: absolute;
+  top: 22px;
+  inset-inline: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  z-index: 3;
+}
+
+.map__carousel {
+  position: absolute;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  inset-inline: 0;
+  padding: 0 20px;
+  z-index: 3;
+}
+
+/* One card per viewport, swiped horizontally. Snap points make a flick land on
+   a card rather than anywhere; the vertical padding is there so the card's drop
+   shadow is not clipped by the scroll container, and is cancelled by the
+   matching negative margin so nothing moves. */
+.map__track {
+  display: flex;
+  /* 40px = twice the side inset, so the next card starts exactly where the
+     current card's photo stops overhanging. Nothing peeks past the edge and the
+     stride is one full screen. */
+  gap: 40px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 20px 14px;
+  margin: -10px -20px -14px;
+  scrollbar-width: none;
+}
+
+.map__track::-webkit-scrollbar {
+  display: none;
+}
+
+.map__slide {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map__track {
+    scroll-behavior: auto;
+  }
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: var(--radius-pill);
+  background: var(--hair);
+}
+
+.dots span[data-on="true"] {
+  width: 16px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--ink);
+}
+
+/* ── Install prompt ────────────────────────────────────────────────────── */
+
+.install {
+  position: absolute;
+  inset-inline: 16px;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  border-radius: var(--radius-card);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 20;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+.install__row {
+  display: flex;
+  gap: 8px;
+}
+
+.install__row .cta {
+  padding: 10px;
+  font-size: 13.5px;
+}
+
+/* ── Dev-only ribbon ──────────────────────────────────────────────────── */
+
+.mock-ribbon {
+  flex: none;
+  font-size: 10.5px;
+  text-align: center;
+  padding: 4px 8px;
+  color: var(--sub);
+  background: var(--amber-soft);
+}
+
+/* Map fallback: the striped placeholder plus an explanation, used when no maps key
+   is configured or the Google script cannot load (blocked, offline, quota). */
+.map__fallback {
+  position: absolute;
+  inset-inline: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 2;
+}

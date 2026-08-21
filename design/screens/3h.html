@@ -1,0 +1,101 @@
+<div class="dv-opt" id="3h"><div class="dv-olabel"><a class="dv-oid" href="#3h">3h</a>Profile — English UI, same language</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="390px,844px">
+<div dir="ltr" style="height:100%;display:flex;flex-direction:column;background:{{ bg }};color:{{ ink }};font-family:Assistant,sans-serif">
+<div style="padding:64px 20px 0;display:flex;align-items:center;gap:12px">
+<div style="flex:1"><div style="font:700 24px Assistant,sans-serif">Your kashrut profile</div><div style="font-size:12.5px;color:{{ sub }}">Set once — every restaurant is checked against it.</div></div>
+<span style="width:42px;height:42px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg></span>
+</div>
+<div style="flex:1;overflow:hidden;padding:14px 20px 0;display:flex;flex-direction:column;gap:12px">
+<div style="background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};border-radius:22px;padding:14px 16px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:700;font-size:14.5px">Certifiers you accept</span><span style="font-size:12px;color:{{ sub }}">Edit</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">
+<span style="font-size:12px;padding:5px 12px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }}">Badatz Eda Haredit</span>
+<span style="font-size:12px;padding:5px 12px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }}">Badatz Mehadrin (Rubin)</span>
+</div>
+</div>
+<div style="background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};border-radius:22px;padding:14px 16px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:700;font-size:14.5px">Required on the certificate</span><span style="font-size:12px;color:{{ sub }}">Edit</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">
+<span style="font-size:12px;padding:5px 12px;border-radius:99px;background:{{ pill }};border:1px solid {{ hair }};color:{{ ink }}">Chalav Yisrael ✓</span>
+<span style="font-size:12px;padding:5px 12px;border-radius:99px;background:{{ pill }};border:1px solid {{ hair }};color:{{ ink }}">Pas Yisrael ✓</span>
+</div>
+</div>
+<div style="background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};border-radius:22px;padding:6px 16px">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid {{ hair }}"><span style="font-size:14px">Diet</span><span style="font-size:13px;color:{{ sub }}">Meat + Dairy</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid {{ hair }}"><span style="font-size:14px">Language</span><span style="display:flex;gap:2px;background:{{ hair }};border-radius:99px;padding:3px"><span style="font-size:12px;padding:3px 12px;border-radius:99px;color:{{ sub }}">עברית</span><span style="font-size:12px;padding:3px 12px;border-radius:99px;background:#fff;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.1)">English</span></span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid {{ hair }}"><span style="font-size:14px">Notifications</span><span style="font-size:13px;color:{{ sub }}">Saved places only</span></div>
+<div onClick="{{ toggleDark }}" style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;cursor:pointer"><div><div style="font-size:14px">Dark mode</div><div style="font-size:11.5px;color:{{ sub }}">Easier on the eyes after dark</div></div><span style="width:48px;height:28px;border-radius:99px;background:{{ toggleTrack }};border:1px solid {{ glassLine }};display:flex;align-items:center;padding:3px;box-sizing:border-box;justify-content:{{ toggleAlign }};flex:none"><span style="width:20px;height:20px;border-radius:99px;background:{{ toggleKnob }};box-shadow:0 1px 3px rgba(0,0,0,.25)"></span></span></div>
+</div>
+<div style="background:{{ tintDairy }};border:1px solid {{ glassLine }};border-radius:22px;padding:13px 16px;font-size:12px;color:{{ onTint }};line-height:1.55"><span style="font-weight:700;color:{{ ink }}">Your profile stays private.</span> It is religious personal data: encrypted, never sold, never used for ads, never shared.</div>
+<div style="font-size:12px;color:{{ sub }};text-align:center">The app never rules on halacha — you choose, we show evidence.</div>
+</div>
+<div style="display:flex;margin:10px 24px 16px;background:{{ glass }};backdrop-filter:blur(20px);border:1px solid {{ glassLine }};border-radius:99px;padding:9px 10px;box-shadow:0 8px 28px rgba(0,0,0,.14)">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ sub }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg><span style="font-size:10.5px">Home</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ sub }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><span style="font-size:10.5px">Search</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ sub }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg><span style="font-size:10.5px">Saved</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ ink }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span style="font-size:10.5px;font-weight:600">Profile</span></div>
+</div>
+</div>
+</x-import></div>
+</div>
+<p class="dv-next">Committed design system. Try next: "turn this into an interactive prototype" · "add real photos" · "swap a card tint".</p>
+</section>
+
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;dark&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Theme&quot;}}">
+class Component extends DCLogic {
+  state = { dark: null };
+  get isDark() { return this.state.dark ?? (this.props.dark ?? false); }
+  renderVals() {
+    const d = this.isDark;
+    return {
+      dark: d,
+      toggleDark: () => this.setState({ dark: !this.isDark }),
+      bg: d
+        ? 'radial-gradient(120% 60% at 80% -5%,rgba(150,190,80,.22) 0%,rgba(150,190,80,0) 55%),radial-gradient(90% 55% at 0% 30%,rgba(90,165,135,.18) 0%,rgba(90,165,135,0) 60%),radial-gradient(90% 60% at 90% 100%,rgba(210,150,90,.16) 0%,rgba(210,150,90,0) 55%),#121310'
+        : 'radial-gradient(120% 60% at 80% -5%,rgba(190,220,120,.55) 0%,rgba(190,220,120,0) 55%),radial-gradient(90% 55% at 0% 30%,rgba(160,215,190,.4) 0%,rgba(160,215,190,0) 60%),radial-gradient(90% 60% at 90% 100%,rgba(245,200,150,.35) 0%,rgba(245,200,150,0) 55%),#f4f4ef',
+      mapBg: d ? '#15160f' : '#eceae5',
+      mapGrid: d
+        ? 'repeating-linear-gradient(45deg,#1a1b16,#1a1b16 10px,#1f201a 10px,#1f201a 20px)'
+        : 'repeating-linear-gradient(45deg,#e8e6e1,#e8e6e1 10px,#efede8 10px,#efede8 20px)',
+      glass: d ? 'rgba(255,255,255,.07)' : 'rgba(255,255,255,.62)',
+      glassLine: d ? 'rgba(255,255,255,.14)' : 'rgba(255,255,255,.78)',
+      tintDairy: d
+        ? 'linear-gradient(160deg,rgba(74,124,90,.5),rgba(40,74,54,.55))'
+        : 'linear-gradient(160deg,rgba(215,240,215,.9),rgba(165,210,175,.75))',
+      tintMeat: d
+        ? 'linear-gradient(160deg,rgba(134,86,54,.5),rgba(86,50,30,.55))'
+        : 'linear-gradient(160deg,rgba(250,225,205,.9),rgba(240,185,150,.7))',
+      tintSweet: d
+        ? 'linear-gradient(160deg,rgba(132,116,46,.48),rgba(84,70,24,.55))'
+        : 'linear-gradient(160deg,rgba(250,242,200,.9),rgba(240,220,145,.7))',
+      tintNeutral: d
+        ? 'linear-gradient(160deg,rgba(255,255,255,.1),rgba(255,255,255,.045))'
+        : 'linear-gradient(160deg,rgba(238,235,228,.92),rgba(220,214,202,.75))',
+      stripe: d
+        ? 'repeating-linear-gradient(45deg,rgba(255,255,255,.14),rgba(255,255,255,.14) 5px,rgba(255,255,255,.06) 5px,rgba(255,255,255,.06) 10px)'
+        : 'repeating-linear-gradient(45deg,rgba(255,255,255,.65),rgba(255,255,255,.65) 5px,rgba(255,255,255,.35) 5px,rgba(255,255,255,.35) 10px)',
+      stripeFlat: d
+        ? 'repeating-linear-gradient(45deg,#26271f,#26271f 4px,#2e2f27 4px,#2e2f27 8px)'
+        : 'repeating-linear-gradient(45deg,#ececea,#ececea 4px,#f6f6f4 4px,#f6f6f4 8px)',
+      pill: d ? 'rgba(8,10,7,.6)' : 'rgba(255,255,255,.87)',
+      ink: d ? '#f2f1ea' : '#161616',
+      sub: d ? '#9d9c93' : '#6b6b6b',
+      onTint: d ? 'rgba(240,240,228,.72)' : '#4c5c50',
+      hair: d ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)',
+      cta: d ? '#f2f1ea' : '#161616',
+      ctaInk: d ? '#161616' : '#fff',
+      green: d ? '#84d5a4' : '#2f7a4d',
+      greenSoft: d ? 'rgba(132,213,164,.16)' : 'rgba(47,122,77,.12)',
+      amber: d ? '#e6bd5e' : '#96721c',
+      toggleTrack: d ? '#84d5a4' : 'rgba(0,0,0,.12)',
+      toggleAlign: d ? 'flex-end' : 'flex-start',
+      toggleKnob: d ? '#12130f' : '#fff',
+      stepOff: d ? 'rgba(255,255,255,.18)' : 'rgba(0,0,0,.14)'
+    };
+  }
+}
+</script>
+</body>
+</html>

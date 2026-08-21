@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700&amp;family=Frank+Ruhl+Libre:wght@500;600;700&amp;display=swap">
+<style>body{margin:0;background:#f0eee9;font-family:Assistant,system-ui,sans-serif}a{color:#2a2a2a}a:hover{color:#000}.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}.dv-tname{font:600 13px/1.2 Assistant,sans-serif;color:#1a1a1a}.dv-sub{margin:0 0 22px;font:12px/1.6 Assistant,sans-serif;color:rgba(0,0,0,.55);max-width:760px}.dv-row-label{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;color:rgba(0,0,0,.45);margin:30px 0 14px}.dv-opts{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11.5px/1.3 Assistant,sans-serif;color:rgba(0,0,0,.6);max-width:390px}.dv-opt:target .dv-oid{background:#2a78d6;color:#fff}.dv-next{margin:26px 0 0;font:12px/1.5 Assistant,sans-serif;color:rgba(0,0,0,.5)}</style>
+</helmet>
+<section class="dv-turn" id="t3">
+<div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">Full flow in the 2a language — food-tinted gradients, glass circles, tinted cards</span></div>
+<p class="dv-sub">Every screen rebuilt on <a class="dv-oid" href="#2a">2a</a>: fresh food-tinted background (lime / mint / peach radials), 42px glass circle buttons, pill search, category-tinted cards with corner action circles, white verdict pills. Kashrut layer unchanged: verdict is binary + evidence-backed, Fit never blended with it. <a class="dv-oid" href="#3e">3e</a> is the winning search as-is.</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="3a"><div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a>Home — tinted list cards, verdict pill + certifier evidence</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="390px,844px">
+<div dir="rtl" style="height:100%;display:flex;flex-direction:column;background:{{ bg }};color:{{ ink }};font-family:Assistant,sans-serif">
+<div style="padding:64px 20px 0;display:flex;align-items:center;gap:12px">
+<span style="width:42px;height:42px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg></span>
+<div style="flex:1"><div style="font-size:11.5px;color:{{ sub }}">המיקום שלך</div><div style="font-weight:700;font-size:15.5px">ירושלים · בית וגן</div></div>
+<span style="width:42px;height:42px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg></span>
+</div>
+<div style="padding:16px 20px 0"><div style="font:700 22px/1.25 Assistant,sans-serif">23 מסעדות מתאימות לך</div><div style="font-size:12.5px;color:{{ sub }};margin-top:2px">לפי הפרופיל שלך · 14 פתוחות עכשיו</div></div>
+<div style="display:flex;gap:18px;padding:14px 20px 4px;overflow:hidden;white-space:nowrap">
+<span style="font-size:13.5px;font-weight:700;border-bottom:2.5px solid {{ ink }};padding-bottom:6px">הכל</span>
+<span style="font-size:13.5px;color:{{ sub }};padding-bottom:6px">פתוח עכשיו</span>
+<span style="font-size:13.5px;color:{{ sub }};padding-bottom:6px">בשרי</span>
+<span style="font-size:13.5px;color:{{ sub }};padding-bottom:6px">חלבי</span>
+<span style="font-size:13.5px;color:{{ sub }};padding-bottom:6px">מפה</span>
+</div>
+<div style="flex:1;overflow:hidden;padding:10px 20px 0;display:flex;flex-direction:column;gap:12px">
+<div style="position:relative;border-radius:22px;padding:14px 16px 14px 96px;overflow:hidden;background:{{ tintDairy }};border:1px solid {{ glassLine }}">
+<span style="position:absolute;top:50%;transform:translateY(-50%);left:-20px;width:104px;height:104px;border-radius:99px;background:{{ stripe }};display:flex;align-items:center;justify-content:center;font:9px ui-monospace,Menlo,monospace;color:{{ sub }}">צילום מנה</span>
+<div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="font-weight:700;font-size:16px">נוגטין</div><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#161616" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></div>
+<div style="font-size:11.5px;color:{{ onTint }}">מסעדה חלבית · עוזיאל 28 · 400 מ׳ · עד 23:00</div>
+<div style="display:flex;align-items:center;gap:8px;margin-top:10px"><span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap;background:{{ pill }};color:{{ green }}">✓ מתאים לך</span><span style="font-size:10.5px;color:{{ onTint }}">רובין · ברשימה שלך</span><span style="margin-inline-start:auto;width:30px;height:30px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg></span></div>
+</div>
+<div style="position:relative;border-radius:22px;padding:14px 16px 14px 96px;overflow:hidden;background:{{ tintMeat }};border:1px solid {{ glassLine }}">
+<span style="position:absolute;top:50%;transform:translateY(-50%);left:-20px;width:104px;height:104px;border-radius:99px;background:{{ stripe }};display:flex;align-items:center;justify-content:center;font:9px ui-monospace,Menlo,monospace;color:{{ sub }}">צילום מנה</span>
+<div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="font-weight:700;font-size:16px">מזנון הפסגה</div><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#161616" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></div>
+<div style="font-size:11.5px;color:{{ onTint }}">בשרי · הפסגה 23 · 650 מ׳ · עד 22:30</div>
+<div style="display:flex;align-items:center;gap:8px;margin-top:10px"><span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap;background:{{ pill }};color:{{ green }}">✓ מתאים לך</span><span style="font-size:10.5px;color:{{ onTint }}">רובין · ברשימה שלך</span><span style="margin-inline-start:auto;width:30px;height:30px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg></span></div>
+</div>
+<div style="position:relative;border-radius:22px;padding:14px 16px 14px 96px;overflow:hidden;background:{{ tintSweet }};border:1px solid {{ glassLine }}">
+<span style="position:absolute;top:50%;transform:translateY(-50%);left:-20px;width:104px;height:104px;border-radius:99px;background:{{ stripe }};display:flex;align-items:center;justify-content:center;font:9px ui-monospace,Menlo,monospace;color:{{ sub }}">צילום מנה</span>
+<div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="font-weight:700;font-size:16px">קצפת</div><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#161616" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></div>
+<div style="font-size:11.5px;color:{{ onTint }}">גלידריה · שד׳ הרצל 102 · 1.2 ק״מ · עד 23:30</div>
+<div style="display:flex;align-items:center;gap:8px;margin-top:10px"><span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap;background:{{ pill }};color:{{ green }}">✓ מתאים לך</span><span style="font-size:10.5px;color:{{ onTint }}">רובין · חלב ישראל</span><span style="margin-inline-start:auto;width:30px;height:30px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg></span></div>
+</div>
+<div style="position:relative;border-radius:22px;padding:14px 16px 14px 96px;overflow:hidden;background:{{ tintNeutral }};border:1px solid {{ glassLine }}">
+<span style="position:absolute;top:50%;transform:translateY(-50%);left:-20px;width:104px;height:104px;border-radius:99px;background:{{ stripe }};display:flex;align-items:center;justify-content:center;font:9px ui-monospace,Menlo,monospace;color:{{ sub }}">צילום מנה</span>
+<div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="font-weight:700;font-size:16px">סושי בית וגן</div><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#161616" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></div>
+<div style="font-size:11.5px;color:{{ sub }}">סושי · הפסגה 37 · 700 מ׳</div>
+<div style="display:flex;align-items:center;gap:8px;margin-top:10px"><span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap;background:{{ pill }};color:{{ amber }}">? לא מאומת</span><span style="font-size:10.5px;color:{{ sub }}">ממתין לאימות תעודה</span><span style="margin-inline-start:auto;width:30px;height:30px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg></span></div>
+</div>
+</div>
+<div style="display:flex;margin:10px 24px 16px;background:{{ glass }};backdrop-filter:blur(20px);border:1px solid {{ glassLine }};border-radius:99px;padding:9px 10px;box-shadow:0 8px 28px rgba(0,0,0,.14)">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ ink }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg><span style="font-size:10.5px;font-weight:600">בית</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ sub }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><span style="font-size:10.5px">חיפוש</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ sub }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg><span style="font-size:10.5px">שמורים</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ sub }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span style="font-size:10.5px">פרופיל</span></div>
+</div>
+</div>
+</x-import></div>
+
+<div class="dv-opt" id="3b"><div class="dv-olabel"><a class="dv-oid" href="#3b">3b</a>Onboarding step 2 — presets on glass</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="390px,844px">
+<div dir="rtl" style="height:100%;display:flex;flex-direction:column;background:{{ bg }};color:{{ ink }};font-family:Assistant,sans-serif;padding:72px 24px 28px;box-sizing:border-box">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:26px"><div style="display:flex;gap:5px"><span style="width:18px;height:4px;border-radius:2px;background:{{ ink }}"></span><span style="width:18px;height:4px;border-radius:2px;background:{{ ink }}"></span><span style="width:18px;height:4px;border-radius:2px;background:{{ stepOff }}"></span><span style="width:18px;height:4px;border-radius:2px;background:{{ stepOff }}"></span></div><span style="font-size:13px;color:{{ sub }}">דילוג</span></div>
+<div style="font:700 30px/1.25 Assistant,sans-serif;margin-bottom:6px">איך אתם אוכלים?</div>
+<div style="font-size:14px;color:{{ sub }};margin-bottom:22px;line-height:1.5">מגדירים פעם אחת — ומעכשיו כל מסעדה נבדקת לפי הסטנדרט שלכם. אפשר לדייק בהמשך.</div>
+<div style="display:flex;flex-direction:column;gap:10px;flex:1">
+<div style="border:1px solid {{ glassLine }};border-radius:18px;padding:14px 16px;background:{{ glass }};backdrop-filter:blur(14px)"><div style="font-weight:700;font-size:15.5px">כל תעודת כשרות</div><div style="font-size:12.5px;color:{{ sub }}">כל מסעדה עם תעודה בתוקף</div></div>
+<div style="border:1px solid {{ glassLine }};border-radius:18px;padding:14px 16px;background:{{ glass }};backdrop-filter:blur(14px)"><div style="font-weight:700;font-size:15.5px">רבנות מקומית</div><div style="font-size:12.5px;color:{{ sub }}">רבנות בכל רמה, כולל רגילה</div></div>
+<div style="border:1px solid {{ glassLine }};border-radius:18px;padding:14px 16px;background:{{ glass }};backdrop-filter:blur(14px)"><div style="font-weight:700;font-size:15.5px">רבנות מהדרין ומעלה</div><div style="font-size:12.5px;color:{{ sub }}">מהדרין של הרבנות + כל הבד״צים</div></div>
+<div style="border:2px solid #161616;border-radius:18px;padding:14px 16px;background:{{ tintDairy }};display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:700;font-size:15.5px">בד״צים נבחרים בלבד</div><div style="font-size:12.5px;color:{{ onTint }}">בוחרים בדיוק אילו גופי כשרות</div></div><span style="width:26px;height:26px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span></div>
+<div style="border:1px solid {{ glassLine }};border-radius:18px;padding:14px 16px;background:{{ glass }};backdrop-filter:blur(14px)"><div style="font-weight:700;font-size:15.5px">מותאם אישית</div><div style="font-size:12.5px;color:{{ sub }}">רשימה מלאה + דרישות מיוחדות</div></div>
+</div>
+<div style="margin-top:18px;background:{{ cta }};color:{{ ctaInk }};border-radius:99px;padding:16px;text-align:center;font-weight:700;font-size:15.5px">המשך</div>
+<div style="margin-top:12px;font-size:11.5px;color:{{ sub }};text-align:center;line-height:1.5">האפליקציה לא פוסקת הלכה — אתם בוחרים, אנחנו מציגים עובדות ומקורות.</div>
+</div>
+</x-import></div>
+
+<div class="dv-opt" id="3c"><div class="dv-olabel"><a class="dv-oid" href="#3c">3c</a>Onboarding step 3 — whitelist + requirements</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="390px,844px">
+<div dir="rtl" style="height:100%;display:flex;flex-direction:column;background:{{ bg }};color:{{ ink }};font-family:Assistant,sans-serif;padding:72px 24px 28px;box-sizing:border-box">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px"><div style="display:flex;gap:5px"><span style="width:18px;height:4px;border-radius:2px;background:{{ ink }}"></span><span style="width:18px;height:4px;border-radius:2px;background:{{ ink }}"></span><span style="width:18px;height:4px;border-radius:2px;background:{{ ink }}"></span><span style="width:18px;height:4px;border-radius:2px;background:{{ stepOff }}"></span></div><span style="font-size:13px;color:{{ sub }}">דילוג</span></div>
+<div style="font:700 26px/1.25 Assistant,sans-serif;margin-bottom:16px">אילו בד״צים?</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px;overflow:hidden">
+<div style="background:{{ tintDairy }};border:1px solid {{ glassLine }};border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px"><span style="width:22px;height:22px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span><div style="flex:1"><div style="font-weight:700;font-size:14.5px">בד״ץ העדה החרדית</div></div><span style="width:30px;height:30px;border-radius:99px;background:{{ stripe }};flex:none"></span></div>
+<div style="background:{{ tintDairy }};border:1px solid {{ glassLine }};border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px"><span style="width:22px;height:22px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span><div style="flex:1"><div style="font-weight:700;font-size:14.5px">בד״ץ מהדרין — הרב רובין</div></div><span style="width:30px;height:30px;border-radius:99px;background:{{ stripe }};flex:none"></span></div>
+<div style="background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px"><span style="width:22px;height:22px;border-radius:99px;border:1.5px solid {{ hair }};flex:none"></span><div style="flex:1"><div style="font-weight:700;font-size:14.5px;color:{{ sub }}">בד״ץ לנדא — בני ברק</div></div><span style="width:30px;height:30px;border-radius:99px;background:{{ stripeFlat }};flex:none"></span></div>
+<div style="background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px"><span style="width:22px;height:22px;border-radius:99px;border:1.5px solid {{ hair }};flex:none"></span><div style="flex:1"><div style="font-weight:700;font-size:14.5px;color:{{ sub }}">רבנות בני ברק — רבני העיר</div></div><span style="width:30px;height:30px;border-radius:99px;background:{{ stripeFlat }};flex:none"></span></div>
+<div style="font-size:12px;color:{{ sub }};padding:2px 2px 0">עוד 12 גופי כשרות ›</div>
+<div style="font:700 16px Assistant,sans-serif;margin-top:14px">דרישות נוספות</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<span style="font-size:13px;padding:7px 14px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};font-weight:600">חלב ישראל ✓</span>
+<span style="font-size:13px;padding:7px 14px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};font-weight:600">פת ישראל ✓</span>
+<span style="font-size:13px;padding:7px 14px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};color:{{ sub }}">גלאט</span>
+<span style="font-size:13px;padding:7px 14px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};color:{{ sub }}">בישול ישראל</span>
+<span style="font-size:13px;padding:7px 14px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};color:{{ sub }}">ישן</span>
+</div>
+</div>
+<div style="margin-top:16px;background:{{ cta }};color:{{ ctaInk }};border-radius:99px;padding:16px;text-align:center;font-weight:700;font-size:15.5px">סיום — הצגת התאמות</div>
+</x-import></div>
+
+<div class="dv-opt" id="3d"><div class="dv-olabel"><a class="dv-oid" href="#3d">3d</a>Restaurant — tinted hero, glass verdict panel</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="390px,844px">
+<div dir="rtl" style="height:100%;display:flex;flex-direction:column;background:{{ bg }};color:{{ ink }};font-family:Assistant,sans-serif">
+<div style="padding:64px 20px 0;display:flex;align-items:center;justify-content:space-between">
+<span style="width:42px;height:42px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg></span>
+<div style="display:flex;gap:8px">
+<span style="width:42px;height:42px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" x2="12" y1="2" y2="15"></line></svg></span>
+<span style="width:42px;height:42px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></span>
+</div>
+</div>
+<div style="flex:1;overflow:hidden;padding:12px 20px 10px;display:flex;flex-direction:column;gap:12px">
+<div style="position:relative;border-radius:26px;height:150px;overflow:hidden;background:{{ tintDairy }};border:1px solid {{ glassLine }}">
+<span style="position:absolute;bottom:-34px;left:-24px;width:180px;height:180px;border-radius:99px;background:{{ stripe }};display:flex;align-items:center;justify-content:center;font:9px ui-monospace,Menlo,monospace;color:{{ sub }}">צילום מנה</span>
+<span style="position:absolute;top:14px;right:14px;font-size:11px;font-weight:700;padding:4px 11px;border-radius:99px;background:{{ pill }};color:{{ green }}">✓ מתאים לפרופיל שלך</span>
+</div>
+<div>
+<div style="font:700 28px Assistant,sans-serif">נוגטין</div>
+<div style="font-size:13px;color:{{ sub }};margin-top:2px">מסעדה חלבית · עוזיאל 28, בית וגן, ירושלים · ₪₪ · <span style="color:{{ green }};font-weight:600">פתוח עד 23:00</span></div>
+</div>
+<div style="background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};border-radius:22px;padding:14px 16px">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="width:24px;height:24px;border-radius:99px;background:{{ green }};color:#fff;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span><span style="font:700 16px Assistant,sans-serif;color:{{ green }}">למה זה מתאים לך</span></div>
+<div style="display:flex;flex-direction:column;gap:5px;font-size:13px;color:{{ onTint }}">
+<span>✓ בד״ץ מהדרין (רובין) — ברשימה שלך</span>
+<span>✓ חלב ישראל · ✓ פת ישראל</span>
+<span>✓ תעודה בתוקף עד 30/09/26 · אומתה לפני 6 ימים</span>
+</div>
+</div>
+<div style="background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};border-radius:22px;padding:14px 16px;display:flex;gap:14px">
+<div style="width:76px;height:98px;border-radius:12px;flex:none;background:{{ stripeFlat }};display:flex;align-items:center;justify-content:center"><span style="font:9px ui-monospace,Menlo,monospace;color:{{ sub }};text-align:center">צילום<br>תעודה</span></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:{{ sub }}">
+<div style="font:700 15px Assistant,sans-serif;color:{{ ink }}">תעודת הכשר</div>
+<span>בד״ץ מהדרין — הרב רובין</span>
+<span>בתוקף עד 30/09/26 · אומת ע״י מנהל תוכן</span>
+<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:{{ greenSoft }};color:{{ green }};width:fit-content">אומת לפני 6 ימים</span>
+</div>
+</div>
+<div style="background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};border-radius:22px;padding:13px 16px;display:flex;flex-direction:column;gap:5px;font-size:12.5px">
+<div style="display:flex;justify-content:space-between;color:{{ sub }}"><span>שישי (ערב שבת)</span><span>8:00–13:30 · סגירה מוקדמת</span></div>
+<div style="display:flex;justify-content:space-between;color:{{ sub }}"><span>מוצ״ש</span><span>שעה לאחר צאת השבת</span></div>
+</div>
+<div style="display:flex;gap:10px;align-items:center">
+<span style="flex:1;background:{{ cta }};color:{{ ctaInk }};border-radius:99px;padding:14px;text-align:center;font-weight:700;font-size:14px">ניווט</span>
+<span style="width:48px;height:48px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path></svg></span>
+<span style="width:48px;height:48px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg></span>
+</div>
+<div style="text-align:center;font-size:12px;color:{{ sub }}">משהו לא מדויק? דיווח על עסק ›</div>
+</div>
+</div>
+</x-import></div>
+
+<div class="dv-opt" id="3e"><div class="dv-olabel"><a class="dv-oid" href="#3e">3e</a>Search — the 2a winner, unchanged</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="390px,844px">
+<div dir="rtl" style="height:100%;display:flex;flex-direction:column;background:{{ bg }};color:{{ ink }};font-family:Assistant,sans-serif">
+<div style="padding:64px 20px 0;display:flex;align-items:center;gap:12px">
+<span style="width:42px;height:42px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg></span>
+<div style="flex:1"><div style="font-size:11.5px;color:{{ sub }}">מחפשים ליד</div><div style="font-weight:700;font-size:15.5px">ירושלים · בית וגן</div></div>
+<span style="width:42px;height:42px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg></span>
+</div>
+<div style="margin:14px 20px 0;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};border-radius:99px;padding:13px 16px;display:flex;align-items:center;gap:10px">
+<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#8a8a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+<span style="flex:1;font-size:14px;color:{{ sub }}">חיפוש מקום, עיר או מסעדה…</span>
+<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#161616" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg>
+</div>
+<div style="display:flex;gap:18px;padding:16px 20px 4px;overflow:hidden;white-space:nowrap">
+<span style="font-size:13.5px;font-weight:700;border-bottom:2.5px solid {{ ink }};padding-bottom:6px">הכל</span>
+<span style="font-size:13.5px;color:{{ sub }};padding-bottom:6px">בשרי</span>
+<span style="font-size:13.5px;color:{{ sub }};padding-bottom:6px">חלבי</span>
+<span style="font-size:13.5px;color:{{ sub }};padding-bottom:6px">מאפיות</span>
+<span style="font-size:13.5px;color:{{ sub }};padding-bottom:6px">גלידה</span>
+<span style="font-size:13.5px;color:{{ sub }};padding-bottom:6px">בתי קפה</span>
+</div>
+<div style="flex:1;overflow:hidden;padding:10px 20px 0;display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start">
+<div style="position:relative;border-radius:22px;padding:14px;height:198px;overflow:hidden;background:{{ tintDairy }};border:1px solid {{ glassLine }}">
+<div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-weight:700;font-size:15px">נוגטין</div><div style="font-size:11px;color:{{ onTint }};white-space:nowrap">מסעדה חלבית · 400 מ׳</div></div><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#161616" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></div>
+<span style="position:absolute;bottom:-16px;left:-14px;width:112px;height:112px;border-radius:99px;background:{{ stripe }};display:flex;align-items:center;justify-content:center;font:9px ui-monospace,Menlo,monospace;color:{{ sub }}">צילום מנה</span>
+<span style="position:absolute;bottom:14px;right:14px;width:32px;height:32px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg></span>
+<span style="position:absolute;bottom:52px;right:14px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap;background:{{ pill }};color:{{ green }}">✓ מתאים לך</span>
+</div>
+<div style="position:relative;border-radius:22px;padding:14px;height:198px;overflow:hidden;background:{{ tintMeat }};border:1px solid {{ glassLine }}">
+<div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-weight:700;font-size:15px">בורגר ביט</div><div style="font-size:11px;color:{{ onTint }};white-space:nowrap">בשרי · 1.4 ק״מ</div></div><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#161616" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></div>
+<span style="position:absolute;bottom:-16px;left:-14px;width:112px;height:112px;border-radius:99px;background:{{ stripe }};display:flex;align-items:center;justify-content:center;font:9px ui-monospace,Menlo,monospace;color:{{ sub }}">צילום מנה</span>
+<span style="position:absolute;bottom:14px;right:14px;width:32px;height:32px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg></span>
+<span style="position:absolute;bottom:52px;right:14px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap;background:{{ pill }};color:{{ green }}">✓ מתאים לך</span>
+</div>
+<div style="position:relative;border-radius:22px;padding:14px;height:198px;overflow:hidden;background:{{ tintSweet }};border:1px solid {{ glassLine }}">
+<div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-weight:700;font-size:15px">קצפת</div><div style="font-size:11px;color:{{ onTint }};white-space:nowrap">גלידריה · 1.2 ק״מ</div></div><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#161616" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></div>
+<span style="position:absolute;bottom:-16px;left:-14px;width:112px;height:112px;border-radius:99px;background:{{ stripe }};display:flex;align-items:center;justify-content:center;font:9px ui-monospace,Menlo,monospace;color:{{ sub }}">צילום מנה</span>
+<span style="position:absolute;bottom:14px;right:14px;width:32px;height:32px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg></span>
+<span style="position:absolute;bottom:52px;right:14px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap;background:{{ pill }};color:{{ green }}">✓ מתאים לך</span>
+</div>
+<div style="position:relative;border-radius:22px;padding:14px;height:198px;overflow:hidden;background:{{ tintNeutral }};border:1px solid {{ glassLine }}">
+<div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-weight:700;font-size:15px">סושי בית וגן</div><div style="font-size:11px;color:{{ sub }};white-space:nowrap">סושי · 700 מ׳</div></div><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#161616" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></div>
+<span style="position:absolute;bottom:-16px;left:-14px;width:112px;height:112px;border-radius:99px;background:{{ stripe }};display:flex;align-items:center;justify-content:center;font:9px ui-monospace,Menlo,monospace;color:{{ sub }}">צילום מנה</span>
+<span style="position:absolute;bottom:14px;right:14px;width:32px;height:32px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg></span>
+<span style="position:absolute;bottom:52px;right:14px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap;background:{{ pill }};color:{{ amber }}">? לא מאומת</span>
+</div>
+</div>
+<div style="display:flex;margin:10px 24px 16px;background:{{ glass }};backdrop-filter:blur(20px);border:1px solid {{ glassLine }};border-radius:99px;padding:9px 10px;box-shadow:0 8px 28px rgba(0,0,0,.14)">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ sub }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg><span style="font-size:10.5px">בית</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ ink }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><span style="font-size:10.5px;font-weight:600">חיפוש</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ sub }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg><span style="font-size:10.5px">שמורים</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ sub }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span style="font-size:10.5px">פרופיל</span></div>
+</div>
+</div>
+</x-import></div>
+
+<div class="dv-opt" id="3f"><div class="dv-olabel"><a class="dv-oid" href="#3f">3f</a>Saved lists — tinted covers, offline chips</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="390px,844px">
+<div dir="rtl" style="height:100%;display:flex;flex-direction:column;background:{{ bg }};color:{{ ink }};font-family:Assistant,sans-serif">
+<div style="padding:64px 20px 0;display:flex;align-items:center;gap:12px">
+<div style="flex:1"><div style="font:700 24px Assistant,sans-serif">שמורים</div></div>
+<span style="width:42px;height:42px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span>
+</div>
+<div style="flex:1;overflow:hidden;padding:14px 20px 0;display:flex;flex-direction:column;gap:12px">
+<div style="background:{{ tintSweet }};border:1px solid {{ glassLine }};border-radius:22px;padding:13px 15px;display:flex;gap:10px;align-items:flex-start"><span style="flex:none;color:{{ amber }};padding-top:1px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg></span><div style="flex:1"><div style="font-size:13px;font-weight:700;color:{{ amber }}">עדכון כשרות ברשימה ״טיול צפון״</div><div style="font-size:12.5px;color:{{ onTint }};line-height:1.45">התעודה של ״מסעדת האגם״ (טבריה) פגה ב־14/08 — הסטטוס ירד ל״לא מאומת״ עד לחידוש.</div></div></div>
+<div style="position:relative;border-radius:22px;padding:14px 16px 14px 96px;overflow:hidden;background:{{ tintDairy }};border:1px solid {{ glassLine }}">
+<span style="position:absolute;top:50%;transform:translateY(-50%);left:-20px;width:104px;height:104px;border-radius:99px;background:{{ stripe }};display:flex;align-items:center;justify-content:center;font:9px ui-monospace,Menlo,monospace;color:{{ sub }}">תמונת רשימה</span>
+<div style="font-weight:700;font-size:16px">טיול צפון — חוה״מ סוכות</div>
+<div style="font-size:11.5px;color:{{ onTint }}">12 מקומות · טבריה, צפת, מירון</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:10px"><span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:{{ pill }};color:{{ green }}">11 מתאימים</span><span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:{{ pill }};color:{{ sub }}">זמין אופליין</span><span style="margin-inline-start:auto;width:30px;height:30px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg></span></div>
+</div>
+<div style="position:relative;border-radius:22px;padding:14px 16px 14px 96px;overflow:hidden;background:{{ tintMeat }};border:1px solid {{ glassLine }}">
+<span style="position:absolute;top:50%;transform:translateY(-50%);left:-20px;width:104px;height:104px;border-radius:99px;background:{{ stripe }};display:flex;align-items:center;justify-content:center;font:9px ui-monospace,Menlo,monospace;color:{{ sub }}">תמונת רשימה</span>
+<div style="font-weight:700;font-size:16px">ערבי דייט</div>
+<div style="font-size:11.5px;color:{{ onTint }}">5 מקומות · ירושלים</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:10px"><span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:{{ pill }};color:{{ green }}">5 מתאימים</span><span style="margin-inline-start:auto;width:30px;height:30px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg></span></div>
+</div>
+<div style="position:relative;border-radius:22px;padding:14px 16px 14px 96px;overflow:hidden;background:{{ tintNeutral }};border:1px solid {{ glassLine }}">
+<span style="position:absolute;top:50%;transform:translateY(-50%);left:-20px;width:104px;height:104px;border-radius:99px;background:{{ stripe }};display:flex;align-items:center;justify-content:center;font:9px ui-monospace,Menlo,monospace;color:{{ sub }}">תמונת רשימה</span>
+<div style="font-weight:700;font-size:16px">ליד העבודה</div>
+<div style="font-size:11.5px;color:{{ sub }}">8 מקומות · בני ברק</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:10px"><span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:{{ pill }};color:{{ green }}">7 מתאימים</span><span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:{{ pill }};color:{{ amber }}">1 לא מאומת</span><span style="margin-inline-start:auto;width:30px;height:30px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg></span></div>
+</div>
+<div style="font-size:12px;color:{{ sub }};text-align:center;padding-top:2px;line-height:1.5">רשימות נשמרות למכשיר וזמינות ללא קליטה.<br>שיתוף רשימה יוצר קישור לצפייה בלבד.</div>
+</div>
+<div style="display:flex;margin:10px 24px 16px;background:{{ glass }};backdrop-filter:blur(20px);border:1px solid {{ glassLine }};border-radius:99px;padding:9px 10px;box-shadow:0 8px 28px rgba(0,0,0,.14)">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ sub }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg><span style="font-size:10.5px">בית</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ sub }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><span style="font-size:10.5px">חיפוש</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ ink }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg><span style="font-size:10.5px;font-weight:600">שמורים</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ sub }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span style="font-size:10.5px">פרופיל</span></div>
+</div>
+</div>
+</x-import></div>
+
+<div class="dv-opt" id="3g"><div class="dv-olabel"><a class="dv-oid" href="#3g">3g</a>Map — glass toggle, tinted carousel card</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="390px,844px">
+<div dir="rtl" style="height:100%;display:flex;flex-direction:column;background:{{ mapBg }};color:{{ ink }};font-family:Assistant,sans-serif;position:relative">
+<div style="position:absolute;inset:0;background:{{ mapGrid }};display:flex;align-items:center;justify-content:center"><span style="font:11px ui-monospace,Menlo,monospace;color:{{ sub }}">map — Jerusalem · Bayit VeGan</span></div>
+<div style="position:absolute;top:64px;right:20px;left:20px;display:flex;align-items:center;justify-content:space-between">
+<span style="width:42px;height:42px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg></span>
+<span style="background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};border-radius:99px;padding:5px 4px;display:flex;gap:2px;font-size:12.5px;box-shadow:0 2px 8px rgba(0,0,0,.08)"><span style="padding:5px 16px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }};font-weight:600">מפה</span><span style="padding:5px 16px;border-radius:99px;color:{{ sub }}">רשימה</span></span>
+<span style="width:42px;height:42px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></span>
+</div>
+<span style="position:absolute;top:210px;right:80px;width:26px;height:26px;border-radius:99px;background:{{ green }};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;color:#fff"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+<span style="position:absolute;top:270px;right:170px;width:26px;height:26px;border-radius:99px;background:{{ green }};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;color:#fff"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+<span style="position:absolute;top:340px;right:110px;width:34px;height:34px;border-radius:99px;background:#161616;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;color:#fff"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+<span style="position:absolute;top:240px;left:70px;width:26px;height:26px;border-radius:99px;background:#c9a94e;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px">?</span>
+<span style="position:absolute;top:390px;left:110px;width:20px;height:20px;border-radius:99px;background:#b7b7b4;border:2px solid #fff;opacity:.8"></span>
+<span style="position:absolute;top:160px;left:150px;width:20px;height:20px;border-radius:99px;background:#b7b7b4;border:2px solid #fff;opacity:.8"></span>
+<div style="position:absolute;bottom:26px;right:0;left:0;padding:0 20px">
+<div style="position:relative;border-radius:22px;padding:14px 16px 14px 96px;overflow:hidden;background:{{ tintDairy }};border:1px solid {{ glassLine }};box-shadow:0 6px 24px rgba(0,0,0,.14)">
+<span style="position:absolute;top:50%;transform:translateY(-50%);left:-20px;width:104px;height:104px;border-radius:99px;background:{{ stripe }};display:flex;align-items:center;justify-content:center;font:9px ui-monospace,Menlo,monospace;color:{{ sub }}">צילום מנה</span>
+<div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="font-weight:700;font-size:16px">נוגטין</div><span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:{{ pill }};color:{{ green }}">✓ מתאים לך</span></div>
+<div style="font-size:11.5px;color:{{ onTint }}">מסעדה חלבית · רובין · 400 מ׳ · עד 23:00</div>
+<div style="display:flex;align-items:center;gap:8px;margin-top:10px"><span style="flex:1;background:{{ cta }};color:{{ ctaInk }};border-radius:99px;padding:9px;text-align:center;font-weight:700;font-size:13px">ניווט</span><span style="width:32px;height:32px;border-radius:99px;background:{{ pill }};color:{{ ink }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg></span></div>
+</div>
+<div style="display:flex;justify-content:center;gap:5px;margin-top:10px"><span style="width:16px;height:5px;border-radius:3px;background:{{ ink }}"></span><span style="width:5px;height:5px;border-radius:99px;background:rgba(0,0,0,.25)"></span><span style="width:5px;height:5px;border-radius:99px;background:rgba(0,0,0,.25)"></span></div>
+</div>
+</div>
+</x-import></div>
+
+<div class="dv-opt" id="3h"><div class="dv-olabel"><a class="dv-oid" href="#3h">3h</a>Profile — English UI, same language</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="390px,844px">
+<div dir="ltr" style="height:100%;display:flex;flex-direction:column;background:{{ bg }};color:{{ ink }};font-family:Assistant,sans-serif">
+<div style="padding:64px 20px 0;display:flex;align-items:center;gap:12px">
+<div style="flex:1"><div style="font:700 24px Assistant,sans-serif">Your kashrut profile</div><div style="font-size:12.5px;color:{{ sub }}">Set once — every restaurant is checked against it.</div></div>
+<span style="width:42px;height:42px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg></span>
+</div>
+<div style="flex:1;overflow:hidden;padding:14px 20px 0;display:flex;flex-direction:column;gap:12px">
+<div style="background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};border-radius:22px;padding:14px 16px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:700;font-size:14.5px">Certifiers you accept</span><span style="font-size:12px;color:{{ sub }}">Edit</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">
+<span style="font-size:12px;padding:5px 12px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }}">Badatz Eda Haredit</span>
+<span style="font-size:12px;padding:5px 12px;border-radius:99px;background:{{ cta }};color:{{ ctaInk }}">Badatz Mehadrin (Rubin)</span>
+</div>
+</div>
+<div style="background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};border-radius:22px;padding:14px 16px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:700;font-size:14.5px">Required on the certificate</span><span style="font-size:12px;color:{{ sub }}">Edit</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">
+<span style="font-size:12px;padding:5px 12px;border-radius:99px;background:{{ pill }};border:1px solid {{ hair }};color:{{ ink }}">Chalav Yisrael ✓</span>
+<span style="font-size:12px;padding:5px 12px;border-radius:99px;background:{{ pill }};border:1px solid {{ hair }};color:{{ ink }}">Pas Yisrael ✓</span>
+</div>
+</div>
+<div style="background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};border-radius:22px;padding:6px 16px">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid {{ hair }}"><span style="font-size:14px">Diet</span><span style="font-size:13px;color:{{ sub }}">Meat + Dairy</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid {{ hair }}"><span style="font-size:14px">Language</span><span style="display:flex;gap:2px;background:{{ hair }};border-radius:99px;padding:3px"><span style="font-size:12px;padding:3px 12px;border-radius:99px;color:{{ sub }}">עברית</span><span style="font-size:12px;padding:3px 12px;border-radius:99px;background:#fff;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.1)">English</span></span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid {{ hair }}"><span style="font-size:14px">Notifications</span><span style="font-size:13px;color:{{ sub }}">Saved places only</span></div>
+<div onClick="{{ toggleDark }}" style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;cursor:pointer"><div><div style="font-size:14px">Dark mode</div><div style="font-size:11.5px;color:{{ sub }}">Easier on the eyes after dark</div></div><span style="width:48px;height:28px;border-radius:99px;background:{{ toggleTrack }};border:1px solid {{ glassLine }};display:flex;align-items:center;padding:3px;box-sizing:border-box;justify-content:{{ toggleAlign }};flex:none"><span style="width:20px;height:20px;border-radius:99px;background:{{ toggleKnob }};box-shadow:0 1px 3px rgba(0,0,0,.25)"></span></span></div>
+</div>
+<div style="background:{{ tintDairy }};border:1px solid {{ glassLine }};border-radius:22px;padding:13px 16px;font-size:12px;color:{{ onTint }};line-height:1.55"><span style="font-weight:700;color:{{ ink }}">Your profile stays private.</span> It is religious personal data: encrypted, never sold, never used for ads, never shared.</div>
+<div style="font-size:12px;color:{{ sub }};text-align:center">The app never rules on halacha — you choose, we show evidence.</div>
+</div>
+<div style="display:flex;margin:10px 24px 16px;background:{{ glass }};backdrop-filter:blur(20px);border:1px solid {{ glassLine }};border-radius:99px;padding:9px 10px;box-shadow:0 8px 28px rgba(0,0,0,.14)">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ sub }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg><span style="font-size:10.5px">Home</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ sub }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><span style="font-size:10.5px">Search</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ sub }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg><span style="font-size:10.5px">Saved</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ ink }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span style="font-size:10.5px;font-weight:600">Profile</span></div>
+</div>
+</div>
+</x-import></div>
+</div>
+<p class="dv-next">Committed design system. Try next: "turn this into an interactive prototype" · "add real photos" · "swap a card tint".</p>
+</section>
+
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;dark&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Theme&quot;}}">
+class Component extends DCLogic {
+  state = { dark: null };
+  get isDark() { return this.state.dark ?? (this.props.dark ?? false); }
+  renderVals() {
+    const d = this.isDark;
+    return {
+      dark: d,
+      toggleDark: () => this.setState({ dark: !this.isDark }),
+      bg: d
+        ? 'radial-gradient(120% 60% at 80% -5%,rgba(150,190,80,.22) 0%,rgba(150,190,80,0) 55%),radial-gradient(90% 55% at 0% 30%,rgba(90,165,135,.18) 0%,rgba(90,165,135,0) 60%),radial-gradient(90% 60% at 90% 100%,rgba(210,150,90,.16) 0%,rgba(210,150,90,0) 55%),#121310'
+        : 'radial-gradient(120% 60% at 80% -5%,rgba(190,220,120,.55) 0%,rgba(190,220,120,0) 55%),radial-gradient(90% 55% at 0% 30%,rgba(160,215,190,.4) 0%,rgba(160,215,190,0) 60%),radial-gradient(90% 60% at 90% 100%,rgba(245,200,150,.35) 0%,rgba(245,200,150,0) 55%),#f4f4ef',
+      mapBg: d ? '#15160f' : '#eceae5',
+      mapGrid: d
+        ? 'repeating-linear-gradient(45deg,#1a1b16,#1a1b16 10px,#1f201a 10px,#1f201a 20px)'
+        : 'repeating-linear-gradient(45deg,#e8e6e1,#e8e6e1 10px,#efede8 10px,#efede8 20px)',
+      glass: d ? 'rgba(255,255,255,.07)' : 'rgba(255,255,255,.62)',
+      glassLine: d ? 'rgba(255,255,255,.14)' : 'rgba(255,255,255,.78)',
+      tintDairy: d
+        ? 'linear-gradient(160deg,rgba(74,124,90,.5),rgba(40,74,54,.55))'
+        : 'linear-gradient(160deg,rgba(215,240,215,.9),rgba(165,210,175,.75))',
+      tintMeat: d
+        ? 'linear-gradient(160deg,rgba(134,86,54,.5),rgba(86,50,30,.55))'
+        : 'linear-gradient(160deg,rgba(250,225,205,.9),rgba(240,185,150,.7))',
+      tintSweet: d
+        ? 'linear-gradient(160deg,rgba(132,116,46,.48),rgba(84,70,24,.55))'
+        : 'linear-gradient(160deg,rgba(250,242,200,.9),rgba(240,220,145,.7))',
+      tintNeutral: d
+        ? 'linear-gradient(160deg,rgba(255,255,255,.1),rgba(255,255,255,.045))'
+        : 'linear-gradient(160deg,rgba(238,235,228,.92),rgba(220,214,202,.75))',
+      stripe: d
+        ? 'repeating-linear-gradient(45deg,rgba(255,255,255,.14),rgba(255,255,255,.14) 5px,rgba(255,255,255,.06) 5px,rgba(255,255,255,.06) 10px)'
+        : 'repeating-linear-gradient(45deg,rgba(255,255,255,.65),rgba(255,255,255,.65) 5px,rgba(255,255,255,.35) 5px,rgba(255,255,255,.35) 10px)',
+      stripeFlat: d
+        ? 'repeating-linear-gradient(45deg,#26271f,#26271f 4px,#2e2f27 4px,#2e2f27 8px)'
+        : 'repeating-linear-gradient(45deg,#ececea,#ececea 4px,#f6f6f4 4px,#f6f6f4 8px)',
+      pill: d ? 'rgba(8,10,7,.6)' : 'rgba(255,255,255,.87)',
+      ink: d ? '#f2f1ea' : '#161616',
+      sub: d ? '#9d9c93' : '#6b6b6b',
+      onTint: d ? 'rgba(240,240,228,.72)' : '#4c5c50',
+      hair: d ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)',
+      cta: d ? '#f2f1ea' : '#161616',
+      ctaInk: d ? '#161616' : '#fff',
+      green: d ? '#84d5a4' : '#2f7a4d',
+      greenSoft: d ? 'rgba(132,213,164,.16)' : 'rgba(47,122,77,.12)',
+      amber: d ? '#e6bd5e' : '#96721c',
+      toggleTrack: d ? '#84d5a4' : 'rgba(0,0,0,.12)',
+      toggleAlign: d ? 'flex-end' : 'flex-start',
+      toggleKnob: d ? '#12130f' : '#fff',
+      stepOff: d ? 'rgba(255,255,255,.18)' : 'rgba(0,0,0,.14)'
+    };
+  }
+}
+</script>
+</body>
+</html>
