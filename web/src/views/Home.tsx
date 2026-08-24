@@ -22,6 +22,7 @@ import { useNavigate } from "react-router-dom";
 import { MAX_QUERY_LENGTH, type DietType, type SearchRequest } from "../api/types";
 import { hasVerifiedMatch } from "../api/viewmodel";
 import { BellIcon, PinIcon, SearchIcon, SlidersIcon } from "../components/icons";
+import { LocationSheet } from "../components/LocationSheet";
 import { RestaurantGridCard } from "../components/RestaurantCard";
 import {
   EmptyResults,
@@ -32,9 +33,10 @@ import {
 } from "../components/states";
 import { TabBar } from "../components/TabBar";
 import { InstallPrompt } from "../components/InstallPrompt";
-import { CITIES, PAGE_SIZE } from "../config";
+import { PAGE_SIZE } from "../config";
 import { isDefault, useFilters } from "../filters/useFilters";
 import { useCity } from "../location/useCity";
+import { useOrigin } from "../location/useOrigin";
 import { isNetworkError, useSearch } from "../hooks/useApi";
 import { useI18n } from "../i18n/I18nProvider";
 import { toPayload } from "../profile/profile";
@@ -48,25 +50,35 @@ export function Home() {
   const navigate = useNavigate();
   const { profile } = useProfile();
   const { toggle, isSaved } = useSaveToggle();
-  const { city, slug, setSlug } = useCity();
+  const { city } = useCity();
+  // Where "near me" is measured from: the device, a typed address, or this city's
+  // centre. The sheet sets it; the header only reports it.
+  const { origin, source, addressLabel } = useOrigin(city);
   // The chips and the filters screen are two views of one state, so a kitchen picked
   // in either shows as picked in the other.
   const { filters, setFilters } = useFilters();
   const filter: HomeFilter = filters.diet ?? "all";
-  const [pickingCity, setPickingCity] = useState(false);
+  const [pickingPlace, setPickingPlace] = useState(false);
   const [query, setQuery] = useState("");
 
   const setFilter = (next: HomeFilter) => setFilters({ diet: next === "all" ? null : next });
 
+  // What the header says we are searching near. The device names itself, a typed
+  // address is quoted back verbatim, and a city falls back to its area label.
+  const placeLabel =
+    source === "device"
+      ? t.map.youAreHere
+      : (addressLabel ?? (lang === "en" ? city.areaEn : city.areaHe));
+
   const request = useMemo<SearchRequest>(
     () => ({
       profile: toPayload(profile),
-      center: city.center,
+      center: origin,
       radius_km: filters.radiusKm,
       page_size: PAGE_SIZE,
       ...(filters.diet ? { filters: { diet_type: filters.diet } } : {}),
     }),
-    [profile, filters, city],
+    [profile, filters, origin],
   );
 
   const { data, loading, error, reload } = useSearch(request);
@@ -88,25 +100,23 @@ export function Home() {
         <button
           type="button"
           className="circle glass"
-          aria-label={t.home.changeCity}
-          aria-expanded={pickingCity}
-          onClick={() => setPickingCity((open) => !open)}
+          aria-label={t.home.changeLocation}
+          aria-expanded={pickingPlace}
+          onClick={() => setPickingPlace(true)}
         >
           <PinIcon />
         </button>
         <button
           type="button"
-          style={{ flex: 1, textAlign: "start" }}
-          aria-label={t.home.changeCity}
-          aria-expanded={pickingCity}
-          onClick={() => setPickingCity((open) => !open)}
+          style={{ flex: 1, textAlign: "start", minWidth: 0 }}
+          aria-label={t.home.changeLocation}
+          aria-expanded={pickingPlace}
+          onClick={() => setPickingPlace(true)}
         >
           <span style={{ display: "block", fontSize: 11.5, color: "var(--sub)" }}>
             {t.home.nearYou}
           </span>
-          <span style={{ display: "block", fontWeight: 700, fontSize: 15.5 }}>
-            {lang === "en" ? city.areaEn : city.areaHe}
-          </span>
+          <span className="header__place">{placeLabel}</span>
         </button>
         <span className="circle glass" aria-hidden="true">
           <BellIcon />
@@ -153,25 +163,6 @@ export function Home() {
           <SlidersIcon size={17} />
         </button>
       </form>
-
-      {pickingCity && (
-        <div className="chips" role="group" aria-label={t.home.changeCity}>
-          {CITIES.map((option) => (
-            <button
-              key={option.slug}
-              type="button"
-              className="chip"
-              aria-pressed={option.slug === slug}
-              onClick={() => {
-                setSlug(option.slug);
-                setPickingCity(false);
-              }}
-            >
-              {lang === "en" ? option.en : option.he}
-            </button>
-          ))}
-        </div>
-      )}
 
       {/*
         The page heading. The comp draws no headline — the search field takes that
@@ -236,6 +227,7 @@ export function Home() {
         )}
       </div>
 
+      {pickingPlace && <LocationSheet onClose={() => setPickingPlace(false)} />}
       <InstallPrompt />
       <TabBar />
     </div>
