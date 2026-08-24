@@ -17,7 +17,7 @@ export function Login({ message, onSubmit }: LoginProps) {
     event.preventDefault();
     const trimmed = token.trim();
     if (!trimmed) {
-      setValidation("Enter your moderator API token.");
+      setValidation("יש להזין את טוקן ה־API של המודרטור.");
       return;
     }
     setTokenValue("");
@@ -27,15 +27,15 @@ export function Login({ message, onSubmit }: LoginProps) {
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={handleSubmit}>
-        <h1>Kashroot Moderation Console</h1>
-        <p className="muted">Internal tool. Sign in with your moderator API token.</p>
+        <h1>קונסולת המודרציה של כשרות</h1>
+        <p className="muted">כלי פנימי. יש להתחבר עם טוקן ה־API של המודרטור.</p>
         {message && (
           <p className="field-error" role="alert">
             {message}
           </p>
         )}
         <label className="note-label">
-          Moderator API token
+          טוקן API של מודרטור
           <input
             type="password"
             autoComplete="off"
@@ -45,7 +45,7 @@ export function Login({ message, onSubmit }: LoginProps) {
           />
         </label>
         {validation && <p className="field-error">{validation}</p>}
-        <button type="submit">Sign in</button>
+        <button type="submit">כניסה</button>
       </form>
     </div>
   );

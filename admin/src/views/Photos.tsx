@@ -11,10 +11,12 @@ import type {
 import { CERTIFICATE_ATTRIBUTES, SOURCE_AUTHORITY } from "../api/types";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import {
+  attributeLabel,
   CertificateSummary,
   certifierName,
   Data,
   formatDateTime,
+  Ltr,
   restaurantName,
   todayInIsrael,
 } from "../components/data";
@@ -22,6 +24,11 @@ import { CityFilter, Pager } from "../components/QueueControls";
 import { EmptyState, ErrorState, LoadingState } from "../components/states";
 import { useToast } from "../components/Toast";
 import { usePagedQuery } from "../hooks/usePagedQuery";
+import {
+  CERTIFICATE_SOURCE_LABELS,
+  CERTIFICATION_LEVEL_LABELS,
+  label,
+} from "../labels";
 
 export function Photos() {
   const [city, setCity] = useState("");
@@ -33,23 +40,23 @@ export function Photos() {
 
   return (
     <section>
-      <h2>Photos queue</h2>
+      <h2>תור התמונות</h2>
       <div className="controls">
         <CityFilter value={city} onChange={setCity} />
       </div>
       {loading && <LoadingState />}
       {!loading && error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && items.length === 0 && (
-        <EmptyState message="Queue is clear — no evidence photos awaiting review." />
+        <EmptyState message="התור נקי — אין תמונות ראיה הממתינות לבדיקה." />
       )}
       {!loading && !error && items.length > 0 && (
         <table className="data-table">
           <thead>
             <tr>
-              <th>Restaurant</th>
-              <th>Certifier</th>
-              <th>Uploaded</th>
-              <th>Evidence</th>
+              <th>מסעדה</th>
+              <th>גוף כשרות</th>
+              <th>הועלתה</th>
+              <th>ראיה</th>
             </tr>
           </thead>
           <tbody>
@@ -63,11 +70,14 @@ export function Photos() {
                   >
                     <td>{restaurantName(item.restaurant)}</td>
                     <td>
-                      <Data value={certifierName(item.certificate)} /> · {item.certificate.level}
+                      <Data value={certifierName(item.certificate)} /> ·{" "}
+                      {label(CERTIFICATION_LEVEL_LABELS, item.certificate.level)}
                     </td>
                     <td>
                       <Data value={p.uploaded_by} />
-                      <div className="muted">{formatDateTime(p.uploaded_at)}</div>
+                      <div className="muted">
+                        <Ltr value={formatDateTime(p.uploaded_at)} />
+                      </div>
                     </td>
                     <td onClick={(e) => e.stopPropagation()}>
                       <PhotoThumb photo={p} />
@@ -99,17 +109,17 @@ export function Photos() {
 
 /** Inline thumbnail for images; a labeled link for PDFs (nothing to inline). */
 function PhotoThumb({ photo }: { photo: EvidencePhotoOut }) {
-  if (!photo.view_url) return <span className="muted">no preview</span>;
+  if (!photo.view_url) return <span className="muted">אין תצוגה מקדימה</span>;
   if (photo.content_type === "application/pdf") {
     return (
       <a href={photo.view_url} target="_blank" rel="noreferrer">
-        PDF document — open
+        מסמך PDF — פתיחה
       </a>
     );
   }
   return (
     <a href={photo.view_url} target="_blank" rel="noreferrer">
-      <img className="photo-thumb" src={photo.view_url} alt="certificate evidence" />
+      <img className="photo-thumb" src={photo.view_url} alt="ראיית תעודה" />
     </a>
   );
 }
@@ -172,14 +182,14 @@ function PhotoReviewPanel({ item, onDone }: { item: PhotoQueueItem; onDone: () =
   /** Mirrors server rules: note >= 5 chars; valid_until strictly future. */
   function validate(): boolean {
     if (note.trim().length < 5) {
-      setValidation("A review note is required (at least 5 characters).");
+      setValidation("נדרשת הערת בדיקה (5 תווים לפחות).");
       return false;
     }
     if (decision === "accept" && validUntil) {
       // Civil date in Israel, matching the server's ISRAEL_TZ rule.
       const today = todayInIsrael();
       if (validUntil <= today) {
-        setValidation("Valid-until must be strictly in the future.");
+        setValidation("תאריך התוקף חייב להיות עתידי בלבד.");
         return false;
       }
     }
@@ -203,12 +213,12 @@ function PhotoReviewPanel({ item, onDone }: { item: PhotoQueueItem; onDone: () =
       });
       showToast(
         decision === "accept"
-          ? "Photo accepted — the recorded facts are written to the certificate and audited."
-          : "Photo rejected — nothing was written to the certificate. The decision is audited.",
+          ? "התמונה אושרה — הנתונים שנרשמו נכתבים לתעודה והפעולה מתועדת."
+          : "התמונה נדחתה — דבר לא נכתב לתעודה. ההחלטה מתועדת.",
       );
       onDone();
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : "Action failed unexpectedly");
+      setActionError(err instanceof ApiError ? err.message : "הפעולה נכשלה באופן בלתי צפוי");
     } finally {
       setBusy(false);
       setConfirmingAccept(false);
@@ -230,24 +240,31 @@ function PhotoReviewPanel({ item, onDone }: { item: PhotoQueueItem; onDone: () =
         {photo.view_url ? (
           photo.content_type === "application/pdf" ? (
             <a href={photo.view_url} target="_blank" rel="noreferrer">
-              PDF document — open in new tab
+              מסמך PDF — פתיחה בלשונית חדשה
             </a>
           ) : (
-            <a href={photo.view_url} target="_blank" rel="noreferrer" title="Open full size in new tab">
-              <img src={photo.view_url} alt="certificate evidence (full)" />
+            <a
+              href={photo.view_url}
+              target="_blank"
+              rel="noreferrer"
+              title="פתיחה בגודל מלא בלשונית חדשה"
+            >
+              <img src={photo.view_url} alt="ראיית תעודה (בגודל מלא)" />
             </a>
           )
         ) : (
-          <span className="muted">no preview available</span>
+          <span className="muted">אין תצוגה מקדימה זמינה</span>
         )}
         <div className="muted">
-          {photo.content_type} · {(photo.size_bytes / 1024).toFixed(0)} KB · uploaded by{" "}
-          <Data value={photo.uploaded_by} /> at {formatDateTime(photo.uploaded_at)}
+          <Ltr value={photo.content_type} /> ·{" "}
+          <Ltr value={`${(photo.size_bytes / 1024).toFixed(0)} KB`} /> · הועלתה בידי{" "}
+          <Data value={photo.uploaded_by} /> בתאריך{" "}
+          <Ltr value={formatDateTime(photo.uploaded_at)} />
         </div>
       </div>
 
       <fieldset className="decision-group">
-        <legend>Decision</legend>
+        <legend>הכרעה</legend>
         <label>
           <input
             type="radio"
@@ -255,7 +272,7 @@ function PhotoReviewPanel({ item, onDone }: { item: PhotoQueueItem; onDone: () =
             checked={decision === "accept"}
             onChange={() => selectDecision("accept")}
           />{" "}
-          Accept — the photo genuinely shows this certificate
+          אישור — התמונה אכן מציגה את התעודה הזו
         </label>
         <label>
           <input
@@ -264,27 +281,29 @@ function PhotoReviewPanel({ item, onDone }: { item: PhotoQueueItem; onDone: () =
             checked={decision === "reject"}
             onChange={() => selectDecision("reject")}
           />{" "}
-          Reject — unusable or does not match this certificate
+          דחייה — אינה שמישה או שאינה תואמת לתעודה הזו
         </label>
       </fieldset>
 
       <div className="tristate-editor">
-        <h4>Certificate attributes shown in the photo</h4>
+        <h4>מאפייני התעודה הנראים בתמונה</h4>
         <p className="muted">
-          Only mark what the photo actually shows — an untouched attribute is not sent and stays
-          unknown on the certificate.
+          יש לסמן רק את מה שהתמונה באמת מראה — מאפיין שלא נגעת בו אינו נשלח ונשאר לא ידוע
+          בתעודה.
         </p>
         {rejecting && (
-          <p className="muted">A rejected photo never writes anything onto the certificate.</p>
+          <p className="muted">תמונה שנדחתה לעולם אינה כותבת דבר לתעודה.</p>
         )}
         <div className="tristate-grid">
           {CERTIFICATE_ATTRIBUTES.map((key) => {
             const recorded: boolean | undefined = cert.attributes[key];
             return (
               <label key={key} className="tristate-row">
-                {key}
+                {attributeLabel(key)}
+                {/* The raw key stays visible: it is what the audit log and the API speak. */}
+                <code>{key}</code>
                 {recorded !== undefined && (
-                  <span className="muted">currently: {recorded ? "yes" : "no"}</span>
+                  <span className="muted">כרגע: {recorded ? "כן" : "לא"}</span>
                 )}
                 <select
                   value={attrs[key]}
@@ -294,18 +313,18 @@ function PhotoReviewPanel({ item, onDone }: { item: PhotoQueueItem; onDone: () =
                   }
                 >
                   <option value="unknown">
-                    {recorded !== undefined ? "not sent (keep current)" : "unknown (not sent)"}
+                    {recorded !== undefined ? "לא נשלח (שמירת הקיים)" : "לא ידוע (לא נשלח)"}
                   </option>
-                  <option value="yes">yes</option>
-                  <option value="no">no</option>
-                  {recorded !== undefined && <option value="clear">clear to unknown</option>}
+                  <option value="yes">כן</option>
+                  <option value="no">לא</option>
+                  {recorded !== undefined && <option value="clear">איפוס ללא ידוע</option>}
                 </select>
               </label>
             );
           })}
         </div>
         <label className="note-label">
-          Valid until (optional, as printed on the certificate)
+          בתוקף עד (רשות, כפי שמודפס על התעודה)
           <input
             type="date"
             value={validUntil}
@@ -316,12 +335,12 @@ function PhotoReviewPanel({ item, onDone }: { item: PhotoQueueItem; onDone: () =
       </div>
 
       <label className="note-label">
-        Review note (required)
+        הערת בדיקה (חובה)
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={2}
-          placeholder="What does the photo show, and how did you verify it?"
+          placeholder="מה התמונה מראה, וכיצד אימתת אותה?"
         />
       </label>
       {validation && <p className="field-error">{validation}</p>}
@@ -337,42 +356,43 @@ function PhotoReviewPanel({ item, onDone }: { item: PhotoQueueItem; onDone: () =
             else void submit();
           }}
         >
-          {rejecting ? "Reject photo" : "Accept photo…"}
+          {rejecting ? "דחיית התמונה" : "אישור התמונה…"}
         </button>
       </div>
 
       {confirmingAccept && (
         <ConfirmDialog
-          title="Accept photo and write these facts?"
-          confirmLabel="Accept photo"
+          title="לאשר את התמונה ולכתוב את הנתונים האלה?"
+          confirmLabel="אישור התמונה"
           busy={busy}
           onCancel={() => setConfirmingAccept(false)}
           onConfirm={() => void submit()}
         >
-          <p>This review is audited and will write onto the certificate:</p>
+          <p>הבדיקה הזו מתועדת, ותיכתב לתעודה כך:</p>
           <ul>
             <li>
               {setEntries.length > 0
-                ? `${setEntries.length} attribute${setEntries.length === 1 ? "" : "s"}: ` +
-                  setEntries.map(([k, v]) => `${k}=${v ? "yes" : "no"}`).join(", ")
-                : "no attribute changes"}
+                ? `${setEntries.length} מאפיינים: ` +
+                  setEntries
+                    .map(([k, v]) => `${attributeLabel(k)}: ${v ? "כן" : "לא"}`)
+                    .join(", ")
+                : "אין שינוי במאפיינים"}
             </li>
             {clearedEntries.length > 0 && (
               <li>
-                {`${clearedEntries.length} attribute${clearedEntries.length === 1 ? "" : "s"} cleared to unknown: `}
-                {clearedEntries.map(([k]) => k).join(", ")}
+                {`${clearedEntries.length} מאפיינים אופסו ללא ידוע: `}
+                {clearedEntries.map(([k]) => attributeLabel(k)).join(", ")}
               </li>
             )}
-            <li>{validUntil ? `expiry ${validUntil}` : "no expiry change"}</li>
+            <li>{validUntil ? `תוקף עד ${validUntil}` : "אין שינוי בתאריך הפקיעה"}</li>
             <li>
               {sourceUpgraded
-                ? "source upgraded to moderator_verified"
-                : `source unchanged (already ${cert.source})`}
+                ? `המקור משתדרג ל"${CERTIFICATE_SOURCE_LABELS.moderator_verified}"`
+                : `המקור נשאר ללא שינוי (כבר "${label(CERTIFICATE_SOURCE_LABELS, cert.source)}")`}
             </li>
           </ul>
           <p>
-            The certificate state is untouched — restoring an expired certificate still requires
-            verify-renewal.
+            מצב התעודה עצמו אינו משתנה — שחזור תעודה שפג תוקפה עדיין מחייב אימות חידוש.
           </p>
         </ConfirmDialog>
       )}

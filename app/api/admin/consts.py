@@ -66,3 +66,22 @@ AUDITED_UPLOAD_FIELDS = (
     "sha256",
     "status",
 )
+
+
+#: The three fields ``app.ingestion.normalize.restaurant_dedupe_key`` is built from.
+#: Correcting any of them invalidates the record's natural key, so the key is
+#: recomputed in the same transaction — otherwise the next ingestion run would fail to
+#: match the corrected row and would insert a duplicate beside it.
+RESTAURANT_IDENTITY_FIELDS: tuple[str, ...] = ("name_he", "city_he", "address_he")
+
+#: Editable fields validated as URLs. They arrive as pydantic ``Url`` objects and are
+#: written back as plain strings (the columns are Text).
+URL_RESTAURANT_FIELDS: tuple[str, ...] = ("website", "menu_url")
+
+#: Free-text search over the restaurant directory (name / address / city).
+MAX_RESTAURANT_QUERY_LENGTH = 200
+
+DEDUPE_KEY_CONFLICT_DETAIL = (
+    "another restaurant already occupies that name/city/address identity — two rows "
+    "may not share a dedupe key. Resolve the duplicate before renaming this record."
+)

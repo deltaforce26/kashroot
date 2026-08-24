@@ -10,11 +10,13 @@ interface CityFilterProps {
 export function CityFilter({ value, onChange }: CityFilterProps) {
   return (
     <label className="control">
-      City
+      עיר
       <input
         type="text"
+        // The value is a city *slug* (Latin, hyphenated), not a Hebrew city name.
+        className="ltr"
         list="city-slugs"
-        placeholder="all cities"
+        placeholder="כל הערים"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -41,13 +43,16 @@ export function Pager({ total, offset, shown, onPrev, onNext }: PagerProps) {
   return (
     <div className="pager">
       <button type="button" disabled={offset === 0} onClick={onPrev}>
-        Previous
+        הקודם
       </button>
       <span>
-        {offset + 1}–{offset + shown} of {total}
+        <span className="ltr">
+          {offset + 1}–{offset + shown}
+        </span>{" "}
+        מתוך {total}
       </span>
       <button type="button" disabled={offset + shown >= total} onClick={onNext}>
-        Next
+        הבא
       </button>
     </div>
   );

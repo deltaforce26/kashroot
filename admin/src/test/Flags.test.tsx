@@ -107,18 +107,18 @@ describe("Flags queue", () => {
   it("shows the empty state when there are no open flags", async () => {
     fetchMock.mockResolvedValue(jsonResponse(200, pageOf([])));
     renderFlags();
-    expect(await screen.findByText(/queue is clear/i)).toBeInTheDocument();
+    expect(await screen.findByText(/התור נקי/)).toBeInTheDocument();
   });
 
   it("requires a note of at least 5 characters and does not call the API without one", async () => {
     renderFlags();
     await expandRow();
-    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
-    expect(await screen.findByText(/note is required/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "דחיית הדיווח" }));
+    expect(await screen.findByText(/נדרשת הערה/)).toBeInTheDocument();
     // Too-short notes (server minimum is 5 chars) are also rejected client-side.
-    await userEvent.type(screen.getByLabelText(/resolution note/i), "abcd");
-    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
-    expect(await screen.findByText(/at least 5 characters/i)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/הערת הכרעה/), "abcd");
+    await userEvent.click(screen.getByRole("button", { name: "דחיית הדיווח" }));
+    expect(await screen.findByText(/5 תווים לפחות/)).toBeInTheDocument();
     expect(actionCalls()).toHaveLength(0);
   });
 
@@ -127,18 +127,18 @@ describe("Flags queue", () => {
       jsonResponse(200, pageOf([{ ...flag, state: "in_review" as const }])),
     );
     renderFlags();
-    expect(await screen.findByText("field check pending")).toBeInTheDocument();
+    expect(await screen.findByText("ממתין לבדיקת שטח")).toBeInTheDocument();
     await userEvent.click(screen.getByText("The Kosher Place"));
-    expect(screen.getByRole("button", { name: "Dismiss" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Confirm degrade" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "דחיית הדיווח" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "אישור הורדת סטטוס" })).toBeEnabled();
   });
 
   it("dismisses a flag: POSTs outcome+note, optimistically removes the row, shows a toast", async () => {
     renderFlags();
     await expandRow();
-    await userEvent.type(screen.getByLabelText(/resolution note/i), "wrong report");
+    await userEvent.type(screen.getByLabelText(/הערת הכרעה/), "wrong report");
     fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...flag, state: "rejected" }));
-    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    await userEvent.click(screen.getByRole("button", { name: "דחיית הדיווח" }));
 
     await waitFor(() => expect(screen.queryByText("The Kosher Place")).not.toBeInTheDocument());
     const calls = actionCalls();
@@ -149,20 +149,20 @@ describe("Flags queue", () => {
       outcome: "dismissed",
       note: "wrong report",
     });
-    expect(screen.getByText(/flag dismissed and audited/i)).toBeInTheDocument();
+    expect(screen.getByText(/הדיווח נדחה ותועד/)).toBeInTheDocument();
   });
 
   it("confirm degrade opens a confirmation dialog stating the UNKNOWN consequence, and cancel aborts", async () => {
     renderFlags();
     await expandRow();
-    await userEvent.type(screen.getByLabelText(/resolution note/i), "verified expired on site");
-    await userEvent.click(screen.getByRole("button", { name: "Confirm degrade" }));
+    await userEvent.type(screen.getByLabelText(/הערת הכרעה/), "verified expired on site");
+    await userEvent.click(screen.getByRole("button", { name: "אישור הורדת סטטוס" }));
 
     const dialog = await screen.findByRole("dialog");
-    expect(dialog).toHaveTextContent(/will show as/i);
+    expect(dialog).toHaveTextContent(/תוצג למשתמשים/);
     expect(dialog).toHaveTextContent("UNKNOWN");
 
-    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(screen.getByRole("button", { name: "ביטול" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(actionCalls()).toHaveLength(0);
     expect(screen.getAllByText("The Kosher Place").length).toBeGreaterThan(0);
@@ -171,10 +171,10 @@ describe("Flags queue", () => {
   it("confirming the degrade dialog POSTs confirmed_degrade and removes the row with an audited toast", async () => {
     renderFlags();
     await expandRow();
-    await userEvent.type(screen.getByLabelText(/resolution note/i), "verified expired on site");
-    await userEvent.click(screen.getByRole("button", { name: "Confirm degrade" }));
+    await userEvent.type(screen.getByLabelText(/הערת הכרעה/), "verified expired on site");
+    await userEvent.click(screen.getByRole("button", { name: "אישור הורדת סטטוס" }));
     fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...flag, state: "resolved" }));
-    await userEvent.click(screen.getByRole("button", { name: "Degrade certificate" }));
+    await userEvent.click(screen.getByRole("button", { name: "הורדת סטטוס התעודה" }));
 
     await waitFor(() => expect(screen.queryByText("The Kosher Place")).not.toBeInTheDocument());
     const calls = actionCalls();
@@ -183,15 +183,15 @@ describe("Flags queue", () => {
       outcome: "confirmed_degrade",
       note: "verified expired on site",
     });
-    expect(screen.getByText(/audited and cannot be undone/i)).toBeInTheDocument();
+    expect(screen.getByText(/אינה ניתנת לביטול/)).toBeInTheDocument();
   });
 
   it("shows the API error detail and keeps the row when an action fails", async () => {
     renderFlags();
     await expandRow();
-    await userEvent.type(screen.getByLabelText(/resolution note/i), "checked with certifier");
+    await userEvent.type(screen.getByLabelText(/הערת הכרעה/), "checked with certifier");
     fetchMock.mockResolvedValueOnce(jsonResponse(409, { detail: "flag is already resolved" }));
-    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    await userEvent.click(screen.getByRole("button", { name: "דחיית הדיווח" }));
 
     expect(await screen.findByText("flag is already resolved")).toBeInTheDocument();
     expect(screen.getAllByText("The Kosher Place").length).toBeGreaterThan(0);

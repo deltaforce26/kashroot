@@ -20,6 +20,7 @@ Module map:
     queues   — the five read endpoints
     actions  — resolve-review, resolve-flag, degrade, verify-renewal
     photos   — evidence upload, listing, and review
+    restaurants — the full directory: browse every record, edit non-kashrut details
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ from fastapi import APIRouter
 from app.api.admin.actions import router as actions_router
 from app.api.admin.photos import router as photos_router
 from app.api.admin.queues import router as queues_router
+from app.api.admin.restaurants import router as restaurants_router
 
 router = APIRouter(
     prefix="/api/admin",
@@ -38,5 +40,6 @@ router = APIRouter(
 router.include_router(queues_router)
 router.include_router(actions_router)
 router.include_router(photos_router)
+router.include_router(restaurants_router)
 
 __all__ = ["router"]
