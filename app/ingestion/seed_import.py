@@ -64,15 +64,10 @@ SOURCES_DIR = Path("data/sources")
 
 
 #: Certifiers referenced by the seed corpus. Rabbanut entries are *local religious
-#: councils*, never a single national body (PRD §16).
+#: councils*, never a single national body (PRD §16) — the corpus currently holds
+#: none, since ``rabbanut_bnei_brak`` was merged into ``landa_bnei_brak`` (see the
+#: note on that entry below).
 CERTIFIER_SEED: dict[str, dict[str, Any]] = {
-    "rabbanut_bnei_brak": {
-        "name_he": "רבנות בני ברק",
-        "name_en": "Rabbanut Bnei Brak",
-        "type": CertifierType.RABBANUT_LOCAL,
-        "council_city_he": "בני ברק",
-        "council_city_en": "Bnei Brak",
-    },
     "badatz_mehadrin_rubin": {
         "name_he": 'בד"ץ מהדרין - הרב רובין',
         "name_en": "Badatz Mehadrin (Rubin)",
@@ -83,21 +78,27 @@ CERTIFIER_SEED: dict[str, dict[str, Any]] = {
         "name_en": "Badatz Eda Haredit",
         "type": CertifierType.BADATZ,
     },
+    # MERGED (Aug 2026, product decision): the former ``rabbanut_bnei_brak`` slug was
+    # folded into this entry — 122 corpus records reassigned, 9 of which had held both
+    # slugs. Both source documents survive the merge, so provenance and
+    # ``corroboration_count`` (which counts source documents, not certifiers) are
+    # unchanged; only the certifier attribution moved.
     "landa_bnei_brak": {
         "name_he": 'בד"ץ שארית ישראל - הרב לנדא',
         "name_en": "Badatz Rav Landa (Bnei Brak)",
         "type": CertifierType.BADATZ,
-        "council_city_he": "בני ברק",
-        "council_city_en": "Bnei Brak",
     },
 }
 
 #: The six source documents behind the corpus.
 SOURCE_DOCUMENT_SEED: dict[str, dict[str, Any]] = {
+    # Published as the Bnei Brak rabbanut kitchens list; attributed to landa_bnei_brak
+    # since the merge. The document itself is untouched — this is the provenance of
+    # where the records came from, which the merge deliberately preserves.
     "rabbanut_bb_kitchens_pdf": {
         "title": "Rabbanut Bnei Brak — certified kitchens list",
         "kind": SourceDocumentKind.PDF,
-        "certifier_slug": "rabbanut_bnei_brak",
+        "certifier_slug": "landa_bnei_brak",
         "file": "rabbanut_bb_kitchens.pdf",
     },
     "rubin_restaurants_pdf": {
