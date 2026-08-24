@@ -245,6 +245,7 @@ const he = {
 
   states: {
     loading: "בודקים מול הפרופיל שלך…",
+    wakingUp: "השרת מתעורר — הטעינה הראשונה עשויה לקחת עד כדקה.",
     loadingShort: "טוען…",
     errorTitle: "לא הצלחנו להביא תשובה",
     errorNetwork: "אין חיבור לשרת. בדקו את החיבור ונסו שוב.",
@@ -568,6 +569,7 @@ const en: Strings = {
 
   states: {
     loading: "Checking against your profile…",
+    wakingUp: "The server is waking up — the first load can take up to a minute.",
     loadingShort: "Loading…",
     errorTitle: "We couldn't get an answer",
     errorNetwork: "No connection to the server. Check your connection and try again.",
