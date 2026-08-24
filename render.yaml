@@ -1,0 +1,71 @@
+# Render blueprint for the Kashroot API (the FastAPI modular monolith in `app/`).
+#
+# The consumer PWA and the moderation console are NOT deployed here — they are
+# static Vite builds on Vercel, which reverse-proxies `/v1/*` and `/api/*` back to
+# this service so the browser only ever makes same-origin requests. That is why the
+# app still mounts no CORS middleware (see app/main.py).
+#
+# Database is Supabase (hosted Postgres + PostGIS); see .env.example for how the
+# transaction-pooler vs session-pooler URLs differ and why.
+services:
+  - type: web
+    name: kashroot-api
+    runtime: python
+    plan: free              # spins down after ~15 min idle; first request then
+                            # pays a ~50s cold start. See docs/deploy-runbook.md
+                            # for the keep-warm ping that hides this during a demo.
+    region: frankfurt          # closest region to Israel
+    branch: main
+    healthCheckPath: /health
+
+    # pyproject.toml is a PEP 621 project (hatchling); `pip install .` installs the
+    # `app` package and every runtime dependency. There is no requirements.txt.
+    buildCommand: pip install --upgrade pip && pip install .
+
+    # NO preDeployCommand: it requires a paid instance type and this service is on
+    # `free`. Migrations are therefore a MANUAL step, run from a developer machine
+    # BEFORE pushing a deploy that needs them:
+    #
+    #   KASHROOT_DATABASE_URL="<SESSION pooler URL, port 5432>" alembic upgrade head
+    #
+    # DDL needs the session pooler, not the transaction pooler the app itself uses
+    # (alembic/env.py reads KASHROOT_DATABASE_URL via app.core.config). Deploying
+    # code whose models are ahead of the database is the failure this ordering avoids.
+    #
+    # Moving to a paid plan? Restore the line below and drop this comment:
+    #   preDeployCommand: KASHROOT_DATABASE_URL="$KASHROOT_MIGRATE_DATABASE_URL" alembic upgrade head
+
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: KASHROOT_ENV
+        value: production
+      - key: KASHROOT_DEBUG
+        value: "false"
+
+      # Supabase TRANSACTION pooler (port 6543), scheme postgresql+psycopg://.
+      # Prepared statements auto-disable for it (app/db/connection.py).
+      - key: KASHROOT_DATABASE_URL
+        sync: false
+
+      # Evidence photo storage. With these two set, storage_backend=auto resolves to
+      # Supabase Storage; without them it would look for an S3/MinIO that does not
+      # exist in production. Service key is server-only — never expose it.
+      - key: KASHROOT_SUPABASE_URL
+        sync: false
+      - key: KASHROOT_SUPABASE_SERVICE_KEY
+        sync: false
+      - key: KASHROOT_SUPABASE_STORAGE_BUCKET
+        value: kashroot-evidence
+
+      # JSON map of bearer token -> moderator name. Empty = the admin API rejects
+      # everything, which is the correct default until real moderator accounts exist.
+      - key: KASHROOT_ADMIN_API_TOKENS
+        sync: false
+
+      # Server-side Geocoding key. Distinct from the referrer-restricted browser key
+      # the PWA uses; this one must never reach a client bundle.
+      - key: KASHROOT_GOOGLE_MAPS_API_KEY
+        sync: false
