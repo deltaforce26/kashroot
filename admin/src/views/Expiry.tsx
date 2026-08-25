@@ -16,6 +16,7 @@ import {
   certifierName,
   restaurantName,
   Data,
+  Ltr,
   shortId,
   todayInIsrael,
 } from "../components/data";
@@ -23,6 +24,7 @@ import { CityFilter, Pager } from "../components/QueueControls";
 import { EmptyState, ErrorState, LoadingState } from "../components/states";
 import { useToast } from "../components/Toast";
 import { usePagedQuery } from "../hooks/usePagedQuery";
+import { CERTIFICATION_LEVEL_LABELS, label } from "../labels";
 
 const WINDOW_OPTIONS = [7, 14, 30];
 
@@ -38,14 +40,14 @@ export function Expiry() {
 
   return (
     <section>
-      <h2>Expiry queue</h2>
+      <h2>תור פקיעת תוקף</h2>
       <div className="controls">
         <label className="control">
-          Window
+          חלון זמן
           <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
             {WINDOW_OPTIONS.map((d) => (
               <option key={d} value={d}>
-                {d} days
+                {d} ימים
               </option>
             ))}
           </select>
@@ -55,17 +57,17 @@ export function Expiry() {
       {loading && <LoadingState />}
       {!loading && error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && items.length === 0 && (
-        <EmptyState message={`Queue is clear — no certificates expiring within ${days} days.`} />
+        <EmptyState message={`התור נקי — אין תעודות שפג תוקפן בתוך ${days} ימים.`} />
       )}
       {!loading && !error && items.length > 0 && (
         <table className="data-table">
           <thead>
             <tr>
-              <th>Restaurant</th>
-              <th>City</th>
-              <th>Certificate</th>
-              <th>Valid until</th>
-              <th>Expiry</th>
+              <th>מסעדה</th>
+              <th>עיר</th>
+              <th>תעודה</th>
+              <th>בתוקף עד</th>
+              <th>פקיעה</th>
             </tr>
           </thead>
           <tbody>
@@ -82,16 +84,21 @@ export function Expiry() {
                       <Data value={item.restaurant.city_he ?? item.restaurant.city_slug} />
                     </td>
                     <td>
-                      <Data value={certifierName(c)} /> · {c.level}
+                      <Data value={certifierName(c)} /> ·{" "}
+                      {label(CERTIFICATION_LEVEL_LABELS, c.level)}
                     </td>
-                    <td>{c.valid_until ?? "—"}</td>
+                    <td className="nowrap">
+                      <Ltr value={c.valid_until ?? "—"} />
+                    </td>
                     <td>
                       {item.days_until_expiry < 0 ? (
                         <span className="badge badge-expired">
-                          expired {-item.days_until_expiry}d ago
+                          פג לפני {-item.days_until_expiry} ימים
                         </span>
                       ) : (
-                        <span className="badge badge-pending">in {item.days_until_expiry}d</span>
+                        <span className="badge badge-pending">
+                          בעוד {item.days_until_expiry} ימים
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -125,12 +132,12 @@ function ExpiryDetail({ item, onDone }: { item: ExpiryQueueItem; onDone: () => v
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // Degrade-now form
+  // טופס הורדת סטטוס מיידית
   const [degradeReason, setDegradeReason] = useState("");
   const [degradeValidation, setDegradeValidation] = useState<string | null>(null);
   const [confirmingDegrade, setConfirmingDegrade] = useState(false);
 
-  // Verify-renewal form
+  // טופס אימות חידוש
   const [validUntil, setValidUntil] = useState("");
   const [evidenceNote, setEvidenceNote] = useState("");
   const [evidenceUrl, setEvidenceUrl] = useState("");
@@ -166,43 +173,43 @@ function ExpiryDetail({ item, onDone }: { item: ExpiryQueueItem; onDone: () => v
         body,
       });
       showToast(
-        "Certificate degraded — it now shows as UNKNOWN to users. This action is audited and cannot be undone.",
+        "סטטוס התעודה הורד — היא מוצגת כעת למשתמשים כ־UNKNOWN. הפעולה מתועדת ואינה ניתנת לביטול.",
       );
       onDone();
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : "Action failed unexpectedly");
+      setActionError(err instanceof ApiError ? err.message : "הפעולה נכשלה באופן בלתי צפוי");
     } finally {
       setBusy(false);
       setConfirmingDegrade(false);
     }
   }
 
-  /** Mirrors the API's fail-safe rules: future date, valid http(s) URL, note >= 10 chars. */
+  /** משקף את כללי ה־fail-safe של ה־API: תאריך עתידי, כתובת http(s) תקינה, הערה באורך 10 תווים לפחות. */
   function validateRenewal(): boolean {
     const note = evidenceNote.trim();
     const url = evidenceUrl.trim();
     // Civil date in Israel, matching the server's ISRAEL_TZ rule.
     const today = todayInIsrael();
     if (!validUntil) {
-      setRenewalValidation("A new valid-until date is required.");
+      setRenewalValidation("נדרש תאריך תוקף חדש.");
       return false;
     }
     if (validUntil <= today) {
-      setRenewalValidation("Valid-until must be strictly in the future.");
+      setRenewalValidation("תאריך התוקף חייב להיות עתידי בלבד.");
       return false;
     }
     if (!note && !url && !photoKey) {
       setRenewalValidation(
-        "Renewal evidence required: provide an evidence note, URL or accepted photo (fail-safe: no evidence, no restore).",
+        "נדרשת ראיה לחידוש: יש לספק הערת ראיה, קישור או תמונה מאושרת (כלל fail-safe: אין ראיה, אין שחזור).",
       );
       return false;
     }
     if (note && note.length < 10) {
-      setRenewalValidation("Evidence note must be at least 10 characters.");
+      setRenewalValidation("הערת הראיה חייבת להיות באורך 10 תווים לפחות.");
       return false;
     }
     if (url && !isHttpUrl(url)) {
-      setRenewalValidation("Evidence URL must be a valid http(s) URL.");
+      setRenewalValidation("קישור הראיה חייב להיות כתובת http(s) תקינה.");
       return false;
     }
     setRenewalValidation(null);
@@ -223,10 +230,10 @@ function ExpiryDetail({ item, onDone }: { item: ExpiryQueueItem; onDone: () => v
         method: "POST",
         body,
       });
-      showToast(`Renewal verified until ${validUntil} — recorded in the audit log.`);
+      showToast(`החידוש אומת עד ${validUntil} — נרשם ביומן הביקורת.`);
       onDone();
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : "Action failed unexpectedly");
+      setActionError(err instanceof ApiError ? err.message : "הפעולה נכשלה באופן בלתי צפוי");
     } finally {
       setBusy(false);
       setConfirmingRenewal(false);
@@ -243,14 +250,14 @@ function ExpiryDetail({ item, onDone }: { item: ExpiryQueueItem; onDone: () => v
       {actionError && <p className="field-error">{actionError}</p>}
       <div className="expiry-forms">
         <div className="expiry-form">
-          <h4>Degrade now</h4>
+          <h4>הורדת סטטוס עכשיו</h4>
           <label className="note-label">
-            Reason (required)
+            סיבה (חובה)
             <textarea
               value={degradeReason}
               onChange={(e) => setDegradeReason(e.target.value)}
               rows={2}
-              placeholder="Why is this certificate being degraded?"
+              placeholder="מדוע מורידים את סטטוס התעודה?"
             />
           </label>
           {degradeValidation && <p className="field-error">{degradeValidation}</p>}
@@ -260,20 +267,20 @@ function ExpiryDetail({ item, onDone }: { item: ExpiryQueueItem; onDone: () => v
             disabled={busy}
             onClick={() => {
               if (!degradeReason.trim()) {
-                setDegradeValidation("A reason is required to degrade.");
+                setDegradeValidation("נדרשת סיבה להורדת הסטטוס.");
                 return;
               }
               setDegradeValidation(null);
               setConfirmingDegrade(true);
             }}
           >
-            Degrade now
+            הורדת סטטוס עכשיו
           </button>
         </div>
         <div className="expiry-form">
-          <h4>Verify renewal</h4>
+          <h4>אימות חידוש</h4>
           <label className="note-label">
-            New valid-until date
+            תאריך תוקף חדש
             <input
               type="date"
               value={validUntil}
@@ -281,30 +288,31 @@ function ExpiryDetail({ item, onDone }: { item: ExpiryQueueItem; onDone: () => v
             />
           </label>
           <label className="note-label">
-            Evidence note
+            הערת ראיה
             <textarea
               value={evidenceNote}
               onChange={(e) => setEvidenceNote(e.target.value)}
               rows={2}
-              placeholder="e.g. called the certifier office, confirmed renewal"
+              placeholder="לדוגמה: התקשרנו למשרד גוף הכשרות ואישרו את החידוש"
             />
           </label>
           <label className="note-label">
-            Evidence URL
+            קישור לראיה
             <input
               type="url"
+              className="ltr"
               value={evidenceUrl}
               onChange={(e) => setEvidenceUrl(e.target.value)}
               placeholder="https://…"
             />
           </label>
           <label className="note-label">
-            Evidence photo (accepted only)
+            תמונת ראיה (מאושרות בלבד)
             <select value={photoKey} onChange={(e) => setPhotoKey(e.target.value)}>
-              <option value="">none</option>
+              <option value="">ללא</option>
               {acceptedPhotos.map((p) => (
                 <option key={p.id} value={p.storage_key}>
-                  {p.content_type} · uploaded {p.uploaded_at.slice(0, 10)} · {shortId(p.id)}
+                  {p.content_type} · הועלתה {p.uploaded_at.slice(0, 10)} · {shortId(p.id)}
                 </option>
               ))}
             </select>
@@ -317,36 +325,36 @@ function ExpiryDetail({ item, onDone }: { item: ExpiryQueueItem; onDone: () => v
               if (validateRenewal()) setConfirmingRenewal(true);
             }}
           >
-            Verify renewal
+            אימות חידוש
           </button>
         </div>
       </div>
       {confirmingDegrade && (
         <ConfirmDialog
-          title="Degrade certificate now?"
-          confirmLabel="Degrade certificate"
+          title="להוריד את סטטוס התעודה עכשיו?"
+          confirmLabel="הורדת סטטוס התעודה"
           busy={busy}
           onCancel={() => setConfirmingDegrade(false)}
           onConfirm={() => void degradeNow()}
         >
           <p>
-            The certificate will show as <strong>UNKNOWN</strong> to users. The change is audited
-            and cannot be undone from the console.
+            התעודה תוצג למשתמשים כ־<strong>UNKNOWN</strong>. השינוי מתועד ואינו ניתן לביטול
+            מהקונסולה.
           </p>
         </ConfirmDialog>
       )}
       {confirmingRenewal && (
         <ConfirmDialog
-          title="Verify renewal?"
-          confirmLabel="Verify renewal"
+          title="לאמת את החידוש?"
+          confirmLabel="אימות החידוש"
           busy={busy}
           onCancel={() => setConfirmingRenewal(false)}
           onConfirm={() => void verifyRenewal()}
         >
           <p>
-            This is the only status-raising action in the product: it marks this certificate as{" "}
-            <strong>verified-renewed and active to users</strong>, valid until {validUntil}, based
-            on the evidence you provided. The change is audited.
+            זו הפעולה היחידה במוצר שמעלה סטטוס: היא מסמנת את התעודה כ
+            <strong>מחודשת ומאומתת, פעילה עבור המשתמשים</strong>, בתוקף עד{" "}
+            <Ltr value={validUntil} />, על סמך הראיות שסיפקת. השינוי מתועד.
           </p>
         </ConfirmDialog>
       )}

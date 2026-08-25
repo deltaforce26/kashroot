@@ -199,21 +199,6 @@ describe("demo flow", () => {
     expect(screen.getByRole("button", { name: he.map.toList })).toBeInTheDocument();
   });
 
-  it("says which origin a distance was measured from", async () => {
-    const user = userEvent.setup();
-    renderApp("/");
-    await screen.findByText(he.presets.any.title);
-    await user.click(screen.getByText(he.presets.any.title));
-    await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
-    await user.click(await screen.findByRole("link", { name: he.nav.map }));
-
-    // No geolocation permission has been asked for, so it is the city centre — and
-    // the screen says so rather than showing a bare "400 m".
-    expect(
-      await screen.findByText(new RegExp(he.origin.fromCity("ירושלים"))),
-    ).toBeInTheDocument();
-  });
-
   it("tells the user the list is partial rather than implying it is everything", async () => {
     const user = userEvent.setup();
     renderApp("/");

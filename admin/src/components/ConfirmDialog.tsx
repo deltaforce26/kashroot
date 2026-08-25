@@ -25,10 +25,10 @@ export function ConfirmDialog({
         <div className="dialog-body">{children}</div>
         <div className="dialog-actions">
           <button type="button" onClick={onCancel} disabled={busy}>
-            Cancel
+            ביטול
           </button>
           <button type="button" className="danger" onClick={onConfirm} disabled={busy}>
-            {busy ? "Working…" : confirmLabel}
+            {busy ? "מבצע…" : confirmLabel}
           </button>
         </div>
       </div>

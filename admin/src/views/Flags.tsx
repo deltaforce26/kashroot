@@ -3,11 +3,12 @@ import { Fragment, useState } from "react";
 import { api, ApiError } from "../api/client";
 import type { FlagOut, FlagOutcome, ResolveFlagRequest } from "../api/types";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { CertificateSummary, Data, restaurantName } from "../components/data";
+import { CertificateSummary, Data, Ltr, restaurantName } from "../components/data";
 import { CityFilter, Pager } from "../components/QueueControls";
 import { EmptyState, ErrorState, LoadingState } from "../components/states";
 import { useToast } from "../components/Toast";
 import { usePagedQuery } from "../hooks/usePagedQuery";
+import { FLAG_TYPE_LABELS, label, RECORD_STATE_LABELS } from "../labels";
 
 export function Flags() {
   const [city, setCity] = useState("");
@@ -17,24 +18,24 @@ export function Flags() {
 
   return (
     <section>
-      <h2>Flags</h2>
+      <h2>דיווחים</h2>
       <div className="controls">
         <CityFilter value={city} onChange={setCity} />
       </div>
       {loading && <LoadingState />}
       {!loading && error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && items.length === 0 && (
-        <EmptyState message="Queue is clear — no open flags." />
+        <EmptyState message="התור נקי — אין דיווחים פתוחים." />
       )}
       {!loading && !error && items.length > 0 && (
         <table className="data-table">
           <thead>
             <tr>
-              <th>Restaurant</th>
-              <th>Flag type</th>
-              <th>State</th>
-              <th>Message</th>
-              <th>Opened</th>
+              <th>מסעדה</th>
+              <th>סוג הדיווח</th>
+              <th>מצב</th>
+              <th>תוכן הדיווח</th>
+              <th>נפתח</th>
             </tr>
           </thead>
           <tbody>
@@ -45,18 +46,20 @@ export function Flags() {
                   onClick={() => setExpandedId(expandedId === flag.id ? null : flag.id)}
                 >
                   <td>{restaurantName(flag.restaurant)}</td>
-                  <td>{flag.type.replaceAll("_", " ")}</td>
+                  <td>{label(FLAG_TYPE_LABELS, flag.type)}</td>
                   <td>
                     {flag.state === "in_review" ? (
-                      <span className="badge badge-pending">field check pending</span>
+                      <span className="badge badge-pending">ממתין לבדיקת שטח</span>
                     ) : (
-                      <span className="badge">open</span>
+                      <span className="badge">פתוח</span>
                     )}
                   </td>
                   <td>
                     <Data value={flag.message} />
                   </td>
-                  <td>{flag.created_at.slice(0, 10)}</td>
+                  <td className="nowrap">
+                    <Ltr value={flag.created_at.slice(0, 10)} />
+                  </td>
                 </tr>
                 {expandedId === flag.id && (
                   <tr className="row-detail">
@@ -97,26 +100,26 @@ function FlagDetail({ flag, onResolved }: { flag: FlagOut; onResolved: () => voi
       await api<FlagOut>(`/api/admin/flags/${flag.id}/resolve`, { method: "POST", body });
       if (outcome === "confirmed_degrade") {
         showToast(
-          "Certificate degraded — it now shows as UNKNOWN to users. This action is audited and cannot be undone.",
+          "סטטוס התעודה הורד — היא מוצגת כעת למשתמשים כ־UNKNOWN. הפעולה מתועדת ואינה ניתנת לביטול.",
         );
       } else if (outcome === "dismissed") {
-        showToast("Flag dismissed and audited — removed from queue.");
+        showToast("הדיווח נדחה ותועד — הוסר מהתור.");
       } else {
-        showToast("Sent for field check — restaurant added to the review queue.");
+        showToast("נשלח לבדיקת שטח — המסעדה נוספה לתור הבדיקה.");
       }
       onResolved();
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : "Action failed unexpectedly");
+      setActionError(err instanceof ApiError ? err.message : "הפעולה נכשלה באופן בלתי צפוי");
     } finally {
       setBusy(false);
       setConfirmingDegrade(false);
     }
   }
 
-  /** API requires a note of at least 5 characters on every flag resolution. */
+  /** ה־API דורש הערה של 5 תווים לפחות בכל הכרעת דיווח. */
   function requireNote(): boolean {
     if (note.trim().length < 5) {
-      setValidation("A note is required for every flag resolution (at least 5 characters).");
+      setValidation("נדרשת הערה לכל הכרעת דיווח (5 תווים לפחות).");
       return false;
     }
     setValidation(null);
@@ -126,36 +129,38 @@ function FlagDetail({ flag, onResolved }: { flag: FlagOut; onResolved: () => voi
   return (
     <div className="detail">
       <dl className="detail-grid">
-        <dt>Restaurant</dt>
+        <dt>מסעדה</dt>
         <dd>
           {restaurantName(flag.restaurant)} — <Data value={flag.restaurant.address_he} />,{" "}
           <Data value={flag.restaurant.city_he ?? flag.restaurant.city_slug} />
         </dd>
-        <dt>Record state</dt>
-        <dd>{flag.restaurant.record_state}</dd>
-        <dt>Flag message</dt>
+        <dt>מצב הרשומה</dt>
+        <dd>{label(RECORD_STATE_LABELS, flag.restaurant.record_state)}</dd>
+        <dt>תוכן הדיווח</dt>
         <dd>
           <Data value={flag.message} />
         </dd>
         {flag.photo_key && (
           <>
-            <dt>Photo key</dt>
-            <dd>{flag.photo_key}</dd>
+            <dt>מפתח התמונה</dt>
+            <dd>
+              <code>{flag.photo_key}</code>
+            </dd>
           </>
         )}
       </dl>
       {flag.certificate ? (
         <CertificateSummary certificate={flag.certificate} />
       ) : (
-        <p className="muted">No certificate attached to this flag.</p>
+        <p className="muted">לא מצורפת תעודה לדיווח זה.</p>
       )}
       <label className="note-label">
-        Resolution note (required)
+        הערת הכרעה (חובה)
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
-          placeholder="What evidence did you check?"
+          placeholder="אילו ראיות בדקת?"
         />
       </label>
       {validation && <p className="field-error">{validation}</p>}
@@ -168,20 +173,20 @@ function FlagDetail({ flag, onResolved }: { flag: FlagOut; onResolved: () => voi
             if (requireNote()) void submit("dismissed");
           }}
         >
-          Dismiss
+          דחיית הדיווח
         </button>
         <button
           type="button"
           className="danger"
           disabled={busy || flag.certificate === null}
           title={
-            flag.certificate === null ? "Flag has no certificate attached; nothing to degrade" : ""
+            flag.certificate === null ? "לדיווח לא מצורפת תעודה; אין מה להוריד" : ""
           }
           onClick={() => {
             if (requireNote()) setConfirmingDegrade(true);
           }}
         >
-          Confirm degrade
+          אישור הורדת סטטוס
         </button>
         <button
           type="button"
@@ -190,20 +195,20 @@ function FlagDetail({ flag, onResolved }: { flag: FlagOut; onResolved: () => voi
             if (requireNote()) void submit("needs_field_check");
           }}
         >
-          Needs field check
+          דרושה בדיקת שטח
         </button>
       </div>
       {confirmingDegrade && (
         <ConfirmDialog
-          title="Degrade certificate?"
-          confirmLabel="Degrade certificate"
+          title="להוריד את סטטוס התעודה?"
+          confirmLabel="הורדת סטטוס התעודה"
           busy={busy}
           onCancel={() => setConfirmingDegrade(false)}
           onConfirm={() => void submit("confirmed_degrade")}
         >
           <p>
-            The certificate will show as <strong>UNKNOWN</strong> to users. This closes the flag as
-            resolved. The change is audited and cannot be undone from the console.
+            התעודה תוצג למשתמשים כ־<strong>UNKNOWN</strong>. פעולה זו סוגרת את הדיווח כמטופל.
+            השינוי מתועד ואינו ניתן לביטול מהקונסולה.
           </p>
         </ConfirmDialog>
       )}

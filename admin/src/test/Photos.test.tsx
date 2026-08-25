@@ -128,7 +128,7 @@ describe("Photos queue", () => {
     renderPhotos();
     const hebrewName = await screen.findByText("מסעדת הכשרה");
     expect(hebrewName).toHaveAttribute("dir", "auto");
-    const thumb = screen.getByAltText("certificate evidence");
+    const thumb = screen.getByAltText("ראיית תעודה");
     expect(thumb).toHaveAttribute("src", photo.view_url);
   });
 
@@ -139,9 +139,9 @@ describe("Photos queue", () => {
     };
     fetchMock.mockResolvedValue(jsonResponse(200, pageOf([pdfItem])));
     renderPhotos();
-    const link = await screen.findByRole("link", { name: /pdf document/i });
+    const link = await screen.findByRole("link", { name: /מסמך PDF/ });
     expect(link).toHaveAttribute("href", photo.view_url);
-    expect(screen.queryByAltText("certificate evidence")).not.toBeInTheDocument();
+    expect(screen.queryByAltText("ראיית תעודה")).not.toBeInTheDocument();
   });
 
   it("fail-safe: accept sends ONLY touched attributes — untouched absent, explicit clears null", async () => {
@@ -153,12 +153,12 @@ describe("Photos queue", () => {
     });
     renderPhotos();
     await expandRow();
-    await userEvent.selectOptions(screen.getByLabelText("glatt"), "yes");
-    await userEvent.selectOptions(screen.getByLabelText(/chalav_yisrael/), "no");
+    await userEvent.selectOptions(screen.getByLabelText(/גלאט/), "yes");
+    await userEvent.selectOptions(screen.getByLabelText(/חלב ישראל/), "no");
     // pas_yisrael (and every other attribute) stays untouched.
-    await userEvent.type(screen.getByLabelText(/review note/i), "matches the certificate");
-    await userEvent.click(screen.getByRole("button", { name: "Accept photo…" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Accept photo" }));
+    await userEvent.type(screen.getByLabelText(/הערת בדיקה/), "matches the certificate");
+    await userEvent.click(screen.getByRole("button", { name: "אישור התמונה…" }));
+    await userEvent.click(await screen.findByRole("button", { name: "אישור התמונה" }));
 
     await waitFor(() => expect(reviewCalls()).toHaveLength(1));
     const [url, init] = reviewCalls()[0]!;
@@ -185,24 +185,24 @@ describe("Photos queue", () => {
     await expandRow();
 
     // The recorded attribute shows its current value and offers the clear option…
-    expect(screen.getByText("currently: yes")).toBeInTheDocument();
-    const chalavSelect = screen.getByLabelText(/chalav_yisrael/);
+    expect(screen.getByText("כרגע: כן")).toBeInTheDocument();
+    const chalavSelect = screen.getByLabelText(/חלב ישראל/);
     expect(
-      within(chalavSelect).getByRole("option", { name: "clear to unknown" }),
+      within(chalavSelect).getByRole("option", { name: "איפוס ללא ידוע" }),
     ).toBeInTheDocument();
     // …while an unrecorded attribute has no clear option (unknown = untouched).
-    const glattSelect = screen.getByLabelText("glatt");
+    const glattSelect = screen.getByLabelText(/גלאט/);
     expect(
-      within(glattSelect).queryByRole("option", { name: "clear to unknown" }),
+      within(glattSelect).queryByRole("option", { name: "איפוס ללא ידוע" }),
     ).not.toBeInTheDocument();
 
     await userEvent.selectOptions(chalavSelect, "clear");
-    await userEvent.type(screen.getByLabelText(/review note/i), "photo does not show chalav");
-    await userEvent.click(screen.getByRole("button", { name: "Accept photo…" }));
+    await userEvent.type(screen.getByLabelText(/הערת בדיקה/), "photo does not show chalav");
+    await userEvent.click(screen.getByRole("button", { name: "אישור התמונה…" }));
 
     const dialog = await screen.findByRole("dialog");
-    expect(dialog).toHaveTextContent("1 attribute cleared to unknown: chalav_yisrael");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Accept photo" }));
+    expect(dialog).toHaveTextContent("1 מאפיינים אופסו ללא ידוע: חלב ישראל");
+    await userEvent.click(within(dialog).getByRole("button", { name: "אישור התמונה" }));
 
     await waitFor(() => expect(reviewCalls()).toHaveLength(1));
     const body = JSON.parse(reviewCalls()[0]![1].body as string) as Record<string, unknown>;
@@ -217,9 +217,9 @@ describe("Photos queue", () => {
   it("accept with nothing touched omits the attributes key entirely", async () => {
     renderPhotos();
     await expandRow();
-    await userEvent.type(screen.getByLabelText(/review note/i), "photo is genuine");
-    await userEvent.click(screen.getByRole("button", { name: "Accept photo…" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Accept photo" }));
+    await userEvent.type(screen.getByLabelText(/הערת בדיקה/), "photo is genuine");
+    await userEvent.click(screen.getByRole("button", { name: "אישור התמונה…" }));
+    await userEvent.click(await screen.findByRole("button", { name: "אישור התמונה" }));
 
     await waitFor(() => expect(reviewCalls()).toHaveLength(1));
     const body = JSON.parse(reviewCalls()[0]![1].body as string) as Record<string, unknown>;
@@ -231,15 +231,15 @@ describe("Photos queue", () => {
     renderPhotos();
     await expandRow();
     // Touch attributes and a date first — switching to reject must clear them.
-    await userEvent.selectOptions(screen.getByLabelText("glatt"), "yes");
-    await userEvent.click(screen.getByRole("radio", { name: /reject/i }));
+    await userEvent.selectOptions(screen.getByLabelText(/גלאט/), "yes");
+    await userEvent.click(screen.getByRole("radio", { name: /דחייה/ }));
 
-    expect(screen.getByLabelText("glatt")).toBeDisabled();
-    expect(screen.getByLabelText("pas_yisrael")).toBeDisabled();
-    expect(screen.getByLabelText(/valid until/i)).toBeDisabled();
+    expect(screen.getByLabelText(/גלאט/)).toBeDisabled();
+    expect(screen.getByLabelText(/פת ישראל/)).toBeDisabled();
+    expect(screen.getByLabelText(/בתוקף עד/)).toBeDisabled();
 
-    await userEvent.type(screen.getByLabelText(/review note/i), "blurry, unreadable");
-    await userEvent.click(screen.getByRole("button", { name: "Reject photo" }));
+    await userEvent.type(screen.getByLabelText(/הערת בדיקה/), "blurry, unreadable");
+    await userEvent.click(screen.getByRole("button", { name: "דחיית התמונה" }));
 
     await waitFor(() => expect(reviewCalls()).toHaveLength(1));
     const body = JSON.parse(reviewCalls()[0]![1].body as string) as Record<string, unknown>;
@@ -251,19 +251,19 @@ describe("Photos queue", () => {
   it("accept opens a ConfirmDialog summarizing what will be written, and cancel aborts", async () => {
     renderPhotos();
     await expandRow();
-    await userEvent.selectOptions(screen.getByLabelText("glatt"), "yes");
-    await userEvent.selectOptions(screen.getByLabelText("pas_yisrael"), "no");
-    await userEvent.type(screen.getByLabelText(/valid until/i), "2027-01-15");
-    await userEvent.type(screen.getByLabelText(/review note/i), "verified against the wall copy");
-    await userEvent.click(screen.getByRole("button", { name: "Accept photo…" }));
+    await userEvent.selectOptions(screen.getByLabelText(/גלאט/), "yes");
+    await userEvent.selectOptions(screen.getByLabelText(/פת ישראל/), "no");
+    await userEvent.type(screen.getByLabelText(/בתוקף עד/), "2027-01-15");
+    await userEvent.type(screen.getByLabelText(/הערת בדיקה/), "verified against the wall copy");
+    await userEvent.click(screen.getByRole("button", { name: "אישור התמונה…" }));
 
     const dialog = await screen.findByRole("dialog");
-    expect(dialog).toHaveTextContent("2 attributes: glatt=yes, pas_yisrael=no");
-    expect(dialog).toHaveTextContent("expiry 2027-01-15");
+    expect(dialog).toHaveTextContent("2 מאפיינים: גלאט: כן, פת ישראל: לא");
+    expect(dialog).toHaveTextContent("תוקף עד 2027-01-15");
     // official_list (authority 3) → moderator_verified (4) is a strict upgrade.
-    expect(dialog).toHaveTextContent("source upgraded to moderator_verified");
+    expect(dialog).toHaveTextContent('המקור משתדרג ל"אומת בידי מודרטור"');
 
-    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(screen.getByRole("button", { name: "ביטול" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(reviewCalls()).toHaveLength(0);
   });
@@ -271,9 +271,9 @@ describe("Photos queue", () => {
   it("requires a note of at least 5 characters before any review call", async () => {
     renderPhotos();
     await expandRow();
-    await userEvent.type(screen.getByLabelText(/review note/i), "abcd");
-    await userEvent.click(screen.getByRole("button", { name: "Accept photo…" }));
-    expect(await screen.findByText(/at least 5 characters/i)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/הערת בדיקה/), "abcd");
+    await userEvent.click(screen.getByRole("button", { name: "אישור התמונה…" }));
+    expect(await screen.findByText(/5 תווים לפחות/)).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(reviewCalls()).toHaveLength(0);
   });
@@ -281,10 +281,10 @@ describe("Photos queue", () => {
   it("rejects a past valid-until client-side (mirror of the server rule)", async () => {
     renderPhotos();
     await expandRow();
-    await userEvent.type(screen.getByLabelText(/valid until/i), "2020-01-01");
-    await userEvent.type(screen.getByLabelText(/review note/i), "readable and genuine");
-    await userEvent.click(screen.getByRole("button", { name: "Accept photo…" }));
-    expect(await screen.findByText(/strictly in the future/i)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/בתוקף עד/), "2020-01-01");
+    await userEvent.type(screen.getByLabelText(/הערת בדיקה/), "readable and genuine");
+    await userEvent.click(screen.getByRole("button", { name: "אישור התמונה…" }));
+    expect(await screen.findByText(/עתידי בלבד/)).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(reviewCalls()).toHaveLength(0);
   });

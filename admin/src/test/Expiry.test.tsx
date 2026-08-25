@@ -142,7 +142,7 @@ describe("Expiry queue — certificate photo upload", () => {
   it("uploads a photo as multipart FormData with auth and no manual Content-Type", async () => {
     renderExpiry();
     await expandRow();
-    const input = screen.getByLabelText("Certificate photo file");
+    const input = screen.getByLabelText("קובץ תמונת תעודה");
     const file = new File(["fake-jpeg-bytes"], "cert.jpg", { type: "image/jpeg" });
     fireEvent.change(input, { target: { files: [file] } });
 
@@ -154,18 +154,18 @@ describe("Expiry queue — certificate photo upload", () => {
     expect(headers["Authorization"]).toBe("Bearer test-token");
     expect(init!.body).toBeInstanceOf(FormData);
     expect((init!.body as FormData).get("file")).toBe(file);
-    expect(await screen.findByText(/photo uploaded/i)).toBeInTheDocument();
+    expect(await screen.findByText(/התמונה הועלתה/)).toBeInTheDocument();
   });
 
   it("rejects a file over 15 MB client-side without calling the API", async () => {
     renderExpiry();
     await expandRow();
-    const input = screen.getByLabelText("Certificate photo file");
+    const input = screen.getByLabelText("קובץ תמונת תעודה");
     const big = new File(["x"], "huge.png", { type: "image/png" });
     Object.defineProperty(big, "size", { value: MAX_PHOTO_BYTES + 1 });
     fireEvent.change(input, { target: { files: [big] } });
 
-    expect(await screen.findByText(/exceeds the 15 MB limit/i)).toBeInTheDocument();
+    expect(await screen.findByText(/חורג ממגבלת 15 MB/)).toBeInTheDocument();
     expect(callsTo("/photos", "POST")).toHaveLength(0);
   });
 });
@@ -174,16 +174,16 @@ describe("Expiry queue — verify renewal with photo evidence", () => {
   it("lists only ACCEPTED photos in the evidence selector and sends the chosen storage key", async () => {
     renderExpiry();
     await expandRow();
-    const selector = await screen.findByLabelText(/evidence photo/i);
+    const selector = await screen.findByLabelText(/תמונת ראיה/);
     // "none" + the one accepted photo; the pending photo never qualifies as evidence.
     await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(2));
 
     await userEvent.selectOptions(selector, acceptedPhoto.storage_key);
-    await userEvent.type(screen.getByLabelText(/new valid-until date/i), "2030-01-01");
-    await userEvent.click(screen.getByRole("button", { name: "Verify renewal" }));
+    await userEvent.type(screen.getByLabelText(/תאריך תוקף חדש/), "2030-01-01");
+    await userEvent.click(screen.getByRole("button", { name: "אימות חידוש" }));
 
     const dialog = await screen.findByRole("dialog");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Verify renewal" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "אימות החידוש" }));
 
     await waitFor(() => expect(callsTo("/verify-renewal", "POST")).toHaveLength(1));
     const [, init] = callsTo("/verify-renewal", "POST")[0]!;
@@ -198,9 +198,9 @@ describe("Expiry queue — verify renewal with photo evidence", () => {
   it("still requires some evidence: no note, URL or photo blocks the renewal client-side", async () => {
     renderExpiry();
     await expandRow();
-    await userEvent.type(screen.getByLabelText(/new valid-until date/i), "2030-01-01");
-    await userEvent.click(screen.getByRole("button", { name: "Verify renewal" }));
-    expect(await screen.findByText(/renewal evidence required/i)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/תאריך תוקף חדש/), "2030-01-01");
+    await userEvent.click(screen.getByRole("button", { name: "אימות חידוש" }));
+    expect(await screen.findByText(/נדרשת ראיה לחידוש/)).toBeInTheDocument();
     expect(callsTo("/verify-renewal", "POST")).toHaveLength(0);
   });
 });

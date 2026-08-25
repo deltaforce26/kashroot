@@ -67,7 +67,12 @@ export default defineConfig({
     // default is — otherwise `.env` switching the demo to the live API would quietly
     // turn the fixture suite into a suite that needs a database. The two live
     // integration files opt back in with `vi.stubEnv` and skip when :8000 is down.
-    env: { VITE_API_MODE: "mock" },
+    //
+    // The maps key is pinned empty for the same reason: `.env.local` on a machine
+    // that has a real browser key would otherwise silently take the map screen out
+    // of its no-key fallback, and the two tests asserting that fallback would fail
+    // on that machine only. A test that wants a key opts in with `vi.stubEnv`.
+    env: { VITE_API_MODE: "mock", VITE_GOOGLE_MAPS_BROWSER_KEY: "" },
     // The full-app flow tests each mount the router, walk onboarding and wait on the
     // fixture server's simulated latency. Individually they take ~1s; run alongside
     // the other files on a loaded machine they can pass 5s, and a timeout here reads
