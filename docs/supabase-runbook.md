@@ -113,11 +113,16 @@ supabase-hosted        True
 transaction pooler     True
 prepared statements    False
 postgis                3.3.7
-alembic revision       0005_certificate_is_demo_seed
+alembic revision       0008_enable_row_level_security
+row-level security     19 public tables, all protected
 ```
 
 `postgis NOT INSTALLED` means step 2 did not run against this database — check which
 URL was in effect.
+
+`row-level security DISABLED on ...` is a failure, and the reason `db-check` exits
+non-zero: those tables are readable and writable by anyone holding the project URL
+(see *Row-Level Security* below). Run `alembic upgrade head`.
 
 ## Step 4 — check storage
 
@@ -173,6 +178,40 @@ pooler. If PostGIS resolution is wrong, it fails here rather than at migration t
 **A PDF uploaded as evidence.** Its view URL must **download**, never render in the
 browser's PDF viewer. This is the PDF-polyglot defence; on Supabase it is enforced by a
 `download=evidence.pdf` parameter on the signed URL.
+
+## Row-Level Security
+
+Supabase serves the `public` schema over PostgREST at the project URL, and the
+publishable key that reaches it is meant to be shipped inside clients. A table there
+with RLS disabled is world-readable *and* world-writable — Supabase reports it as
+`rls_disabled_in_public`, and for this product a silent write to `certificate` is
+worse than a leak.
+
+Migration `0008_enable_row_level_security` closes it, in two halves:
+
+- **RLS on, no policies**, on every table in `public` the migrating role owns —
+  including `alembic_version`. No policy means no row, for every role except the
+  table's owner. The backend *is* the owner (`KASHROOT_DATABASE_URL`), and an owner
+  bypasses RLS unless `FORCE ROW LEVEL SECURITY` is set, which it deliberately is
+  not. So the application sees no change at all.
+- **Privileges revoked** from `anon` and `authenticated`, including the default
+  privileges Supabase applies to newly created tables. RLS alone gates rows; the
+  blanket `GRANT ALL` Supabase hands those roles would otherwise turn one future
+  permissive policy back into a public database.
+
+Two consequences worth knowing:
+
+- **Nothing may talk to the database with the publishable key** — not `web/`, not
+  `admin/`, not the mobile client. They go through the FastAPI backend, which is the
+  only holder of the connection string. This is already how the project is built.
+- **Every migration that creates a table must enable RLS on it.** RLS is off on a new
+  table, and 0008 only swept what existed when it ran. Use
+  `app.db.rls.enable_rls_sql("<table>")`; `kashroot db-check` fails if you forget.
+
+`spatial_ref_sys` may still be listed as unprotected if PostGIS was installed from the
+dashboard rather than by migration 0001 — the table then belongs to another role and
+no migration of ours can alter it. It holds public EPSG reference data and the
+privilege revoke still applies, so `db-check` reports it as a note, not a failure.
 
 ## Going back to local Docker
 
