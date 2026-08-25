@@ -161,7 +161,9 @@ def db_check() -> None:
 
     Reports how the connection was tuned (Supabase TLS, transaction-pooler prepared
     statement handling), whether PostGIS is installed and reachable on the current
-    search_path, and which Alembic revision the database is at.
+    search_path, which Alembic revision the database is at, and whether every table
+    in `public` has Row-Level Security enabled. An unprotected table fails the check:
+    on Supabase it is world-readable through PostgREST (see migration 0008).
     """
     from sqlalchemy import text
 
@@ -171,8 +173,13 @@ def db_check() -> None:
         ALEMBIC_REVISION_QUERY,
         DIRECT_HOST_HINT,
         POSTGIS_VERSION_QUERY,
+        PUBLIC_TABLE_RLS_QUERY,
+        RLS_CLEAN_TEMPLATE,
+        RLS_EXTENSION_TABLE_HINT,
+        RLS_UNPROTECTED_TEMPLATE,
         SERVER_VERSION_QUERY,
     )
+    from app.db.rls import classify_public_tables
     from app.db.session import engine
 
     profile = profile_for_url(app_settings.database_url)
@@ -192,6 +199,7 @@ def db_check() -> None:
             server = connection.execute(text(SERVER_VERSION_QUERY)).scalar_one()
             postgis = connection.execute(text(POSTGIS_VERSION_QUERY)).scalar_one_or_none()
             revision = connection.execute(text(ALEMBIC_REVISION_QUERY)).scalar_one_or_none()
+            rls_rows = connection.execute(text(PUBLIC_TABLE_RLS_QUERY)).all()
     except Exception as exc:
         typer.secho(f"  connection FAILED: {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from exc
@@ -206,7 +214,23 @@ def db_check() -> None:
         )
     typer.echo(f"  alembic revision       {revision or 'none — run `alembic upgrade head`'}")
 
-    if postgis is None or revision is None:
+    rls = classify_public_tables(rls_rows)
+    if rls.is_clean:
+        typer.secho(
+            f"  row-level security     {RLS_CLEAN_TEMPLATE.format(count=len(rls.protected))}",
+            fg=typer.colors.GREEN,
+        )
+    else:
+        typer.secho(
+            "  row-level security     "
+            f"{RLS_UNPROTECTED_TEMPLATE.format(tables=', '.join(rls.unprotected))}",
+            fg=typer.colors.RED,
+        )
+    if rls.unprotected_extension_tables:
+        hint = RLS_EXTENSION_TABLE_HINT.format(tables=", ".join(rls.unprotected_extension_tables))
+        typer.secho(f"  NOTE: {hint}", fg=typer.colors.YELLOW)
+
+    if postgis is None or revision is None or not rls.is_clean:
         raise typer.Exit(code=1)
 
 

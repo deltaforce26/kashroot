@@ -30,7 +30,10 @@ The Supabase project is populated and current. Confirm before deploying:
 .venv\Scripts\python.exe -m app.cli db-check
 ```
 
-Expect `alembic revision 0007_drop_certifier_council_city` and `postgis 3.3.7`.
+Expect `alembic revision 0008_enable_row_level_security`, `postgis 3.3.7` and
+`row-level security ... all protected`. An unprotected table fails the check: on
+Supabase it is readable and writable by anyone with the project URL (see
+`docs/supabase-runbook.md`).
 
 If a future change adds a migration, run it **from your machine, before pushing**, with
 the **session pooler** URL (port 5432):

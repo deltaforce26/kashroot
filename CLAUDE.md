@@ -36,6 +36,7 @@ An app that answers "Can I eat here according to MY standards?" — user defines
 - Hebrew text: UTF-8 everywhere; CSV outputs use utf-8-sig for Excel compatibility.
 - Never hardcode kashrut logic conclusions; everything derives from Certificate records + Profile.
 - Migrations via Alembic only; never edit schema manually.
+- Every migration that creates a table must enable Row-Level Security on it — `op.execute(enable_rls_sql("<table>"))` from `app.db.rls`. Supabase serves the `public` schema to the publishable key, so an unprotected table is world-writable; `kashroot db-check` fails when one exists (see `docs/supabase-runbook.md`).
 
 ## Orchestration protocol (main session = orchestrator)
 You, the main conversation, are the orchestrator. Your job is coordination, not implementation.

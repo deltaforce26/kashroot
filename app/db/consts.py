@@ -71,3 +71,45 @@ DIRECT_HOST_HINT = (
     "pooler host instead (Connect -> Session pooler for migrations, Transaction pooler "
     "for the app): postgres.<project-ref>@aws-0-<region>.pooler.supabase.com"
 )
+
+#: Roles Supabase exposes through PostgREST at the project URL: ``anon`` is the role
+#: the publishable key assumes, ``authenticated`` any signed-in Supabase Auth user.
+#: Kashroot has no PostgREST client — FastAPI is the only thing that reads or writes
+#: the database — so neither role needs a single privilege in ``public``.
+POSTGREST_ROLES = ("anon", "authenticated")
+
+#: RLS is off by default on a newly created table, and a table in ``public`` without
+#: it is world-readable through PostgREST. Every migration that creates a table must
+#: emit this for it; see :func:`app.db.rls.enable_rls_sql`.
+ENABLE_RLS_TEMPLATE = 'ALTER TABLE "{table}" ENABLE ROW LEVEL SECURITY'
+
+#: Every ordinary table in ``public``, whether RLS is on, and whether the table
+#: belongs to an extension (PostGIS reference data, which a hosted database may not
+#: let the connecting role alter). Probed by ``kashroot db-check``.
+PUBLIC_TABLE_RLS_QUERY = """
+SELECT c.relname,
+       c.relrowsecurity,
+       EXISTS (
+           SELECT 1
+           FROM pg_depend d
+           WHERE d.classid = 'pg_class'::regclass
+             AND d.objid = c.oid
+             AND d.deptype = 'e'
+       )
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public'
+  AND c.relkind = 'r'
+ORDER BY c.relname
+"""
+
+RLS_CLEAN_TEMPLATE = "{count} public tables, all protected"
+RLS_UNPROTECTED_TEMPLATE = (
+    "DISABLED on {tables} — anyone holding the project's publishable key can read and "
+    "write these over PostgREST. Run `alembic upgrade head`."
+)
+RLS_EXTENSION_TABLE_HINT = (
+    "no RLS on {tables} — extension-owned reference data, not alterable by the connecting "
+    "role, so migration 0008 stepped over it. No Kashroot data lives there, and that "
+    "migration's privilege revoke still keeps PostgREST out."
+)
