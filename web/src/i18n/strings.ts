@@ -217,7 +217,7 @@ const he = {
     // The map has a real design for having no map — see useGoogleMaps.
     unavailableTitle: "המפה לא זמינה כרגע",
     unavailableNoKey: "לא הוגדר מפתח מפות לאפליקציה הזו. הרשימה עובדת כרגיל.",
-    unavailableError: "לא הצלחנו לטעון את המפה — ייתכן שאין חיבור לרשת. הרשימה עובדת כרגיל.",
+    unavailableError: "לא הצלחנו לטעון את המפה - ייתכן שאין חיבור לרשת. הרשימה עובדת כרגיל.",
     toList: "מעבר לרשימה",
     youAreHere: "המיקום שלך",
     pinsShown: (n: number) => `${n} מקומות על המפה`,
@@ -245,7 +245,7 @@ const he = {
 
   states: {
     loading: "בודקים מול הפרופיל שלך…",
-    wakingUp: "השרת מתעורר — הטעינה הראשונה עשויה לקחת עד כדקה.",
+    wakingUp: "השרת מתעורר - הטעינה הראשונה עשויה לקחת עד כדקה.",
     loadingShort: "טוען…",
     errorTitle: "לא הצלחנו להביא תשובה",
     errorNetwork: "אין חיבור לשרת. בדקו את החיבור ונסו שוב.",
@@ -299,7 +299,7 @@ const he = {
   // profile and the saved lists live in localStorage and survive the crash.
   errorPage: {
     title: "המסך הזה נפל",
-    body: "התקלה אצלנו. שום דבר שהגדרתם לא אבד — הפרופיל והרשימות השמורות נשמרים במכשיר.",
+    body: "התקלה אצלנו. שום דבר שהגדרתם לא אבד - הפרופיל והרשימות השמורות נשמרים במכשיר.",
     retry: "טעינה מחדש של המסך",
     home: "מעבר למסך הבית",
     devDetails: "פרטים טכניים (בנייה מקומית בלבד)",

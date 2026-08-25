@@ -65,7 +65,7 @@ export function MapView() {
   const navigate = useNavigate();
   const { profile } = useProfile();
   const { city } = useCity();
-  const { origin, source, addressLabel, requestDeviceLocation } = useOrigin(city);
+  const { origin, source, requestDeviceLocation } = useOrigin(city);
   const { status: mapsStatus, libs } = useGoogleMaps(lang);
 
   const [activeIndex, setActiveIndex] = useState(0);
@@ -338,21 +338,6 @@ export function MapView() {
                 <span key={item.id} data-on={index === activeIndex} />
               ))}
             </div>
-            {/*
-              Never show a bare distance. Every number on this screen is measured from
-              one point, and the screen says which — the device, an address the user
-              typed, or the city centre we fall back to when neither is set. Home
-              states the same thing in its header; the map lost it when the address
-              picker landed, which is what `demoFlow` catches.
-            */}
-            <p className="hint" style={{ marginTop: 6 }}>
-              {t.map.pinsShown(plotted.length)} ·{" "}
-              {source === "device"
-                ? t.origin.fromDevice
-                : (addressLabel ?? t.origin.fromCity(lang === "en" ? city.en : city.he))}
-              {"\n"}
-              {t.map.note}
-            </p>
           </>
         ) : null}
       </div>
