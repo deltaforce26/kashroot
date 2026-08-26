@@ -1,10 +1,11 @@
 /**
  * Restaurant — tinted hero, glass verdict panel (design 3d). The money screen.
  *
- * Order of the page is the order of the argument: the verdict, then why, then the
- * certificate that produced it with its provenance, then everything soft. The fit
- * score sits near the bottom, deliberately far from the verdict pill and under its
- * own explanatory label.
+ * Order of the page is the order of the argument: the name of the place, then why
+ * it matches you, both above the hero, then the hero verdict, then the certificate
+ * that produced it with its provenance, then everything soft. The fit score sits
+ * near the bottom, deliberately far from the verdict pill and under its own
+ * explanatory label.
  *
  * The design's Shabbat/erev-chag hours block is not rendered: Israel hours logic is
  * out of POC scope and the detail response carries no hours, so inventing rows here
@@ -52,12 +53,6 @@ function CertificateCard({ evidence }: { evidence: CertificateEvidenceOut }) {
         <div className="cert-card__title">{t.restaurant.certificate}</div>
         <span>{certifierName}</span>
         <span>{validUntil ? t.restaurant.validUntil(validUntil) : t.restaurant.noExpiry}</span>
-        <span>
-          {t.restaurant.source}: {t.restaurant.sources[evidence.provenance.source]}
-          {evidence.provenance.verified_by_label
-            ? ` · ${t.restaurant.verifiedBy(evidence.provenance.verified_by_label)}`
-            : ""}
-        </span>
         <span className={`badge-soft badge-soft--${freshness.tone}`}>{freshness.text}</span>
       </div>
     </section>
@@ -149,6 +144,13 @@ export function Restaurant() {
       </header>
 
       <div className="shell__scroll" style={{ paddingTop: 12 }}>
+        <div>
+          <h1 style={{ font: "700 28px Assistant, sans-serif", margin: 0 }}>{name}</h1>
+          <div style={{ fontSize: 13, color: "var(--sub)", marginTop: 2 }}>{meta}</div>
+        </div>
+
+        <EvidencePanel match={data.kashrut} deciding={deciding} />
+
         <div className={`hero ${tintClass(data.dietType)}`}>
           <span className="hero__photo stripe" aria-hidden="true">
             {t.photoPlaceholder}
@@ -157,13 +159,6 @@ export function Restaurant() {
             <VerdictPill verdict={data.kashrut.verdict} size="lg" long />
           </span>
         </div>
-
-        <div>
-          <h1 style={{ font: "700 28px Assistant, sans-serif", margin: 0 }}>{name}</h1>
-          <div style={{ fontSize: 13, color: "var(--sub)", marginTop: 2 }}>{meta}</div>
-        </div>
-
-        <EvidencePanel match={data.kashrut} deciding={deciding} />
 
         {deciding ? (
           <CertificateCard evidence={deciding} />
@@ -226,15 +221,6 @@ export function Restaurant() {
               <PhoneIcon />
             </a>
           )}
-          <button
-            type="button"
-            className="action-circle glass"
-            aria-label={saved ? t.restaurant.saved : t.restaurant.save}
-            aria-pressed={saved}
-            onClick={() => toggle(data)}
-          >
-            <HeartIcon filled={saved} />
-          </button>
         </div>
 
         <p className="hint" style={{ paddingBottom: 12 }}>
