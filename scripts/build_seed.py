@@ -6,7 +6,9 @@ import unicodedata
 R = []  # (name, address, city, phone, business_type, diet, certifier_id, source, source_date, needs_review, notes)
 
 # ---------------- SOURCE 1: Rabbanut Bnei Brak (מטבחים PDF, תמוז תשפ"ו) ----------------
-SRC1 = ("rabbanut_bnei_brak", "rabbanut_bb_kitchens_pdf", "Tamuz 5786 (Jun-Jul 2026)")
+# Certifier is landa_bnei_brak, not a rabbanut slug: the Bnei Brak rabbanut list was
+# merged into Badatz Rav Landa (Aug 2026). The source document is unchanged.
+SRC1 = ("landa_bnei_brak", "rabbanut_bb_kitchens_pdf", "Tamuz 5786 (Jun-Jul 2026)")
 S1 = """אברמיטו|יגאל אלון 6|בית שמש|*5113|מסעדות ומזנונים
 אולמי דונולו|דונולו 11|בני ברק|035792552|קייטרינג בשרי
 אולמי השמחות|מלצר 15|בני ברק|035743599|קייטרינג בשרי

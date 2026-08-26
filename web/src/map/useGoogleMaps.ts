@@ -31,6 +31,15 @@ export function hasMapsKey(): boolean {
   return BROWSER_KEY.trim().length > 0;
 }
 
+/**
+ * Map ID, required by advanced markers — a map built without one draws no pins at
+ * all. `VITE_GOOGLE_MAPS_MAP_ID` names a real ID from the Cloud console, which is
+ * what lets the map be restyled there without a deploy; unset, we fall back to
+ * Google's documented development ID so a fresh clone still shows a working map.
+ */
+export const MAP_ID: string =
+  import.meta.env["VITE_GOOGLE_MAPS_MAP_ID"]?.trim() || "DEMO_MAP_ID";
+
 export interface MapsLibs {
   maps: google.maps.MapsLibrary;
   marker: google.maps.MarkerLibrary;
@@ -54,13 +63,23 @@ function configure(language: "he" | "en"): void {
 /**
  * One load for the app's lifetime — mounting the map screen twice must not pull the
  * script twice.
+ *
+ * The two imports are deliberately sequential, not a `Promise.all`. The loader puts
+ * every library requested before the bootstrap script exists into the script URL's
+ * `libraries=` parameter, and a library named there is connected through the legacy
+ * path — which never registers `<gmp-advanced-marker>` as a custom element. The class
+ * is still handed to us, so the breakage surfaces late and obscurely: constructing an
+ * advanced marker throws from inside the API. Awaiting `maps` first means `marker` is
+ * requested after the bootstrap, through `importLibrary` proper, which registers it.
  */
 function loadLibs(language: "he" | "en"): Promise<MapsLibs> {
   if (!libsPromise) {
     configure(language);
-    libsPromise = Promise.all([importLibrary("maps"), importLibrary("marker")]).then(
-      ([maps, marker]) => ({ maps, marker }),
-    );
+    libsPromise = (async () => {
+      const maps = await importLibrary("maps");
+      const marker = await importLibrary("marker");
+      return { maps, marker };
+    })();
   }
   return libsPromise;
 }

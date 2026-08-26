@@ -4,7 +4,7 @@ interface ErrorStateProps {
 }
 
 export function LoadingState() {
-  return <p className="state state-loading">Loading…</p>;
+  return <p className="state state-loading">טוען…</p>;
 }
 
 export function EmptyState({ message }: { message: string }) {
@@ -17,7 +17,7 @@ export function ErrorState({ message, onRetry }: ErrorStateProps) {
       <p>{message}</p>
       {onRetry && (
         <button type="button" onClick={onRetry}>
-          Retry
+          נסה שוב
         </button>
       )}
     </div>

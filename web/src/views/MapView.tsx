@@ -6,6 +6,11 @@
  * theme without a second palette. Selecting a marker selects its carousel card and
  * the reverse; the map never re-ranks or filters anything.
  *
+ * Pins are `AdvancedMarkerElement`, which takes a DOM node rather than the deprecated
+ * `Marker`'s symbol path — so the dot is a styled div and the colour comes straight
+ * from the same custom property. Advanced markers only render on a map created with a
+ * map ID, which is why the map is constructed with one; see `useGoogleMaps`.
+ *
  * When there is no maps key, or the script fails to load — a blocked CDN, an
  * exhausted quota, or simply being offline — the screen falls back to the design's
  * striped placeholder with one line saying why, and the list is one tap away. It
@@ -25,7 +30,7 @@ import { isNetworkError, useSearch } from "../hooks/useApi";
 import { formatDistance, pickName, useI18n } from "../i18n/I18nProvider";
 import { useCity } from "../location/useCity";
 import { useOrigin } from "../location/useOrigin";
-import { useGoogleMaps } from "../map/useGoogleMaps";
+import { MAP_ID, useGoogleMaps } from "../map/useGoogleMaps";
 import { toPayload } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
 
@@ -34,6 +39,25 @@ function verdictColour(verdict: Verdict): string {
   const token = verdict === "match" ? "--green" : verdict === "no_match" ? "--red" : "--amber";
   const value = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
   return value || "#6b6b6b";
+}
+
+/**
+ * A pin's visual as a DOM node, which is what an advanced marker takes in place of
+ * the old symbol path: the same filled circle in a white ring, grown a little while
+ * its card is the one on screen.
+ */
+function markerDot(colour: string, selected: boolean): HTMLElement {
+  const dot = document.createElement("div");
+  const diameter = selected ? 22 : 16;
+  dot.style.cssText = [
+    `width:${diameter}px`,
+    `height:${diameter}px`,
+    "box-sizing:border-box",
+    "border-radius:50%",
+    `background:${colour}`,
+    `border:${selected ? 3 : 2.5}px solid #fff`,
+  ].join(";");
+  return dot;
 }
 
 export function MapView() {
@@ -52,8 +76,8 @@ export function MapView() {
   const syncingRef = useRef(false);
   const settleRef = useRef<number | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
-  const meMarkerRef = useRef<google.maps.Marker | null>(null);
+  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const meMarkerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
 
   const request = useMemo<SearchRequest>(
     () => ({
@@ -130,6 +154,7 @@ export function MapView() {
     mapRef.current = new libs.maps.Map(containerRef.current, {
       center: { lat: origin.lat, lng: origin.lon },
       zoom: 14,
+      mapId: MAP_ID,
       disableDefaultUI: true,
       gestureHandling: "greedy",
       clickableIcons: false,
@@ -141,29 +166,27 @@ export function MapView() {
     const map = mapRef.current;
     if (!map || !libs) return;
 
-    for (const marker of markersRef.current) marker.setMap(null);
+    for (const marker of markersRef.current) marker.map = null;
     markersRef.current = plotted.map((item, index) => {
       const selected = index === activeIndex;
-      const marker = new libs.marker.Marker({
+      const marker = new libs.marker.AdvancedMarkerElement({
         map,
         position: { lat: item.geo!.lat, lng: item.geo!.lon },
         title: pickName(lang, item.nameHe, item.nameEn),
         zIndex: selected ? 10 : 1,
-        icon: {
-          path: 0 as unknown as google.maps.SymbolPath, // SymbolPath.CIRCLE
-          fillColor: verdictColour(item.kashrut.verdict),
-          fillOpacity: 1,
-          strokeColor: "#ffffff",
-          strokeWeight: selected ? 3 : 2.5,
-          scale: selected ? 11 : 8,
-        },
+        // A dot marks a point, so it sits centred on it rather than standing on it
+        // the way a teardrop pin would — which is the anchor an advanced marker
+        // uses by default.
+        anchorTop: "-50%",
+        gmpClickable: true,
+        content: markerDot(verdictColour(item.kashrut.verdict), selected),
       });
-      marker.addListener("click", () => setActiveIndex(index));
+      marker.addListener("gmp-click", () => setActiveIndex(index));
       return marker;
     });
 
     return () => {
-      for (const marker of markersRef.current) marker.setMap(null);
+      for (const marker of markersRef.current) marker.map = null;
       markersRef.current = [];
     };
   }, [plotted, activeIndex, libs, lang]);
@@ -172,22 +195,16 @@ export function MapView() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !libs) return;
-    meMarkerRef.current?.setMap(null);
+    if (meMarkerRef.current) meMarkerRef.current.map = null;
     meMarkerRef.current = null;
     if (source !== "device") return;
-    meMarkerRef.current = new libs.marker.Marker({
+    meMarkerRef.current = new libs.marker.AdvancedMarkerElement({
       map,
       position: { lat: origin.lat, lng: origin.lon },
       title: t.map.youAreHere,
       zIndex: 20,
-      icon: {
-        path: 0 as unknown as google.maps.SymbolPath,
-        fillColor: "#1a73e8",
-        fillOpacity: 1,
-        strokeColor: "#ffffff",
-        strokeWeight: 3,
-        scale: 7,
-      },
+      anchorTop: "-50%",
+      content: markerDot("#1a73e8", false),
     });
   }, [source, origin, libs, t.map.youAreHere]);
 

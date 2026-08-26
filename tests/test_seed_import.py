@@ -37,7 +37,9 @@ def imported(session):
 
 
 def test_import_creates_certifiers_and_source_documents(session, imported):
-    assert count(session, Certifier) == 4
+    # 3, not 4: rabbanut_bnei_brak was merged into landa_bnei_brak (Aug 2026). The
+    # source-document count is unchanged — a merge moves attribution, never provenance.
+    assert count(session, Certifier) == 3
     assert count(session, SourceDocument) == 6
     doc = session.scalar(select(SourceDocument).where(SourceDocument.slug == "rubin_restaurants_pdf"))
     assert doc.source_date_label == "5786 (2026)"
@@ -93,17 +95,51 @@ def test_clean_rows_produce_active_certificates(session, imported):
     assert all(c.state is CertificateState.ACTIVE for r in clean for c in r.certificates)
 
 
-def test_multi_certifier_rows_get_one_certificate_each(session, imported):
-    # 9 corpus rows are listed by two certifiers (corroboration_count == 2).
-    multi = [
+def test_corroborated_rows_keep_every_source_document(session, imported):
+    """The 9 two-document rows survived the rabbanut_bnei_brak -> landa_bnei_brak merge.
+
+    The merge collapsed their two certifier slugs into one, so they now hold a single
+    certificate — but ``corroboration_count`` counts *source documents*, not certifiers,
+    so it must still read 2. This is the assertion that would catch a merge that quietly
+    threw provenance away.
+    """
+    corroborated = [
         r
         for r in session.scalars(select(Restaurant)).all()
-        if len(r.certificates) > 1
+        if r.corroboration_count == 2
     ]
-    assert len(multi) == 9
-    for restaurant in multi:
-        assert restaurant.corroboration_count == 2
-        assert len({c.certifier_id for c in restaurant.certificates}) == 2
+    assert len(corroborated) == 9
+    # Post-merge the corpus lists no restaurant under two certifiers.
+    assert all(len({c.certifier_id for c in r.certificates}) == 1 for r in corroborated)
+
+
+def test_multi_certifier_rows_get_one_certificate_each(session, tmp_path):
+    """One certificate per certifier ID on the row.
+
+    Driven by a synthetic CSV rather than the corpus: the real corpus stopped containing
+    multi-certifier rows at the Aug 2026 merge, but the ingestion logic still handles them
+    and must stay covered.
+    """
+    csv_path = tmp_path / "multi_certifier.csv"
+    header = (
+        "restaurant_name_he,address_he,city_he,city_en,phone,business_type_he,"
+        "diet_type,certifier_ids,corroboration_count,source_documents,source_date,"
+        "record_state,needs_review,notes"
+    )
+    row = (
+        "מסעדת בדיקה,הרצל 1,אשקלון,Ashkelon,0500000000,מסעדה בשרית,"
+        "meat,badatz_eda_haredit;badatz_mehadrin_rubin,2,"
+        "eda_haredit_south_poster;rubin_restaurants_pdf,Tamuz 5786 (Jun-Jul 2026),"
+        "LIST_VERIFIED,FALSE,"
+    )
+    csv_path.write_text("\n".join([header, row, ""]), encoding="utf-8-sig")
+
+    import_seed(session, csv_path, dry_run=False, actor="pytest")
+
+    restaurant = session.scalar(select(Restaurant))
+    assert restaurant.corroboration_count == 2
+    assert len(restaurant.certificates) == 2
+    assert len({c.certifier_id for c in restaurant.certificates}) == 2
 
 
 def test_import_is_idempotent(session, imported):

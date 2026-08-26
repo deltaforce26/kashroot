@@ -92,7 +92,7 @@ describe("api client error normalization", () => {
   it("falls back to a generic HTTP message for non-JSON error bodies", async () => {
     mockFetch(500, new Error("not json"), false);
     const err = await api("/api/admin/audit").catch((e: unknown) => e);
-    expect((err as ApiError).message).toBe("Request failed (HTTP 500)");
+    expect((err as ApiError).message).toBe("הבקשה נכשלה (HTTP 500)");
   });
 
   it("wraps network failures in ApiError with status 0", async () => {

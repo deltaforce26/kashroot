@@ -11,7 +11,7 @@
 | `phone` | Normalized (digits, leading 0, or `*` short codes) |
 | `business_type_he` | As published (מסעדה, קייטרינג, מאפייה, חנות מזון…) |
 | `diet_type` | meat / dairy / pareve / fish / mixed / dairy_pareve — **inferred** from business type, blank if indeterminable |
-| `certifier_ids` | `;`-separated: `rabbanut_bnei_brak`, `badatz_mehadrin_rubin`, `badatz_eda_haredit`, `landa_bnei_brak` |
+| `certifier_ids` | `;`-separated: `badatz_mehadrin_rubin`, `badatz_eda_haredit`, `landa_bnei_brak` |
 | `corroboration_count` | # of distinct source documents listing this business (9 records have 2) |
 | `source_documents` / `source_date` | Provenance; dates are Hebrew-calendar list dates (Tamuz/Av 5786 = summer 2026) |
 | `record_state` | `LIST_VERIFIED` (clean row from official list) or `UNKNOWN_PENDING_VERIFICATION` (56 rows) |
@@ -20,12 +20,22 @@
 ### Sources (`sources/`)
 | File | Certifier | Quality |
 |---|---|---|
-| `rabbanut_bb_kitchens.pdf` | Rabbanut Bnei Brak (רבני העיר) | Clean table |
+| `rabbanut_bb_kitchens.pdf` | Landa (Bnei Brak) — published as the rabbanut kitchens list | Clean table |
 | `rubin_restaurants.pdf` | Badatz Mehadrin (Rubin) | Good table; original OCR had ð→נ artifacts, fixed |
 | `eda_haredit_jerusalem_poster.jpg` (+`_2`, duplicate) | Badatz Eda Haredit | Poster; phone alignment imperfect → meat section flagged |
 | `eda_haredit_south_poster.jpg` | Badatz Eda Haredit | Poster, readable |
 | `eda_haredit_north.pdf` | Badatz Eda Haredit | Poster layout, heavy OCR noise → most needs_review rows |
 | `landa_vacation_cities_poster.jpg` | Landa (Bnei Brak) | Poster, readable |
+
+### Certifier merges
+- **`rabbanut_bnei_brak` → `landa_bnei_brak`** (Aug 2026, product decision). The Bnei Brak
+  rabbanut and Badatz Rav Landa are treated as one certification. 122 records were
+  reassigned; 9 of them had carried both slugs and now carry one. No records were dropped
+  (517 before and after) and both source documents survive, so `source_documents`,
+  `corroboration_count` (which counts documents, not certifiers) and every date are
+  unchanged — only the certifier attribution moved. The corpus now contains **no Rabbanut
+  certifier of either type**; anything keyed on `rabbanut_local` / `rabbanut_national`
+  matches nothing until national Rabbanut data lands.
 
 ### Known gaps — important
 - **No certificate-level attributes** (glatt, pas yisrael…) and **no expiry dates** — none exist in these sources. These lists establish *status + certifier* only (source-hierarchy level 1 per PRD §13). Certificate photos / field verification required for attributes.

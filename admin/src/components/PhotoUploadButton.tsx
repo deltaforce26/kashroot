@@ -12,7 +12,7 @@ interface PhotoUploadButtonProps {
 }
 
 /**
- * "Upload cert photo" — multipart POST /api/admin/certificates/{id}/photos.
+ * "העלאת תמונת תעודה" — multipart POST /api/admin/certificates/{id}/photos.
  *
  * Client-side mirrors of the server gates (which remain authoritative):
  * jpeg/png/webp/pdf only and ≤ 15 MB. The upload lands PENDING_REVIEW and
@@ -28,11 +28,11 @@ export function PhotoUploadButton({ certificateId, onUploaded }: PhotoUploadButt
   async function handleFile(file: File) {
     setError(null);
     if (!ACCEPTED_PHOTO_TYPES.includes(file.type)) {
-      setError("Unsupported file type — use JPEG, PNG, WebP or PDF.");
+      setError("סוג קובץ לא נתמך — יש להשתמש ב־JPEG, PNG, WebP או PDF.");
       return;
     }
     if (file.size > MAX_PHOTO_BYTES) {
-      setError("File exceeds the 15 MB limit.");
+      setError("הקובץ חורג ממגבלת 15 MB.");
       return;
     }
     setBusy(true);
@@ -45,11 +45,11 @@ export function PhotoUploadButton({ certificateId, onUploaded }: PhotoUploadButt
         { method: "POST", body: form },
       );
       showToast(
-        "Photo uploaded — pending review in the Photos queue. Nothing changes on the certificate until it is accepted.",
+        "התמונה הועלתה — ממתינה לבדיקה בתור התמונות. דבר לא משתנה בתעודה עד שהיא מאושרת.",
       );
       onUploaded?.(photo);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Upload failed unexpectedly");
+      setError(err instanceof ApiError ? err.message : "ההעלאה נכשלה באופן בלתי צפוי");
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -62,7 +62,7 @@ export function PhotoUploadButton({ certificateId, onUploaded }: PhotoUploadButt
         ref={inputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp,application/pdf"
-        aria-label="Certificate photo file"
+        aria-label="קובץ תמונת תעודה"
         hidden
         onChange={(e) => {
           const file = e.target.files?.[0];
@@ -70,7 +70,7 @@ export function PhotoUploadButton({ certificateId, onUploaded }: PhotoUploadButt
         }}
       />
       <button type="button" disabled={busy} onClick={() => inputRef.current?.click()}>
-        {busy ? "Uploading…" : "Upload cert photo"}
+        {busy ? "מעלה…" : "העלאת תמונת תעודה"}
       </button>
       {error && <p className="field-error">{error}</p>}
     </div>
