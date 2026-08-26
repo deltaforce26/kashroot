@@ -69,6 +69,10 @@
   --radius-tile: 18px;
   --radius-pill: 99px;
   --shell-max: 430px;
+  /* The floating tab bar's own height plus the gap it keeps from the screen edge —
+     what a scrolling list has to reserve so its last row clears the bar. Not
+     theme-dependent, so it is defined here only. */
+  --tabbar-space: calc(78px + env(safe-area-inset-bottom));
 }
 
 :root[data-theme="dark"] {
@@ -207,6 +211,15 @@ a {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/*
+ * The tab bar floats *over* this list rather than sitting under it, so its glass has
+ * something to be glass against. That means the list has to reserve the bar's height
+ * itself, or the last card ends up parked underneath it and unreachable.
+ */
+.shell:has(.tabbar) .shell__scroll {
+  padding-bottom: var(--tabbar-space);
 }
 
 /*
@@ -1011,9 +1024,19 @@ a {
 
 /* ── Tab bar ───────────────────────────────────────────────────────────── */
 
+/*
+ * Floating, not stacked. As a flow sibling below `.shell__scroll` the bar had nothing
+ * behind it — `backdrop-filter` blurs whatever it overlaps, and it overlapped only
+ * the flat page background, so the glass read as no bar at all. Lifting it over the
+ * list is what makes the translucency visible: cards pass under it and come through
+ * blurred.
+ */
 .tabbar {
+  position: absolute;
+  z-index: 10;
+  inset-inline: 24px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
   display: flex;
-  margin: 10px 24px 16px;
   border-radius: var(--radius-pill);
   padding: 9px 10px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
