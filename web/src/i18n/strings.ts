@@ -243,6 +243,12 @@ const he = {
     denied: "לא קיבלנו את המיקום שלכם. אפשר להקליד כתובת במקום.",
   },
 
+  // Shown on the launch screen only once the wait is long enough to need words —
+  // the mark alone carries the first 1.6s. Copy is the design's, verbatim.
+  launch: {
+    loading: "טוען את הרשימה שלך…",
+  },
+
   states: {
     loading: "בודקים מול הפרופיל שלך…",
     wakingUp: "השרת מתעורר - הטעינה הראשונה עשויה לקחת עד כדקה.",
@@ -565,6 +571,10 @@ const en: Strings = {
     noResults: "We couldn't find that address in Israel. Try wording it differently.",
     lookupFailed: "We couldn't look that address up. Check your connection and try again.",
     denied: "We didn't get your location. You can type an address instead.",
+  },
+
+  launch: {
+    loading: "Loading your list…",
   },
 
   states: {
