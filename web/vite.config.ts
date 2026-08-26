@@ -11,7 +11,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icons/apple-touch-icon.png", "fonts/*.woff2", "fonts/fonts.css"],
+      includeAssets: ["icons/apple-touch-icon.png", "icons/icon.svg", "fonts/*.woff2", "fonts/fonts.css"],
       manifest: {
         name: "Kashroot — כשרות לפי הסטנדרט שלך",
         short_name: "Kashroot",
@@ -27,6 +27,7 @@ export default defineConfig({
         theme_color: "#f4f4ef",
         categories: ["food", "travel", "lifestyle"],
         icons: [
+          { src: "icons/icon.svg", sizes: "any", type: "image/svg+xml" },
           { src: "icons/icon-192.png", sizes: "192x192", type: "image/png" },
           { src: "icons/icon-512.png", sizes: "512x512", type: "image/png" },
           { src: "icons/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
