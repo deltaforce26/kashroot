@@ -1,9 +1,10 @@
 /**
  * Generates the PWA icon set as PNGs, with no image dependency.
  *
- * The mark is the verdict check from the design language: paper-white stroke on
- * the ink ground (#161616), green (#2f7a4d) rule underneath. Run `npm run icons`
- * to regenerate; output lands in public/icons/ and is committed.
+ * The mark is the one in `public/icons/icon.svg` — the green sprout arch on the
+ * bone ground — rasterised here so the SVG stays the single source of truth for
+ * the geometry. If you edit the SVG, mirror the numbers in MARK below and run
+ * `npm run icons`; output lands in public/icons/ and is committed.
  */
 import { deflateSync } from "node:zlib";
 import fs from "node:fs";
@@ -12,9 +13,25 @@ import { fileURLToPath } from "node:url";
 
 const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public", "icons");
 
-const INK = [0x16, 0x16, 0x16];
-const PAPER = [0xf4, 0xf4, 0xef];
-const GREEN = [0x2f, 0x7a, 0x4d];
+/** icon.svg, read straight off the file: gradient stops, geometry, transform. */
+const BONE = { from: [0xf4, 0xf4, 0xef], to: [0xe2, 0xdd, 0xd2] }; // 0,0 -> S,S
+const GREEN = { from: [0x9c, 0xcb, 0x56], to: [0x2f, 0x7a, 0x4d] }; // 20,20 -> 100,100 (mark space)
+const CORNER = 120 / 512; // rect rx, as a fraction of the canvas
+const MARK = {
+  translate: 106,
+  scale: 2.5,
+  strokeWidth: 16,
+  // The arch, as drawn: line, cubic, smooth cubic, line — control points expanded.
+  arch: [
+    { type: "L", a: [24, 46], b: [24, 58] },
+    { type: "C", a: [24, 58], c1: [24, 78], c2: [40, 94], b: [60, 94] },
+    { type: "C", a: [60, 94], c1: [80, 94], c2: [96, 78], b: [96, 58] },
+    { type: "L", a: [96, 58], b: [96, 46] },
+  ],
+  seed: { c: [60, 20], r: 9 },
+  gradient: { from: [20, 20], to: [100, 100] },
+};
+const SAMPLES = 4; // per axis; 16 samples/pixel is enough at these sizes
 
 function crc32(buf) {
   let c,
@@ -41,21 +58,23 @@ function chunk(type, data) {
   return Buffer.concat([len, body, crc]);
 }
 
-function png(size, rgb) {
+/** RGBA PNG; `rgba(x, y)` returns [r, g, b, a]. */
+function png(size, rgba) {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(size, 0);
   ihdr.writeUInt32BE(size, 4);
   ihdr[8] = 8; // bit depth
-  ihdr[9] = 2; // truecolour
-  const raw = Buffer.alloc(size * (size * 3 + 1));
+  ihdr[9] = 6; // truecolour + alpha
+  const raw = Buffer.alloc(size * (size * 4 + 1));
   for (let y = 0; y < size; y++) {
-    const row = y * (size * 3 + 1);
+    const row = y * (size * 4 + 1);
     raw[row] = 0; // filter: none
     for (let x = 0; x < size; x++) {
-      const p = rgb(x, y);
-      raw[row + 1 + x * 3] = p[0];
-      raw[row + 2 + x * 3] = p[1];
-      raw[row + 3 + x * 3] = p[2];
+      const p = rgba(x, y);
+      raw[row + 1 + x * 4] = p[0];
+      raw[row + 2 + x * 4] = p[1];
+      raw[row + 3 + x * 4] = p[2];
+      raw[row + 4 + x * 4] = p[3];
     }
   }
   return Buffer.concat([
@@ -66,57 +85,111 @@ function png(size, rgb) {
   ]);
 }
 
-const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * Math.max(0, Math.min(1, t))));
+const clamp01 = (t) => Math.max(0, Math.min(1, t));
+const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * clamp01(t));
 
-function segDist(px, py, x0, y0, x1, y1) {
+/** Position along a linear gradient axis, as SVG's userSpaceOnUse computes it. */
+function axisT(px, py, [x0, y0], [x1, y1]) {
   const dx = x1 - x0,
     dy = y1 - y0;
-  const t = Math.max(0, Math.min(1, ((px - x0) * dx + (py - y0) * dy) / (dx * dx + dy * dy)));
+  return clamp01(((px - x0) * dx + (py - y0) * dy) / (dx * dx + dy * dy));
+}
+
+function segDist(px, py, [x0, y0], [x1, y1]) {
+  const dx = x1 - x0,
+    dy = y1 - y0;
+  const t = clamp01(((px - x0) * dx + (py - y0) * dy) / (dx * dx + dy * dy) || 0);
   return Math.hypot(px - (x0 + t * dx), py - (y0 + t * dy));
 }
 
-/** Rounded-square ink tile with the check mark, drawn in unit coordinates. */
-function draw(size, inset) {
-  const s = size;
-  const pad = inset * s;
-  const box = s - 2 * pad;
-  const radius = box * 0.22;
+const bezier = (a, c1, c2, b, t) => {
+  const u = 1 - t;
+  return [0, 1].map(
+    (i) => u * u * u * a[i] + 3 * u * u * t * c1[i] + 3 * u * t * t * c2[i] + t * t * t * b[i],
+  );
+};
+
+/** The arch flattened to a polyline once, then reused for every pixel sample. */
+const ARCH_POINTS = (() => {
+  const pts = [];
+  for (const seg of MARK.arch) {
+    if (seg.type === "L") {
+      pts.push(seg.a, seg.b);
+      continue;
+    }
+    const steps = 48;
+    for (let i = 0; i <= steps; i++) pts.push(bezier(seg.a, seg.c1, seg.c2, seg.b, i / steps));
+  }
+  return pts;
+})();
+
+/** Distance from a point in mark space to the arch centreline. */
+function archDist(x, y) {
+  let d = Infinity;
+  for (let i = 1; i < ARCH_POINTS.length; i++) {
+    d = Math.min(d, segDist(x, y, ARCH_POINTS[i - 1], ARCH_POINTS[i]));
+  }
+  return d;
+}
+
+/**
+ * One icon variant. `corner` is the rect radius as a fraction of the canvas —
+ * 0 for the full-bleed variants (maskable, apple-touch) whose host applies its
+ * own mask, CORNER for the ones that ship their own silhouette.
+ */
+function draw(size, corner) {
+  const k = size / 512;
+  const radius = corner * size;
+  const half = MARK.strokeWidth / 2;
+  const toMark = (v) => (v / k - MARK.translate) / MARK.scale;
+
   return (x, y) => {
-    const cx = x + 0.5,
-      cy = y + 0.5;
-    // rounded-rect coverage
-    const qx = Math.max(pad + radius - cx, cx - (s - pad - radius), 0);
-    const qy = Math.max(pad + radius - cy, cy - (s - pad - radius), 0);
-    const outside = Math.hypot(qx, qy) - radius;
-    const inTile = 1 - Math.max(0, Math.min(1, outside + 0.5));
-    if (inTile <= 0) return PAPER;
+    let r = 0,
+      g = 0,
+      b = 0,
+      a = 0;
+    for (let sy = 0; sy < SAMPLES; sy++) {
+      for (let sx = 0; sx < SAMPLES; sx++) {
+        const px = x + (sx + 0.5) / SAMPLES;
+        const py = y + (sy + 0.5) / SAMPLES;
 
-    let c = INK;
-    // green rule along the bottom of the tile
-    const ruleTop = s - pad - box * 0.14;
-    if (cy > ruleTop) c = mix(c, GREEN, Math.min(1, (cy - ruleTop) / 2));
+        // rounded-rect ground
+        const qx = Math.max(radius - px, px - (size - radius), 0);
+        const qy = Math.max(radius - py, py - (size - radius), 0);
+        if (Math.hypot(qx, qy) > radius) continue;
 
-    // check mark
-    const w = box * 0.115;
-    const d = Math.min(
-      segDist(cx, cy, pad + box * 0.26, pad + box * 0.5, pad + box * 0.44, pad + box * 0.68),
-      segDist(cx, cy, pad + box * 0.44, pad + box * 0.68, pad + box * 0.76, pad + box * 0.3),
-    );
-    const stroke = 1 - Math.max(0, Math.min(1, d - w + 0.5));
-    c = mix(c, PAPER, stroke);
+        let c = mix(BONE.from, BONE.to, axisT(px, py, [0, 0], [size, size]));
 
-    return mix(PAPER, c, inTile);
+        const mx = toMark(px),
+          my = toMark(py);
+        const inArch = archDist(mx, my) <= half;
+        const inSeed = Math.hypot(mx - MARK.seed.c[0], my - MARK.seed.c[1]) <= MARK.seed.r;
+        if (inArch || inSeed) {
+          c = mix(GREEN.from, GREEN.to, axisT(mx, my, MARK.gradient.from, MARK.gradient.to));
+        }
+
+        r += c[0];
+        g += c[1];
+        b += c[2];
+        a += 255;
+      }
+    }
+    const n = SAMPLES * SAMPLES;
+    if (a === 0) return [0, 0, 0, 0];
+    // Un-premultiply: the colour is the average of the covered samples only.
+    const cov = a / 255;
+    return [Math.round(r / cov), Math.round(g / cov), Math.round(b / cov), Math.round(a / n)];
   };
 }
 
 fs.mkdirSync(OUT, { recursive: true });
 const files = [
-  ["icon-192.png", 192, 0.0],
-  ["icon-512.png", 512, 0.0],
-  ["maskable-512.png", 512, 0.14],
-  ["apple-touch-icon.png", 180, 0.0],
+  ["icon-192.png", 192, CORNER],
+  ["icon-512.png", 512, CORNER],
+  ["maskable-512.png", 512, 0],
+  ["apple-touch-icon.png", 180, 0],
 ];
-for (const [name, size, inset] of files) {
-  fs.writeFileSync(path.join(OUT, name), png(size, draw(size, inset)));
+for (const [name, size, corner] of files) {
+  fs.writeFileSync(path.join(OUT, name), png(size, draw(size, corner)));
   console.log("wrote", name);
 }
