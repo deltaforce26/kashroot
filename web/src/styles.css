@@ -135,17 +135,37 @@ html[dir="rtl"] {
   box-sizing: border-box;
 }
 
+/*
+ * The document itself never scrolls — `.shell__scroll` is the only scroller in the
+ * app, and the tab bar floats over it. Locking `html`/`body` is what makes that a
+ * guarantee rather than an accident of the shell happening to fit: when a browser
+ * reports a viewport taller than what it actually shows (iOS standalone does this on
+ * reload), the shell overhangs the screen, and without the lock the whole page turns
+ * into a second scroller — the tab bar drops below the fold, and you have to scroll
+ * the page to reach it. `overscroll-behavior` has to be declared here and not only on
+ * `body`: only the root element's value is propagated to the viewport, so the copy on
+ * `body` alone never suppressed the rubber-band.
+ */
 html,
 body {
   height: 100%;
+  overflow: hidden;
+  overscroll-behavior-y: none;
 }
 
 /* Column so the dev ribbon (when present) takes its height off the shell rather
-   than pushing it past the viewport. */
+   than pushing it past the viewport.
+
+   Height is the smaller of the two measures on purpose. `100%` resolves against the
+   initial containing block, which is the real screen in a standalone PWA; `100dvh`
+   tracks the mobile browser's collapsing URL bar. Taking `100%` as the height and
+   `100dvh` as the cap means whichever of the two is currently honest wins, and the
+   shell can never be taller than what the user can see. */
 #root {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: 100%;
+  max-height: 100dvh;
 }
 
 body {
@@ -154,7 +174,6 @@ body {
   color: var(--ink);
   font-family: Assistant, "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  overscroll-behavior-y: none;
 }
 
 button {
