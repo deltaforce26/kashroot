@@ -74,10 +74,6 @@ const he = {
       "טווח מחירים, ״פתוח עכשיו״ ונגישות עדיין לא נאספו ברוב הרשומות, ולכן אינם מוצעים כאן.",
     reset: "איפוס",
     apply: "הצגת התוצאות",
-    // The header sliders circle is the same control that opened this screen, so it
-    // has to close it too. Named separately from `apply` — the same accessible name
-    // on two buttons gives a screen-reader user no way to tell them apart.
-    close: "סגירת הסינון",
   },
 
   search: {
@@ -410,7 +406,6 @@ const en: Strings = {
       "Price range, open-now and accessibility are not recorded for most entries yet, so they are not offered here.",
     reset: "Reset",
     apply: "Show results",
-    close: "Close filters",
   },
 
   search: {

@@ -8,9 +8,8 @@
  * nothing here". The kashrut panel at the bottom says so and points at the profile,
  * which is the only place a verdict can actually be changed.
  *
- * The filters apply as they are tapped — the buttons that leave (the CTA at the
- * bottom and the sliders circle in the header) just return to the list — so no state
- * is stranded here if the user leaves by the tab bar instead.
+ * The filters apply as they are tapped — the button at the bottom just returns to
+ * the list — so no state is stranded here if the user leaves by the tab bar instead.
  */
 
 import { useNavigate } from "react-router-dom";
@@ -37,19 +36,9 @@ export function Filters() {
           <h1 style={{ font: "700 24px Assistant, sans-serif", margin: 0 }}>{t.filters.title}</h1>
           <div style={{ fontSize: 12.5, color: "var(--sub)" }}>{t.filters.lead}</div>
         </div>
-        {/* The sliders circle that opened this screen from home and search sits in the
-            mirrored corner here, and a control that looks like a toggle has to behave
-            like one: tapping it dismisses the screen the same way the CTA below does.
-            Left as decoration it was a dead affordance in exactly the spot the user
-            just tapped to get here — in Hebrew (RTL) that spot is the top left. */}
-        <button
-          type="button"
-          className="circle glass"
-          aria-label={t.filters.close}
-          onClick={() => navigate("/")}
-        >
+        <span className="circle glass" aria-hidden="true">
           <SlidersIcon />
-        </button>
+        </span>
       </header>
 
       <div className="shell__scroll" style={{ paddingTop: 14 }}>
