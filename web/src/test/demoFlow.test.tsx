@@ -270,6 +270,33 @@ describe("demo flow", () => {
   });
 
   /**
+   * The sliders circle in the filters header is the same control that opened the
+   * screen, so it has to close it. Hebrew puts it in the top left and English in the
+   * top right — one `dir` flip, one control — and in both it must leave with the
+   * filters kept, not discarded: nothing here is staged, so closing *is* applying.
+   */
+  it("closes the filters from the header sliders button, keeping what was picked", async () => {
+    const user = userEvent.setup();
+    renderApp("/");
+
+    await screen.findByText(he.presets.any.title);
+    await user.click(screen.getByText(he.presets.any.title));
+    await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
+
+    await user.click(await screen.findByRole("button", { name: he.home.openFilters }));
+    await screen.findByText(he.filters.title);
+
+    await user.click(screen.getByRole("button", { name: he.diet.dairy, pressed: false }));
+    await user.click(screen.getByRole("button", { name: he.filters.close }));
+
+    expect(await screen.findByRole("button", { name: he.home.tabs.dairy })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.queryByText(he.filters.title)).toBeNull();
+  });
+
+  /**
    * The search grid was the hole: `VerdictPill` and `FitScoreBar` were DOM siblings
    * in `.card__tile-foot`, and the only thing keeping a kashrut verdict from sitting
    * beside a preference score — reading as one blended metric — was
