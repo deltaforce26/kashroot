@@ -115,6 +115,32 @@ describe("demo flow", () => {
   });
 
   /**
+   * A shared link is the only way most people meet this app, and it lands on a
+   * device with no whitelist — so the gate sends it to onboarding. The link is only
+   * worth sharing if onboarding then continues to the restaurant that was sent,
+   * rather than dropping the visitor on home with the destination lost.
+   */
+  it("carries a shared restaurant link through onboarding instead of losing it", async () => {
+    const user = userEvent.setup();
+    renderApp("/r/r-hapisga");
+
+    await screen.findByText(he.presets.any.title);
+    await user.click(screen.getByText(he.presets.any.title));
+    await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
+
+    expect(await screen.findByText("מזנון הפסגה")).toBeInTheDocument();
+    expect(await screen.findByLabelText(he.verdict.whyMatch)).toBeInTheDocument();
+
+    // Back from a shared link goes to the list. What is behind it in history is
+    // the onboarding it just completed, which is not a screen to return to.
+    await user.click(screen.getByRole("button", { name: he.states.back }));
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/\d/),
+    );
+    expect(screen.queryByText(he.onboarding.presetTitle)).toBeNull();
+  });
+
+  /**
    * UNKNOWN has to arrive as considered as MATCH, not as a greyed-out version of it.
    * On the live corpus it comes from expiry, missing attributes, revocation and
    * unpublished levels rather than staleness; this walks the stale case because it

@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ROOTLESS, useReturnTo } from "../hooks/useReturnTo";
 import { useI18n } from "../i18n/I18nProvider";
 import { useProfile } from "../profile/ProfileProvider";
 import {
@@ -28,6 +29,7 @@ import { ErrorState, LoadingList } from "../components/states";
 export function OnboardingCertifiers({ standalone = false }: { standalone?: boolean }) {
   const { t, lang } = useI18n();
   const navigate = useNavigate();
+  const returnTo = useReturnTo();
   const { profile, setProfile, certifiers, certifiersLoading, certifiersFailed, reloadCertifiers } =
     useProfile();
   const [draft, setDraft] = useState(profile);
@@ -37,7 +39,7 @@ export function OnboardingCertifiers({ standalone = false }: { standalone?: bool
 
   const finish = () => {
     setProfile({ ...draft, completedOnboarding: true });
-    navigate("/", { replace: true });
+    navigate(returnTo, { replace: true, state: ROOTLESS });
   };
 
   return (
