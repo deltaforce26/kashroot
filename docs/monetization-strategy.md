@@ -228,3 +228,91 @@ density; density follows the data pipeline.
 
 Each of these would convert a trust asset into a one-time payment. The asset is
 worth more.
+
+---
+
+## 6. The US market, sized
+
+Added Aug 2026. Figures below are **modeled estimates with stated assumptions**,
+not researched revenue. Two external inputs anchor them; both are cited.
+
+### 6.1 The two numbers that drive everything
+
+**Restaurant count: ~1,573 kosher restaurants in the US** (Apr 2026), concentrated
+in New York (641), Florida (238) and California (193); ~67% are single-owner
+operations. Including bakeries, caterers, butchers and markets — categories on the
+roadmap — the addressable certified-food-business count is perhaps 2,000–2,500.
+
+**Population: ~7.5M US Jews, Orthodox 9% of adults** — but **17% of Jews aged
+18–29** versus 3% of those over 65. Including children, the kosher-keeping-outside-
+the-home population is roughly 800k–1M and compounding at ~4–5%/yr.
+
+The counterintuitive consequence: **the US has far more money per user but far
+fewer restaurants than Israel.** In Israel nearly every restaurant is certified
+(~15,000–20,000); in the US only a small fraction is. So the US restaurant
+subscription book is structurally *smaller* than Israel's, while every other
+stream is larger. Do not assume the Israeli playbook scales by population.
+
+### 6.2 Stream-by-stream
+
+| Stream | Assumptions | Realistic annual |
+|---|---|---|
+| **Restaurant subscriptions** | 2,000–2,500 addressable businesses; 15–25% penetration; $99 self-serve / $299 pro, ~$150 blended | **$400k–900k** |
+| **Consumer Premium** | 120–200k MAU at maturity; 4–6% conversion at $39.99/yr; plus trip packs | **$400k–1.0M** |
+| **Data licensing / API** | 3–6 enterprise deals at $150k–500k | **$1.0M–3.0M** |
+| **Affiliate / commissions** | ~$1B US kosher restaurant spend; 5% GMV influenced; ~2% take | **$300k–1.0M** |
+| **US total at maturity** | 5–7 years, strong execution | **~$2.5M–6M/yr** |
+
+Theoretical ceiling on restaurant subscriptions — 100% of 2,500 businesses at
+$200/mo — is $6M/yr. That is the *maximum*, not a target. Any plan that depends on
+restaurant subscriptions carrying the company is unsound.
+
+### 6.3 Where the US money actually is
+
+**Delivery platforms are the highest-value licensing target.** DoorDash, Uber Eats,
+Grubhub and Slice all expose a "kosher" filter that is a single meaningless
+boolean — a machmir user cannot safely order through any of them today. They have
+real budgets, they are not competitors, and we would be the only source of
+per-certificate attribute data. This is the single most valuable US conversation
+to have, and it is worth more than the entire restaurant subscription book.
+
+**Secondary licensing buyers:** certification agencies themselves (OU, OK, Star-K,
+Kof-K, CRC plus hundreds of local vaads); travel and Pesach-program operators
+(families spend $10k–30k per program — affiliate economics there are unusually
+strong); institutional food service (hospitals, universities, airline catering,
+corporate cafeterias) where kosher compliance is a procurement requirement.
+
+**Geographic concentration is an advantage.** NY/NJ + South Florida + LA covers
+roughly two-thirds of both the restaurants and the population. Three metro
+launches, not fifty. The data-acquisition cost per covered user is far better than
+national coverage suggests.
+
+### 6.4 The honest conclusion
+
+**US + Israel, dining only, is a ~$3.5M–7M ARR business at strong execution.**
+That supports a team of 30–50 and makes a credible acquisition target in the
+$25M–60M range. It is a good business. It is not, on the dining vertical alone, a
+venture-scale outcome — and a fundraise pitched as though it were will not survive
+diligence on the restaurant count.
+
+Three expansions change the order of magnitude, all reusing the existing
+per-certificate data model without architectural change:
+
+1. **Packaged goods / grocery.** The kosher *retail* market is ~$25B+ annually.
+   Per-product attributes (which hechsher, chalav yisrael, pas yisrael, yoshon),
+   barcode scan → matches your profile, Instacart / Amazon Fresh / Kroger
+   integration. CPG brands carry marketing budgets that restaurants do not. This
+   is plausibly 10x the restaurant opportunity and is the same product.
+2. **Certification workflow SaaS.** Sell the system of record to the agencies —
+   the big five plus hundreds of local vaads. Vertical SaaS ACVs of $25k–250k.
+   The free certifier portal (§4) is the wedge that earns the right to sell this.
+3. **Halal.** The architecture is already religion-agnostic: certifier whitelist,
+   per-certificate attributes, provenance, fail-safe UNKNOWN, and an explicit
+   refusal to rule on religious law. Halal certification is *more* fragmented and
+   more confusing to consumers than kosher, which makes the product more needed,
+   not less. ~4.5M US Muslims and ~2B globally. This is the largest TAM expansion
+   available and it costs almost nothing structurally.
+
+Sequencing note: none of the three should start before the Israel dining corpus
+proves the data engine. They are the answer to "how big can this get", not to
+"what do we build next".
