@@ -29,7 +29,8 @@ function RequireProfile({ children }: { children: ReactNode }) {
   const { profile } = useProfile();
   const location = useLocation();
   if (!profile.completedOnboarding || !isProfileUsable(profile)) {
-    return <Navigate to="/onboarding/preset" replace state={{ from: location.pathname }} />;
+    const from = `${location.pathname}${location.search}`;
+    return <Navigate to="/onboarding/preset" replace state={{ from }} />;
   }
   return <>{children}</>;
 }
