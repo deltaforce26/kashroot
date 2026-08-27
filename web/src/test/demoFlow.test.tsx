@@ -296,6 +296,33 @@ describe("demo flow", () => {
   });
 
   /**
+   * The sliders circle in the filters header is the same control that opened the
+   * screen, so it has to close it. Hebrew puts it in the top left and English in the
+   * top right — one `dir` flip, one control — and in both it must leave with the
+   * filters kept, not discarded: nothing here is staged, so closing *is* applying.
+   */
+  it("closes the filters from the header sliders button, keeping what was picked", async () => {
+    const user = userEvent.setup();
+    renderApp("/");
+
+    await screen.findByText(he.presets.any.title);
+    await user.click(screen.getByText(he.presets.any.title));
+    await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
+
+    await user.click(await screen.findByRole("button", { name: he.home.openFilters }));
+    await screen.findByText(he.filters.title);
+
+    await user.click(screen.getByRole("button", { name: he.diet.dairy, pressed: false }));
+    await user.click(screen.getByRole("button", { name: he.filters.close }));
+
+    expect(await screen.findByRole("button", { name: he.home.tabs.dairy })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.queryByText(he.filters.title)).toBeNull();
+  });
+
+  /**
    * The search grid was the hole: `VerdictPill` and `FitScoreBar` were DOM siblings
    * in `.card__tile-foot`, and the only thing keeping a kashrut verdict from sitting
    * beside a preference score — reading as one blended metric — was
@@ -424,5 +451,26 @@ describe("the stylesheet declarations the separation leans on", () => {
   it("gives the fit row a whole line inside any card", () => {
     expect(block(".fit-row")).toMatch(/width:\s*100%/);
     expect(block(".card .fit-row")).toMatch(/flex:\s*0 0 100%/);
+  });
+
+  /**
+   * The app shell is the viewport and the tab bar floats inside it, so the document
+   * must never become a scroller of its own. It did: an over-reported viewport — iOS
+   * standalone on reload — pushed the shell past the screen, dropped the tab bar
+   * below the fold and left the page scrollable to go find it. jsdom lays nothing
+   * out, so the guarantee only exists as these declarations.
+   */
+  it("locks the document so the tab bar can never be scrolled off screen", () => {
+    const rule = block("html,\nbody");
+    expect(rule).toMatch(/overflow:\s*hidden/);
+    // Only the root element's overscroll-behavior reaches the viewport; the copy
+    // this replaced sat on `body` alone and never suppressed the rubber-band.
+    expect(rule).toMatch(/overscroll-behavior-y:\s*none/);
+  });
+
+  it("sizes the shell by whichever viewport measure is the smaller", () => {
+    const rule = block("#root");
+    expect(rule).toMatch(/height:\s*100%/);
+    expect(rule).toMatch(/max-height:\s*100dvh/);
   });
 });
