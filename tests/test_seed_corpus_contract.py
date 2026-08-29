@@ -59,6 +59,31 @@ def test_every_source_date_label_has_a_conservative_date(rows):
     assert not missing, f"no earliest-plausible date mapped for {missing}"
 
 
+def test_every_document_has_its_own_conservative_date():
+    """A document dates the certificates it establishes, so it must carry a date itself."""
+    for slug, spec in SOURCE_DOCUMENT_SEED.items():
+        label = spec.get("date_label")
+        assert label, f"{slug} has no date_label"
+        assert label in SOURCE_DATE_EARLIEST, f"no earliest-plausible date mapped for {label}"
+
+
+def test_row_dates_agree_with_the_documents_they_cite(rows):
+    """The corpus's own date column must name the freshest document on the row.
+
+    The importer dates a certificate from the document registry, not from this column, so
+    the two can drift silently: a row could claim a list date no document behind it
+    supports. Pinning them together keeps the corpus readable as provenance and keeps a
+    rebuild honest about which list last established each record.
+    """
+    for row in rows:
+        cited = [SOURCE_DOCUMENT_SEED[slug]["date_label"] for slug in _row_source_slugs(row)]
+        freshest = max(cited, key=lambda label: SOURCE_DATE_EARLIEST[label])
+        assert (row.get("source_date") or "").strip() == freshest, (
+            f"{row['restaurant_name_he']} claims {row['source_date']!r} "
+            f"but its freshest cited document is dated {freshest!r}"
+        )
+
+
 def test_source_documents_point_at_files_that_exist():
     for slug, spec in SOURCE_DOCUMENT_SEED.items():
         assert (SOURCES_DIR / spec["file"]).exists(), f"{slug} → missing {spec['file']}"
