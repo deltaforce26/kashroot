@@ -54,11 +54,7 @@ IMPORT_KEY_PREFIX = "seed:"
 #: ``(old name, city, address) -> name on the refreshed list``. Mirrors ``RENAMED`` in
 #: ``scripts/build_seed.py``, which collapses the same pair onto one corpus row; this is
 #: the same rename applied to rows the corpus already put in the database.
-RENAMES: dict[tuple[str, str, str], str] = {
-    ("שאבעס ביג - מחלקת אוכל מוכן", "בני ברק", "בן יעקב 26"): (
-        "שאבעס ביג - מחלקת אוכל מוכן פתוח"
-    ),
-}
+RENAMES: dict[tuple[str, str, str], str] = {}
 
 ERROR_ALREADY_FORKED = (
     "Refusing to rename {old!r} -> {new!r}: a restaurant already exists under the new "
