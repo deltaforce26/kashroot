@@ -92,19 +92,26 @@ def test_refreshed_rows_are_dated_by_their_freshest_source(session, imported):
     assert certificate.verified_at.date() == dt.date(2026, 8, 14)
 
 
-def test_the_refresh_is_the_whole_of_its_certifier(session, imported):
-    """The Elul list is treated as the complete record for Landa, not a category slice.
+def test_the_refresh_supersedes_every_category_it_speaks_for(session, imported):
+    """The Elul list is Landa's complete record except in categories it does not cover.
 
-    Everything Landa previously carried and that list omits is gone from the corpus, so
-    the import can only produce the 41 records the list names. ``מאמה מיה בטיילת``, on the
-    older vacation-cities poster and absent from the refresh, is the case that shows it.
+    Everything Landa carried in a category the list speaks for and that the list omits is
+    gone; pizzerias and bakeries survive because the list carries none and its silence
+    about them says nothing. ``מאמה מיה בטיילת`` — a dairy-and-fish restaurant on the older
+    vacation-cities poster, absent from the refresh — is the case that shows the drop, and
+    the surviving pizzeria alongside it is the case that shows the exemption.
     """
     landa = session.scalar(select(Certifier).where(Certifier.slug == "landa_bnei_brak"))
-    certificates = session.scalars(
-        select(Certificate).where(Certificate.certifier_id == landa.id)
-    ).all()
+    restaurants = [
+        c.restaurant
+        for c in session.scalars(
+            select(Certificate).where(Certificate.certifier_id == landa.id)
+        )
+    ]
+    exempt = [r for r in restaurants if "פיצה" in r.business_type_he or "מאפה" in r.business_type_he]
 
-    assert len(certificates) == 41
+    assert len(restaurants) == 92
+    assert len(exempt) == 51
     assert session.scalar(
         select(Restaurant).where(Restaurant.name_he == "מאמה מיה בטיילת")
     ) is None

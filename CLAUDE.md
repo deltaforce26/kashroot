@@ -20,7 +20,7 @@ An app that answers "Can I eat here according to MY standards?" — user defines
 - **Backend scaffolded:** `app/` (FastAPI modular monolith) with PRD §16 models, Alembic
   initial migration `0001_initial_schema`, and `kashroot seed-import` (dry-run by
   default). No match engine, no API beyond `/health` yet — that's next.
-- **Seed data corpus exists:** `data/seed/kashroot_seed_corpus.csv` — 375 unique records from 7 certifier source documents (see `data/README.md` for schema, sources, and known gaps). Built by `scripts/build_seed.py`.
+- **Seed data corpus exists:** `data/seed/kashroot_seed_corpus.csv` — 426 unique records from 7 certifier source documents (see `data/README.md` for schema, sources, and known gaps). Built by `scripts/build_seed.py`.
 - Seed data has certifier + status only — **no certificate-level attributes, no expiry dates**. Records are `LIST_VERIFIED` at best; treat as source-hierarchy level 1 (official published lists).
 - Launch gate: don't launch a city below 80% coverage.
 

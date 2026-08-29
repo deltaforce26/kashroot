@@ -303,13 +303,18 @@ def test_refuses_an_empty_corpus_rather_than_deleting_everything(session, tmp_pa
     assert session.scalar(select(Restaurant)) is not None
 
 
-def test_survivors_are_read_from_the_real_corpus(tmp_path):
-    """The shipped corpus must name exactly the records the refresh keeps."""
+def test_survivors_are_read_from_the_real_corpus():
+    """The shipped corpus must name exactly the records the refresh keeps.
+
+    41 named by the Elul list, plus the 51 pizzerias and bakeries it does not speak for.
+    Anything else Landa once carried is deleted, so this count is what stands between the
+    live database and a much larger deletion than intended.
+    """
     from app.ingestion.seed_import import DEFAULT_CSV_PATH
 
     keys = surviving_dedupe_keys(DEFAULT_CSV_PATH)
 
-    assert len(keys) == 41
+    assert len(keys) == 92
 
 
 class RekeyImportKeyTests(unittest.TestCase):

@@ -682,6 +682,15 @@ RENAMED = {
 # full before-snapshot for every row it removes.
 AUTHORITATIVE_SOURCES = {SRC7[1]: SRC7[0]}
 
+# Categories an authoritative source does not speak for, so its silence about them means
+# nothing and their records survive (product decision, Aug 2026, explicit instruction).
+# Pizzerias and bakeries are carried by the vacation-cities poster in cities the Elul list
+# barely covers, under that poster's own category vocabulary, so the two lists look like
+# they cover different ground rather than one superseding the other. Matched as substrings
+# of the published category, so combined categories like
+# "עיצובי פירות וקינוחים,מאפה ובצקים" are exempt on their bakery half.
+SUPERSEDE_EXEMPT_TOKENS = ("פיצה", "מאפה")
+
 ERROR_SHARED_RECORD = (
     "{name} ({city}) is carried by {certifier!r} and also by {others}. Dropping it would "
     "remove another certifier's record, which this pass has no mandate to do. Split the "
@@ -799,6 +808,8 @@ for src_slug, cert_slug in AUTHORITATIVE_SOURCES.items():
     for k in list(order):
         m = merged[k]
         if cert_slug not in m["certs"] or src_slug in m["srcs"]:
+            continue
+        if any(token in m["btype"] for token in SUPERSEDE_EXEMPT_TOKENS):
             continue
         others = [c for c in m["certs"] if c != cert_slug]
         if others:
