@@ -72,10 +72,11 @@ describe("no client-side kashrut logic", () => {
       /^i18n\/reasons\.ts$/,
       /^components\/VerdictPill\.tsx$/,
       /^components\/EvidencePanel\.tsx$/,
+      // The saved-list model: it holds the verdict recorded at save time and
+      // compares it with today's, which is two API answers, not a rule.
       /^saved\/saved\.ts$/,
       // Validates a stored CertificationLevel, which shares the word "unknown".
       /^profile\/storage\.ts$/,
-      /^views\/Saved\.tsx$/,
       /^views\/MapView\.tsx$/,
     ];
     const offenders = files
