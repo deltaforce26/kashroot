@@ -92,21 +92,22 @@ def test_refreshed_rows_are_dated_by_their_freshest_source(session, imported):
     assert certificate.verified_at.date() == dt.date(2026, 8, 14)
 
 
-def test_a_record_the_refresh_dropped_never_stays_active(session, imported):
-    """Present on an older Landa list, absent from the newer one that supersedes it.
+def test_the_refresh_is_the_whole_of_its_certifier(session, imported):
+    """The Elul list is treated as the complete record for Landa, not a category slice.
 
-    Nothing establishes that the certificate lapsed and nothing establishes that it
-    holds, so the fail-safe rule applies: it degrades to needs-review, and a PENDING
-    certificate can never serve a MATCH.
+    Everything Landa previously carried and that list omits is gone from the corpus, so
+    the import can only produce the 41 records the list names. ``מאמה מיה בטיילת``, on the
+    older vacation-cities poster and absent from the refresh, is the case that shows it.
     """
-    restaurant = session.scalar(
-        select(Restaurant).where(Restaurant.name_he == "מאמה מיה בטיילת")
-    )
+    landa = session.scalar(select(Certifier).where(Certifier.slug == "landa_bnei_brak"))
+    certificates = session.scalars(
+        select(Certificate).where(Certificate.certifier_id == landa.id)
+    ).all()
 
-    assert restaurant.needs_review is True
-    assert restaurant.record_state is RecordState.UNKNOWN_PENDING_VERIFICATION
-    assert restaurant.certificates
-    assert all(c.state is CertificateState.PENDING for c in restaurant.certificates)
+    assert len(certificates) == 41
+    assert session.scalar(
+        select(Restaurant).where(Restaurant.name_he == "מאמה מיה בטיילת")
+    ) is None
 
 
 def test_import_creates_one_restaurant_per_branch(session, imported):
@@ -246,7 +247,7 @@ def test_apply_run_is_recorded_with_stats(session, imported):
     assert run.state is IngestionRunState.COMPLETED
     assert run.pipeline == "seed_corpus"
     assert run.actor == "pytest"
-    assert run.stats["rows_read"] == 517
+    assert run.stats["rows_read"] == len(list(read_rows(DEFAULT_CSV_PATH)))
     assert run.finished_at is not None
 
 

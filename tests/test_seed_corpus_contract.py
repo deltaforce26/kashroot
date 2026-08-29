@@ -34,7 +34,7 @@ def rows():
 
 
 def test_corpus_is_non_empty(rows):
-    assert len(rows) > 500
+    assert len(rows) > 300
 
 
 def test_every_certifier_id_is_known(rows):

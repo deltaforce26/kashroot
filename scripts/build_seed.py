@@ -668,18 +668,25 @@ RENAMED = {
         "שאבעס ביג - מחלקת אוכל מוכן פתוח",
 }
 
-# Records an authoritative refresh no longer carries. The earlier list established them,
-# the newer one covering the same certifier and categories does not, and no evidence
-# says which of the two is right. Per the fail-safe rule they degrade to
-# needs-review/UNKNOWN rather than being deleted (which would lose the provenance) or
-# left ACTIVE (which would serve a MATCH nothing currently supports).
-# name|city|address -> why
-DELISTED = {
-    ("מאמה מיה בטיילת", "טבריה", "מדרחוב הבנים"):
-        "delisted: absent from landa_restaurants_elul_5786, which supersedes "
-        "landa_vacation_cities_poster for Landa restaurant categories; "
-        "may be the same business as מאמה מיה at the same address - needs verification",
-}
+# Sources treated as the complete current record for their certifier: anything that
+# certifier previously carried and this source does not is dropped from the corpus.
+# Product decision (Aug 2026, explicit instruction): the Elul restaurants list is the
+# whole of Landa, not one category slice of it.
+#
+# This is a deliberate departure from the fail-safe default, which degrades an
+# unconfirmed record to UNKNOWN rather than removing it, so that provenance survives and
+# a moderator can still see what the earlier list said. Dropping the record instead means
+# the corpus can no longer answer why a business it used to carry went away. The source
+# transcriptions above are left intact precisely so the drop stays reversible here — the
+# database has no such backstop, which is why scripts/apply_landa_elul_refresh.py logs a
+# full before-snapshot for every row it removes.
+AUTHORITATIVE_SOURCES = {SRC7[1]: SRC7[0]}
+
+ERROR_SHARED_RECORD = (
+    "{name} ({city}) is carried by {certifier!r} and also by {others}. Dropping it would "
+    "remove another certifier's record, which this pass has no mandate to do. Split the "
+    "record or exclude it by hand before re-running."
+)
 
 # ---------------- Normalization, diet inference, dedup ----------------
 def norm_phone(p):
@@ -787,12 +794,22 @@ for rname, rcity, raddr in RENAMED:
     if record_key(rname, rcity, raddr) not in merged:
         raise SystemExit(f"RENAMED entry matches no record: {rname} / {rcity} / {raddr}")
 
-for dname, dcity, daddr in DELISTED:
-    dkey = record_key(dname, dcity, daddr)
-    if dkey not in merged:
-        raise SystemExit(f"DELISTED entry matches no record: {dkey}")
-    merged[dkey]["nr"] = "TRUE"
-    merged[dkey]["note"] = DELISTED[(dname, dcity, daddr)]
+superseded = []
+for src_slug, cert_slug in AUTHORITATIVE_SOURCES.items():
+    for k in list(order):
+        m = merged[k]
+        if cert_slug not in m["certs"] or src_slug in m["srcs"]:
+            continue
+        others = [c for c in m["certs"] if c != cert_slug]
+        if others:
+            raise SystemExit(
+                ERROR_SHARED_RECORD.format(
+                    name=m["name"], city=m["city"], certifier=cert_slug, others=others
+                )
+            )
+        superseded.append((m["name"], m["city"], m["btype"]))
+        order.remove(k)
+        del merged[k]
 
 OUT = "data/seed/kashroot_seed_corpus.csv"
 with open(OUT,"w",newline="",encoding="utf-8-sig") as f:
@@ -814,6 +831,7 @@ certs = collections.Counter(c for m in merged.values() for c in m["certs"])
 multi = sum(1 for m in merged.values() if len(m["srcs"])>1)
 nrv = sum(1 for m in merged.values() if m["nr"]=="TRUE")
 print(f"Total raw rows: {len(R)}")
+print(f"Superseded (dropped): {len(superseded)}")
 print(f"Unique records: {len(merged)}")
 print(f"Cross-source corroborated: {multi}")
 print(f"Needs review: {nrv}")

@@ -1,7 +1,7 @@
 # Seed Data
 
 ## `seed/kashroot_seed_corpus.csv`
-517 unique records, deduplicated from 570 raw rows across 7 certifier source documents. Built by `scripts/build_seed.py` (data is embedded in the script as transcribed from sources; re-run to regenerate — it writes this file in place). Encoding: UTF-8 with BOM.
+375 unique records, deduplicated from 570 raw rows across 7 certifier source documents (142 Landa records were dropped by the Elul 5786 refresh — see below). Built by `scripts/build_seed.py` (data is embedded in the script as transcribed from sources; re-run to regenerate — it writes this file in place). Encoding: UTF-8 with BOM.
 
 ### Columns
 | Column | Meaning |
@@ -12,7 +12,7 @@
 | `business_type_he` | As published (מסעדה, קייטרינג, מאפייה, חנות מזון…) |
 | `diet_type` | meat / dairy / pareve / fish / mixed / dairy_pareve — **inferred** from business type, blank if indeterminable |
 | `certifier_ids` | `;`-separated: `badatz_mehadrin_rubin`, `badatz_eda_haredit`, `landa_bnei_brak` |
-| `corroboration_count` | # of distinct source documents listing this business (38 have 2, 6 have 3) |
+| `corroboration_count` | # of distinct source documents listing this business (35 have 2, 6 have 3) |
 | `source_documents` / `source_date` | Provenance; dates are Hebrew-calendar list dates (Tamuz/Av/Elul 5786 = summer 2026). Freshest document first — the importer dates the certificate from it. Each document's own date lives in `SOURCE_DOCUMENT_SEED`, never inferred from whichever row cites it first |
 | `record_state` | `LIST_VERIFIED` (clean row from official list) or `UNKNOWN_PENDING_VERIFICATION` (56 rows) |
 | `needs_review` | TRUE where poster layout made city/phone/address assignment ambiguous (mostly the Eda Haredit north poster) |
@@ -38,30 +38,60 @@
   certifier of either type**; anything keyed on `rabbanut_local` / `rabbanut_national`
   matches nothing until national Rabbanut data lands.
 
-### Landa restaurants refresh (Elul 5786)
-`landa_restaurants_elul_5786.csv` is a newer Landa list covering **restaurant categories only**
-(`מסעדה חלבית` / `מסעדות ומזנונים` / `מעדניות`, plus catering lines that carry one of them).
-It supersedes the restaurant rows of `rabbanut_bb_kitchens_pdf` and
-`landa_vacation_cities_poster`; halls, hotels, institutions, old-age homes, pure catering
-and fruit-design businesses are outside its scope and keep their earlier provenance
-untouched. 41 of its 42 corresponding corpus records matched field-for-field, so the
-refresh mostly adds corroboration and a newer list date. Two records moved:
+### Landa restaurants refresh (Elul 5786) — authoritative
 
-- **`שאבעס ביג - מחלקת אוכל מוכן` → `שאבעס ביג - מחלקת אוכל מוכן פתוח`** — republished under a
-  changed name at the same address and phone. `RENAMED` in `scripts/build_seed.py` keys both
-  rows onto one record so the rename does not fork the corpus; `scripts/apply_landa_elul_refresh.py`
-  applies the same rename to an already-populated database, which the importer cannot do
-  (`dedupe_key` is derived from the name, so a rename reaches it as a business it has never
-  seen and orphans the record it already holds).
-- **`מאמה מיה בטיילת` (Tiberias)** — on the Av poster, absent from the Elul list. Nothing
-  establishes that it lapsed and nothing establishes that it holds, so per the fail-safe rule
-  it degrades to `needs_review=TRUE` / `UNKNOWN_PENDING_VERIFICATION` (a PENDING certificate,
-  which can never serve a MATCH) rather than being deleted, which would lose the provenance.
-  It may be the same business as `מאמה מיה` at the same address — **needs moderator verification**.
+`landa_restaurants_elul_5786.csv` is treated as the **complete current record for
+`landa_bnei_brak`**, not one category slice of it (product decision, Aug 2026, explicit
+instruction). Landa went from **183 corpus records to the 41 the list names**; the whole
+corpus went from 517 to 375.
 
-**Date caveat:** the source carries no publication date. `Elul 5786 (Aug-Sep 2026)` records when
-it was *received* (2026-08-29), not when Landa published it. If it turns out to be an older list,
-the freshness maths currently overstates these 41 records by up to that gap.
+The 142 dropped records were not restaurants only. They included 45 catering businesses,
+30 bakeries/patisseries, 20 pizzerias, 12 fruit-design businesses, 9 event halls, 11
+yeshiva/institution and old-age-home kitchens, and 2 hotels.
+
+**This is a deliberate departure from the fail-safe rule**, which degrades an unconfirmed
+record to UNKNOWN rather than removing it, so a moderator can still see what the earlier
+list said. Two mitigations:
+
+- The source transcriptions in `scripts/build_seed.py` are left intact, so the drop is
+  reversible in the repo: remove the entry from `AUTHORITATIVE_SOURCES` and rebuild.
+- `scripts/apply_landa_elul_refresh.py` writes a full before-snapshot to `audit_log` for
+  every row it removes from the database, which is the only remaining in-database record
+  that the business was ever Landa-certified.
+
+**Risk, stated plainly:** the source carries no publication date, and its own categories
+cover restaurants only (`מסעדה חלבית` / `מסעדות ומזנונים` / `מעדניות`). If it is in fact a
+category slice rather than the whole list, the corpus has dropped businesses that Landa
+still certifies. `Elul 5786 (Aug-Sep 2026)` records when the file was *received*
+(2026-08-29), not when Landa published it.
+
+One rename came with the refresh: **`שאבעס ביג - מחלקת אוכל מוכן` → `... פתוח`**, same
+address and phone. `RENAMED` in `scripts/build_seed.py` keys both rows onto one corpus
+record so the rename does not fork the corpus; the reconciliation script applies the same
+rename to an already-populated database, which the importer cannot do (`dedupe_key` is
+derived from the name, so a rename reaches it as a business it has never seen and orphans
+the record it already holds).
+
+### Applying the refresh to a populated database
+
+Order matters — renames must land before deletions, or a renamed record reads as absent
+and is deleted:
+
+```
+python -m scripts.apply_landa_elul_refresh          # dry run, rolled back
+python -m scripts.apply_landa_elul_refresh --apply
+kashroot seed-import --apply
+```
+
+Deleting a restaurant cascades to its certificates, photos, hours, flags, owner claims
+and **saved-list entries** — users lose those saved restaurants.
+
+The script **refuses to delete a demo-seeded certificate** unless `--drop-demo-seed` is
+passed. Eight of the ~18 certificates in `scripts/seed_demo_attributes.py` sit on Landa
+records the refresh drops (`הרימון`, `אולמי דונולו`, `אולמי השמחות`, `אירוע מושלם`,
+`אריסטוקרט`, `גולד`, `סושי טיים`, `גני הדקל`), so applying the override breaks the
+verdicts `DEMO_RUNSHEET.md` walks through. Re-point the demo slice at surviving
+certificates first if the demo still matters.
 
 ### Known gaps — important
 - **No certificate-level attributes** (glatt, pas yisrael…) and **no expiry dates** — none exist in these sources. These lists establish *status + certifier* only (source-hierarchy level 1 per PRD §13). Certificate photos / field verification required for attributes.
