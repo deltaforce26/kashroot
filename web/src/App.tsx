@@ -23,6 +23,7 @@ import { OnboardingPreset } from "./views/OnboardingPreset";
 import { Profile } from "./views/Profile";
 import { Restaurant } from "./views/Restaurant";
 import { Saved } from "./views/Saved";
+import { SavedList } from "./views/SavedList";
 import { Search } from "./views/Search";
 
 function RequireProfile({ children }: { children: ReactNode }) {
@@ -86,6 +87,14 @@ export default function App() {
           element={
             <RequireProfile>
               <Saved />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/saved/:listId"
+          element={
+            <RequireProfile>
+              <SavedList />
             </RequireProfile>
           }
         />

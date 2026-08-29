@@ -1,118 +1,92 @@
 /**
- * Saved lists — tinted covers, offline chips (design 3f).
+ * Saved — the index of lists (design 3f).
  *
- * Lists live in `localStorage`; nothing is sent anywhere. The screen's real job is
- * the degradation banner: a place saved while it matched can stop matching, and the
- * design treats that as a first-class visible state rather than an error.
+ * This screen is a shelf, not a viewer: each list is one tinted card that opens its
+ * own page. The lists used to expand in place, which meant the screen grew without
+ * bound and a list's own page — the thing you name, the thing you share — did not
+ * exist. Places live on `/saved/:listId`.
  *
- * How degradation is detected: the saved snapshot records the verdict the API gave
- * at save time; the screen re-asks the API now and compares the two verdicts. No
- * kashrut rule is evaluated here — two API answers are compared, that is all.
+ * What stays here is the degradation banner across every list, because it is the one
+ * thing a person must see without going looking for it: a place saved while it
+ * matched can stop matching. Nothing on this screen evaluates a kashrut rule — the
+ * snapshot's verdict and today's verdict are two API answers, and `hasDegraded`
+ * compares them.
+ *
+ * Lists are device-local; nothing is sent anywhere.
  */
 
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { kashrootApi } from "../api";
-import type { ProfileRequest } from "../api/types";
-import { decidingCertificate, type DetailView } from "../api/viewmodel";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { DegradationBanner } from "../components/DegradationBanner";
+import { NewListSheet } from "../components/NewListSheet";
 import { tintClass } from "../components/RestaurantCard";
-import { VerdictPill, verdictLabel } from "../components/VerdictPill";
-import { BellIcon, PlusIcon } from "../components/icons";
+import { PlusIcon } from "../components/icons";
 import { TabBar } from "../components/TabBar";
-import { formatDate, pickName, useI18n } from "../i18n/I18nProvider";
-import { primaryReason, reasonText } from "../i18n/reasons";
+import { useI18n } from "../i18n/I18nProvider";
 import { toPayload } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
 import { useSaved } from "../saved/SavedProvider";
-import type { SavedList, SavedPlace } from "../saved/saved";
+import { countVerdicts, hasDegraded, type SavedList } from "../saved/saved";
+import { useSavedDetails, type DetailMap } from "../saved/useSavedDetails";
 
-type DetailMap = Record<string, DetailView | undefined>;
-
-/** Re-asks the API for every saved place. Failures leave the entry simply unknown-to-us. */
-function useCurrentDetails(placeIds: string[], profile: ProfileRequest) {
-  const [details, setDetails] = useState<DetailMap>({});
-  const [offline, setOffline] = useState(false);
-  const key = placeIds.join(",");
-  const profileKey = JSON.stringify(profile);
-
-  useEffect(() => {
-    if (placeIds.length === 0) return;
-    const controller = new AbortController();
-    let failures = 0;
-    void Promise.all(
-      placeIds.map((id) =>
-        kashrootApi
-          .getRestaurant(id, profile, undefined, controller.signal)
-          .then((detail) => [id, detail] as const)
-          .catch(() => {
-            failures += 1;
-            return [id, undefined] as const;
-          }),
-      ),
-    ).then((entries) => {
-      if (controller.signal.aborted) return;
-      setDetails(Object.fromEntries(entries));
-      setOffline(failures === placeIds.length);
-    });
-    return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, profileKey]);
-
-  return { details, offline };
+/** The one line of facts under a list's name: how many places, and where they are. */
+function listMeta(list: SavedList, placesCount: (n: number) => string): string {
+  const cities = [...new Set(list.places.map((place) => place.cityHe).filter(Boolean))];
+  return [placesCount(list.places.length), ...(cities.length > 0 ? [cities.join(", ")] : [])].join(
+    " · ",
+  );
 }
 
-function DegradationBanner({
-  list,
-  place,
-  detail,
-}: {
-  list: SavedList;
-  place: SavedPlace;
-  detail: DetailView;
-}) {
-  const { t, lang } = useI18n();
-  const name = pickName(lang, place.nameHe, place.nameEn);
-  const deciding = decidingCertificate(detail);
-  const explaining = primaryReason(detail.kashrut.reasons);
-  const why = explaining
-    ? reasonText(explaining, t, lang, {
-        certifierName: deciding
-          ? lang === "en"
-            ? (deciding.certifier.name_en ?? deciding.certifier.name_he)
-            : deciding.certifier.name_he
-          : place.certifierLabel,
-        validUntil: formatDate(detail.kashrut.freshness?.valid_until ?? null),
-        evidenceAgeDays: detail.kashrut.freshness?.evidence_age_days ?? null,
-        daysUntilExpiry: detail.kashrut.freshness?.days_until_expiry ?? null,
-      })
-    : "";
+function ListCard({ list, details }: { list: SavedList; details: DetailMap }) {
+  const { t } = useI18n();
+  const counts = countVerdicts(
+    list.places.map((place) => details[place.restaurantId]?.kashrut.verdict),
+  );
 
   return (
-    <div className="banner tint-sweet banner--amber" role="status">
-      <span style={{ color: "var(--amber)", flex: "none", paddingTop: 1 }} aria-hidden="true">
-        <BellIcon size={16} />
-      </span>
-      <div>
-        <div className="banner__title">{t.saved.degradeTitle(list.name)}</div>
-        <div className="banner__body">
-          {t.saved.degradeBody(name, why, verdictLabel(detail.kashrut.verdict, t))}
+    <article
+      className={`card ${tintClass(list.places[0]?.dietType ?? null)}`}
+      style={{ padding: "14px 16px" }}
+    >
+      {/* The whole card is the link — a stretched anchor rather than a click handler
+          on the <article>, so it keeps real link semantics: keyboard focus,
+          middle-click, open-in-new-tab. */}
+      <Link
+        to={`/saved/${list.id}`}
+        className="card__link"
+        aria-label={t.saved.openList(list.name)}
+      />
+      <div className="card__title">{list.name}</div>
+      <div className="card__meta on-tint">{listMeta(list, t.saved.placesCount)}</div>
+      {list.places.length > 0 && (
+        <div className="card__foot">
+          <span className="verdict verdict--match">{t.saved.matchCount(counts.match)}</span>
+          {counts.unknown > 0 && (
+            <span className="verdict verdict--unknown">{t.saved.unknownCount(counts.unknown)}</span>
+          )}
+          {counts.no_match > 0 && (
+            <span className="verdict verdict--no_match">
+              {t.saved.noMatchCount(counts.no_match)}
+            </span>
+          )}
+          <span className="verdict" style={{ color: "var(--sub)" }}>
+            {t.saved.offline}
+          </span>
         </div>
-      </div>
-    </div>
+      )}
+    </article>
   );
 }
 
 export function Saved() {
-  const { t, lang } = useI18n();
-  const { state, addList, unsave } = useSaved();
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const { state } = useSaved();
   const { profile } = useProfile();
-  const payload = toPayload(profile);
+  const [creating, setCreating] = useState(false);
 
   const placeIds = state.lists.flatMap((list) => list.places.map((place) => place.restaurantId));
-  const { details, offline } = useCurrentDetails(placeIds, payload);
-
-  const countBy = (list: SavedList, verdict: string) =>
-    list.places.filter((place) => details[place.restaurantId]?.kashrut.verdict === verdict).length;
+  const { details } = useSavedDetails(placeIds, toPayload(profile));
 
   return (
     <div className="shell">
@@ -120,119 +94,50 @@ export function Saved() {
         <div style={{ flex: 1 }}>
           <h1 style={{ font: "700 24px Assistant, sans-serif", margin: 0 }}>{t.saved.title}</h1>
         </div>
+        {/* The plus is the only action this screen owns. Sharing belongs to a list,
+            so it lives on the list's own page. */}
         <button
           type="button"
           className="circle glass"
           aria-label={t.saved.newList}
-          onClick={() => addList(`${t.saved.newList} ${state.lists.length + 1}`)}
+          onClick={() => setCreating(true)}
         >
           <PlusIcon />
         </button>
       </header>
 
       <div className="shell__scroll" style={{ paddingTop: 14 }}>
-        {placeIds.length === 0 ? (
+        {state.lists.length === 0 ? (
           <div className="state" role="status">
             <span className="state__mark tint-neutral" aria-hidden="true" />
             <h2 className="state__title">{t.saved.empty.title}</h2>
             <p className="state__body">{t.saved.empty.body}</p>
+            <div className="state__actions">
+              <button type="button" className="cta" onClick={() => setCreating(true)}>
+                {t.saved.newList}
+              </button>
+            </div>
           </div>
         ) : (
           <>
             {state.lists.flatMap((list) =>
-              list.places
-                .map((place) => ({ place, detail: details[place.restaurantId] }))
-                .filter(
-                  ({ place, detail }) =>
-                    detail !== undefined &&
-                    place.verdictAtSave === "match" &&
-                    detail.kashrut.verdict !== "match",
-                )
-                .map(({ place, detail }) =>
-                  detail ? (
-                    <DegradationBanner
-                      key={`${list.id}-${place.restaurantId}`}
-                      list={list}
-                      place={place}
-                      detail={detail}
-                    />
-                  ) : null,
-                ),
+              list.places.flatMap((place) => {
+                const detail = details[place.restaurantId];
+                if (!detail || !hasDegraded(place, detail.kashrut.verdict)) return [];
+                return [
+                  <DegradationBanner
+                    key={`${list.id}-${place.restaurantId}`}
+                    listName={list.name}
+                    place={place}
+                    detail={detail}
+                  />,
+                ];
+              }),
             )}
 
-            {state.lists
-              .filter((list) => list.places.length > 0)
-              .map((list) => (
-                <details
-                  key={list.id}
-                  className={`card ${tintClass(list.places[0]?.dietType ?? null)}`}
-                  style={{ padding: "14px 16px" }}
-                  open
-                >
-                  <summary style={{ cursor: "pointer", listStyle: "none" }}>
-                    <div className="card__title">{list.name}</div>
-                    <div className="card__meta on-tint">
-                      {t.saved.placesCount(list.places.length)}
-                      {" · "}
-                      {[...new Set(list.places.map((place) => place.cityHe).filter(Boolean))].join(
-                        ", ",
-                      )}
-                    </div>
-                    <div className="card__foot">
-                      <span className="verdict verdict--match">
-                        {t.saved.matchCount(countBy(list, "match"))}
-                      </span>
-                      {countBy(list, "unknown") > 0 && (
-                        <span className="verdict verdict--unknown">
-                          {t.saved.unknownCount(countBy(list, "unknown"))}
-                        </span>
-                      )}
-                      {countBy(list, "no_match") > 0 && (
-                        <span className="verdict verdict--no_match">
-                          {t.saved.noMatchCount(countBy(list, "no_match"))}
-                        </span>
-                      )}
-                      <span className="verdict" style={{ color: "var(--sub)" }}>
-                        {t.saved.offline}
-                      </span>
-                    </div>
-                  </summary>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
-                    {list.places.map((place) => {
-                      const detail = details[place.restaurantId];
-                      return (
-                        <div
-                          key={place.restaurantId}
-                          style={{ display: "flex", alignItems: "center", gap: 8 }}
-                        >
-                          <Link
-                            to={`/r/${place.restaurantId}`}
-                            style={{ flex: 1, fontWeight: 600, fontSize: 14 }}
-                          >
-                            {pickName(lang, place.nameHe, place.nameEn)}
-                          </Link>
-                          {detail ? (
-                            <VerdictPill verdict={detail.kashrut.verdict} />
-                          ) : (
-                            <span className="verdict" style={{ color: "var(--sub)" }}>
-                              {offline ? t.saved.offline : t.states.loadingShort}
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            className="sub"
-                            style={{ fontSize: 11.5 }}
-                            onClick={() => unsave(place.restaurantId)}
-                          >
-                            {t.saved.removeFromList}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </details>
-              ))}
+            {state.lists.map((list) => (
+              <ListCard key={list.id} list={list} details={details} />
+            ))}
 
             <p className="hint" style={{ paddingTop: 2 }}>
               {t.saved.footer}
@@ -240,6 +145,16 @@ export function Saved() {
           </>
         )}
       </div>
+
+      {creating && (
+        <NewListSheet
+          onClose={() => setCreating(false)}
+          onCreated={(list) => {
+            setCreating(false);
+            navigate(`/saved/${list.id}`);
+          }}
+        />
+      )}
 
       <TabBar />
     </div>

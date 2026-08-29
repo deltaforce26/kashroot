@@ -178,23 +178,63 @@ const he = {
 
   saved: {
     title: "שמורים",
+    // The list the heart on a card drops a place into. Named lists are built on the
+    // saved screen; this one exists so a single tap never has to ask a question.
+    defaultList: "שמורים",
     footer:
       "רשימות נשמרות למכשיר וזמינות ללא קליטה.\nשיתוף רשימה יוצר קישור לצפייה בלבד.",
     offline: "זמין אופליין",
-    placesCount: (n: number) => `${n} מקומות`,
+    placesCount: (n: number) => (n === 1 ? "מקום אחד" : `${n} מקומות`),
     matchCount: (n: number) => `${n} מתאימים`,
     unknownCount: (n: number) => `${n} לא מאומת`,
     noMatchCount: (n: number) => `${n} לא מתאימים`,
     listPhoto: "תמונת רשימה",
     newList: "רשימה חדשה",
+    openList: (name: string) => `פתיחת הרשימה ״${name}״`,
+    back: "חזרה לשמורים",
+    share: "שיתוף הרשימה",
+    listCopied: "הרשימה הועתקה",
+    // The text that leaves the app when a list is shared. It names places and links
+    // only — never a verdict, because the recipient's own profile decides that.
+    shareHeading: (name: string, n: number) =>
+      n === 1
+        ? `${name} — מקום ששמרתי ב־Kashroot:`
+        : `${name} — ${n} מקומות ששמרתי ב־Kashroot:`,
+    shareNote: "פותחים קישור ורואים את מצב הכשרות לפי הפרופיל שלכם — לא לפי שלי.",
     degradeTitle: (list: string) => `עדכון כשרות ברשימה ״${list}״`,
     degradeBody: (name: string, why: string, verdict: string) =>
       `״${name}״ — ${why}. הסטטוס ירד ל״${verdict}״ עד לעדכון ראיה חדשה.`,
     empty: {
       title: "עוד אין רשימות שמורות",
-      body: "כל מקום שתשמרו מופיע כאן, נשאר על המכשיר וזמין גם ללא קליטה.",
+      body: "פותחים רשימה חדשה, או שומרים מקום בלחיצה על הלב — הכול נשאר על המכשיר וזמין גם ללא קליטה.",
+    },
+    listEmpty: {
+      title: "הרשימה עוד ריקה",
+      body: "כל מקום שתשמרו לרשימה הזאת יופיע כאן.",
+    },
+    notFound: {
+      title: "הרשימה הזאת לא קיימת",
+      body: "אולי היא נמחקה מהמכשיר. הרשימות שלכם נמצאות במסך השמורים.",
     },
     removeFromList: "הסרה מהרשימה",
+    deleteList: "מחיקת הרשימה",
+    deleteListConfirm: "למחוק את הרשימה? המקומות עצמם לא נמחקים מהמאגר.",
+    delete: "מחיקה",
+    cancel: "ביטול",
+    // The new-list sheet.
+    create: {
+      title: "רשימה חדשה",
+      close: "סגירת החלון",
+      nameLabel: "שם הרשימה",
+      namePlaceholder: "למשל: ארוחות עם ההורים",
+      nameTaken: "כבר קיימת רשימה בשם הזה.",
+      addPlaces: "הוספת מקומות",
+      addPlacesLead: "אפשר לבחור כמה מקומות עכשיו, ואפשר להוסיף בהמשך.",
+      searchPlaceholder: "חיפוש מקום להוספה",
+      noResults: "לא נמצא מקום בשם הזה.",
+      selected: (n: number) => (n === 1 ? "מקום אחד נבחר" : `${n} מקומות נבחרו`),
+      submit: "יצירת הרשימה",
+    },
   },
 
   profile: {
@@ -511,23 +551,59 @@ const en: Strings = {
 
   saved: {
     title: "Saved",
+    defaultList: "Saved",
     footer:
-      "Lists are stored on your device and work without a connection.\nSharing a list creates a view-only link.",
+      "Lists are stored on this device and work offline.\nSharing a list creates a view-only link.",
     offline: "Available offline",
-    placesCount: (n: number) => `${n} places`,
+    placesCount: (n: number) => (n === 1 ? "1 place" : `${n} places`),
     matchCount: (n: number) => `${n} match`,
-    unknownCount: (n: number) => `${n} not verified`,
+    unknownCount: (n: number) => `${n} unverified`,
     noMatchCount: (n: number) => `${n} don't match`,
-    listPhoto: "list photo",
+    listPhoto: "List photo",
     newList: "New list",
+    openList: (name: string) => `Open the list “${name}”`,
+    back: "Back to saved",
+    share: "Share list",
+    listCopied: "List copied",
+    shareHeading: (name: string, n: number) =>
+      n === 1
+        ? `${name} — a place I saved on Kashroot:`
+        : `${name} — ${n} places I saved on Kashroot:`,
+    shareNote:
+      "Open a link and you see its kashrut status against your own profile — not mine.",
     degradeTitle: (list: string) => `Kashrut update in “${list}”`,
     degradeBody: (name: string, why: string, verdict: string) =>
       `“${name}” — ${why}. The status dropped to “${verdict}” until new evidence arrives.`,
     empty: {
       title: "No saved lists yet",
-      body: "Every place you save appears here, stays on your device and works offline.",
+      body: "Start a new list, or save a place with the heart — everything stays on this device and works offline.",
+    },
+    listEmpty: {
+      title: "This list is still empty",
+      body: "Every place you save to this list will appear here.",
+    },
+    notFound: {
+      title: "That list doesn't exist",
+      body: "It may have been deleted from this device. Your lists are on the saved screen.",
     },
     removeFromList: "Remove from list",
+    deleteList: "Delete list",
+    deleteListConfirm: "Delete this list? The places themselves stay in our records.",
+    delete: "Delete",
+    cancel: "Cancel",
+    create: {
+      title: "New list",
+      close: "Close",
+      nameLabel: "List name",
+      namePlaceholder: "e.g. Dinners with the parents",
+      nameTaken: "You already have a list with that name.",
+      addPlaces: "Add places",
+      addPlacesLead: "Pick a few now, or add them later.",
+      searchPlaceholder: "Search for a place to add",
+      noResults: "No place by that name.",
+      selected: (n: number) => (n === 1 ? "1 selected" : `${n} selected`),
+      submit: "Create list",
+    },
   },
 
   profile: {
