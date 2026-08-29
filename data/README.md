@@ -1,7 +1,7 @@
 # Seed Data
 
 ## `seed/kashroot_seed_corpus.csv`
-426 unique records, deduplicated from 570 raw rows across 7 certifier source documents (91 Landa records were dropped by the Elul 5786 refresh — see below). Built by `scripts/build_seed.py` (data is embedded in the script as transcribed from sources; re-run to regenerate — it writes this file in place). Encoding: UTF-8 with BOM.
+375 unique records, deduplicated from 570 raw rows across 7 certifier source documents (142 Landa records were dropped by the Elul 5786 refresh — see below). Built by `scripts/build_seed.py` (data is embedded in the script as transcribed from sources; re-run to regenerate — it writes this file in place). Encoding: UTF-8 with BOM.
 
 ### Columns
 | Column | Meaning |
@@ -41,21 +41,13 @@
 ### Landa restaurants refresh (Elul 5786) — authoritative
 
 `landa_restaurants_elul_5786.csv` is treated as the **complete current record for
-`landa_bnei_brak` in every category it speaks for** (product decision, Aug 2026, explicit
-instruction). Landa went from **183 corpus records to 92**; the whole corpus went from 517
-to 426.
+`landa_bnei_brak`**, not one category slice of it (product decision, Aug 2026, explicit
+instruction). Landa went from **183 corpus records to the 41 the list names**; the whole
+corpus went from 517 to 375.
 
-**Kept — 92:** the 41 the list names, plus **51 pizzerias and bakeries** it does not speak
-for. Those are carried by the vacation-cities poster in cities the Elul list barely covers
-(Netivot, Netanya, Kiryat Gat, Hadera…), under that poster's own category vocabulary, so
-the two lists cover different ground rather than one superseding the other. The exemption
-is `SUPERSEDE_EXEMPT_TOKENS` in `scripts/build_seed.py`, matched as a substring of the
-published category — which is why `עיצובי פירות וקינוחים,מאפה ובצקים` survives on its
-bakery half.
-
-**Dropped — 91:** 45 catering businesses, 12 fruit-design, 9 event halls, 11
-yeshiva/institution and old-age-home kitchens, 4 kugel makers, 2 hotels, 2 nut/produce
-shops, and the remaining restaurant-category records the list omits.
+The 142 dropped records were not restaurants only. They included 45 catering businesses,
+30 bakeries/patisseries, 20 pizzerias, 12 fruit-design businesses, 9 event halls, 11
+yeshiva/institution and old-age-home kitchens, and 2 hotels.
 
 **This is a deliberate departure from the fail-safe rule**, which degrades an unconfirmed
 record to UNKNOWN rather than removing it, so a moderator can still see what the earlier
@@ -68,10 +60,8 @@ list said. Two mitigations:
   that the business was ever Landa-certified.
 
 **Risk, stated plainly:** the source carries no publication date, and its own categories
-cover restaurants only (`מסעדה חלבית` / `מסעדות ומזנונים` / `מעדניות`). The pizzeria and
-bakery exemption covers the clearest case of a category it plainly does not speak for, but
-the same doubt applies to catering, halls and institutional kitchens, which were dropped.
-If the list is a narrower slice than assumed, the corpus has dropped businesses that Landa
+cover restaurants only (`מסעדה חלבית` / `מסעדות ומזנונים` / `מעדניות`). If it is in fact a
+category slice rather than the whole list, the corpus has dropped businesses that Landa
 still certifies. `Elul 5786 (Aug-Sep 2026)` records when the file was *received*
 (2026-08-29), not when Landa published it.
 
