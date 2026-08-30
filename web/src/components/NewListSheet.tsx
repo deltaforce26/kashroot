@@ -3,33 +3,22 @@
  * exists.
  *
  * Opened from the plus on the saved screen. A list with nothing in it is a dead end
- * the user then has to go and fill from somewhere else, so the search lives here:
- * type, tap the places, create. Picking is optional — the name alone is enough, and
- * places can be added later from any card's heart.
+ * the user then has to go and fill from somewhere else, so the picker lives here:
+ * type, tap the places, create.
  *
- * The rows show each place's current verdict pill for one reason: someone building a
- * list should be picking with today's answer in front of them. Nothing here filters
- * or reorders by that verdict; it is rendered, not acted on.
+ * Selection is *staged*, unlike every other sheet that picks places: there is no
+ * list to commit to until the name is submitted, so the picks are held here and go
+ * in with the list in a single write.
  */
 
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { MAX_QUERY_LENGTH, type SearchRequest } from "../api/types";
+import { useEffect, useState } from "react";
 import type { ResultView } from "../api/viewmodel";
-import { isNetworkError, useSearch } from "../hooks/useApi";
 import { useI18n } from "../i18n/I18nProvider";
-import { useCity } from "../location/useCity";
-import { toPayload } from "../profile/profile";
-import { useProfile } from "../profile/ProfileProvider";
 import { hasListNamed, type SavedList, type SavedPlace } from "../saved/saved";
 import { useSaved } from "../saved/SavedProvider";
 import { toSavedPlace } from "../saved/snapshot";
-import { CheckIcon, CloseIcon, SearchIcon } from "./icons";
-import { OfflineBanner } from "./states";
-import { VerdictPill } from "./VerdictPill";
-
-const PICKER_PAGE_SIZE = 20;
-/** Below this the query is not a search, it is the first keystroke of one. */
-const MIN_QUERY = 2;
+import { CloseIcon } from "./icons";
+import { PlacePicker } from "./PlacePicker";
 
 export function NewListSheet({
   onClose,
@@ -39,18 +28,12 @@ export function NewListSheet({
   onCreated: (list: SavedList) => void;
 }) {
   const { t, lang } = useI18n();
-  const { profile } = useProfile();
-  const { slug: city } = useCity();
   const { state, addList } = useSaved();
 
   const [name, setName] = useState("");
-  const [query, setQuery] = useState("");
   // Keyed by restaurant id so a double tap cannot add the same place twice, and so a
-  // place stays selected after it drops out of the current search results.
+  // place stays picked after it drops out of the current search results.
   const [picked, setPicked] = useState<Record<string, SavedPlace>>({});
-
-  const deferredQuery = useDeferredValue(query);
-  const trimmedQuery = deferredQuery.trim();
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -59,22 +42,6 @@ export function NewListSheet({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  const request = useMemo<SearchRequest | null>(
-    () =>
-      trimmedQuery.length < MIN_QUERY
-        ? null
-        : {
-            profile: toPayload(profile),
-            city,
-            page_size: PICKER_PAGE_SIZE,
-            query: trimmedQuery.slice(0, MAX_QUERY_LENGTH),
-          },
-    [profile, city, trimmedQuery],
-  );
-
-  const { data, loading, error } = useSearch(request);
-  const results = request ? (data?.items ?? []) : [];
 
   const trimmedName = name.trim();
   const taken = trimmedName.length > 0 && hasListNamed(state, trimmedName);
@@ -155,60 +122,7 @@ export function NewListSheet({
           </p>
         </div>
 
-        <label className="searchbar glass">
-          <span className="searchbar__icon" aria-hidden="true">
-            <SearchIcon size={17} />
-          </span>
-          <input
-            type="search"
-            className="searchbar__input"
-            value={query}
-            maxLength={MAX_QUERY_LENGTH}
-            placeholder={t.saved.create.searchPlaceholder}
-            aria-label={t.saved.create.searchPlaceholder}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </label>
-
-        {error && isNetworkError(error) && <OfflineBanner />}
-
-        <div aria-live="polite">
-          {request && loading && <p className="hint sheet__note">{t.states.loadingShort}</p>}
-          {request && !loading && results.length === 0 && (
-            <p className="hint sheet__note">{t.saved.create.noResults}</p>
-          )}
-          {results.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {results.map((item) => {
-                const on = Boolean(picked[item.id]);
-                const label = lang === "en" && item.nameEn ? item.nameEn : item.nameHe;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className="select-row"
-                    role="checkbox"
-                    aria-checked={on}
-                    onClick={() => togglePick(item)}
-                  >
-                    <span style={{ minWidth: 0 }}>
-                      <span className="select-row__title">{label}</span>
-                      <span className="select-row__sub" style={{ display: "block" }}>
-                        {item.cityHe ?? ""}
-                      </span>
-                    </span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 8, flex: "none" }}>
-                      <VerdictPill verdict={item.kashrut.verdict} />
-                      <span className="check check--sm" data-on={on} aria-hidden="true">
-                        {on && <CheckIcon />}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <PlacePicker isPicked={(id) => Boolean(picked[id])} onToggle={togglePick} />
 
         {pickedPlaces.length > 0 && (
           <p className="hint sheet__note" role="status">

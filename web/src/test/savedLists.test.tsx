@@ -71,7 +71,7 @@ async function createListNamed(user: User, name: string, pick?: string) {
   await user.type(within(sheet).getByLabelText(he.saved.create.nameLabel), name);
   if (pick) {
     await user.type(
-      within(sheet).getByRole("searchbox", { name: he.saved.create.searchPlaceholder }),
+      within(sheet).getByRole("searchbox", { name: he.saved.picker.searchPlaceholder }),
       pick.slice(0, 3),
     );
     await user.click(await within(sheet).findByRole("checkbox", { name: new RegExp(pick) }));
@@ -158,6 +158,98 @@ describe("saved lists", () => {
     await waitFor(() => expect(container.querySelector(".card--row")).not.toBeNull());
     expect(container.querySelector(".grid")).toBeNull();
     expect(container.querySelector(".card--grid")).toBeNull();
+  });
+
+  /**
+   * The gap the create-sheet alone left: a list named last week has to be fillable
+   * from the list itself, and a tick there is committed the moment it is made.
+   */
+  it("adds places to an existing list from the list's own page", async () => {
+    const user = userEvent.setup();
+    renderApp("/");
+    await openSaved(user);
+
+    const sheet = await createListNamed(user, "טיול צפון");
+    await user.click(within(sheet).getByRole("button", { name: he.saved.create.submit }));
+    await screen.findByRole("heading", { name: "טיול צפון" });
+    expect(screen.getByText(he.saved.listEmpty.title)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: he.saved.add.title("טיול צפון") }));
+    const adder = await screen.findByRole("dialog", { name: he.saved.add.title("טיול צפון") });
+    await user.type(
+      within(adder).getByRole("searchbox", { name: he.saved.picker.searchPlaceholder }),
+      "נוג",
+    );
+    const row = await within(adder).findByRole("checkbox", { name: /נוגטין/ });
+    await user.click(row);
+    // Committed on the tap: the row is ticked and the list behind the sheet has it.
+    await waitFor(() => expect(row).toHaveAttribute("aria-checked", "true"));
+    await user.click(within(adder).getByRole("button", { name: he.saved.add.done }));
+    expect(await screen.findAllByRole("link", { name: "נוגטין" })).not.toHaveLength(0);
+
+    // And ticking it again takes it back out.
+    await user.click(screen.getByRole("button", { name: he.saved.add.title("טיול צפון") }));
+    const again = await screen.findByRole("dialog", { name: he.saved.add.title("טיול צפון") });
+    await user.type(
+      within(again).getByRole("searchbox", { name: he.saved.picker.searchPlaceholder }),
+      "נוג",
+    );
+    await user.click(await within(again).findByRole("checkbox", { name: /נוגטין/ }));
+    await user.click(within(again).getByRole("button", { name: he.saved.add.done }));
+    expect(await screen.findByText(he.saved.listEmpty.title)).toBeInTheDocument();
+  });
+
+  /** One list is not a question, so the heart does not ask one. */
+  it("saves straight into the default list while there is nothing to choose between", async () => {
+    const user = userEvent.setup();
+    renderApp("/r/r-nougatine");
+
+    await screen.findByText(he.presets.any.title);
+    await user.click(screen.getByText(he.presets.any.title));
+    await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
+
+    await user.click(await screen.findByRole("button", { name: he.restaurant.save }));
+    expect(screen.queryByRole("dialog", { name: he.saved.saveTo.title })).toBeNull();
+    await waitFor(() =>
+      expect(localStorage.getItem("kashroot.saved.v1")).toContain(he.saved.defaultList),
+    );
+  });
+
+  /**
+   * Two lists make the tap ambiguous, and guessing is the wrong answer: it would
+   * drop every save into "Saved" while the named lists sit unused.
+   */
+  it("asks which list once there is more than one, and saves into the one picked", async () => {
+    const user = userEvent.setup();
+    renderApp("/");
+    await openSaved(user);
+
+    for (const name of ["טיול צפון", "עם ההורים"]) {
+      const sheet = await createListNamed(user, name);
+      await user.click(within(sheet).getByRole("button", { name: he.saved.create.submit }));
+      await screen.findByRole("heading", { name });
+      await user.click(screen.getByRole("button", { name: he.saved.back }));
+    }
+
+    await user.click(screen.getByRole("link", { name: he.nav.home }));
+    const card = await screen.findAllByRole("link", { name: "נוגטין" });
+    await user.click(card[0] as HTMLElement);
+
+    await user.click(await screen.findByRole("button", { name: he.restaurant.save }));
+    const picker = await screen.findByRole("dialog", { name: he.saved.saveTo.title });
+    await user.click(within(picker).getByRole("checkbox", { name: /עם ההורים/ }));
+    await user.click(within(picker).getByRole("button", { name: he.saved.add.done }));
+
+    // The restaurant screen has no tab bar — back to the list, then to saved.
+    await user.click(screen.getByRole("button", { name: he.states.back }));
+    await user.click(await screen.findByRole("link", { name: he.nav.saved }));
+    await user.click(await screen.findByRole("link", { name: he.saved.openList("עם ההורים") }));
+    expect(await screen.findAllByRole("link", { name: "נוגטין" })).not.toHaveLength(0);
+
+    // The other list is untouched — the pick was a choice, not a broadcast.
+    await user.click(screen.getByRole("button", { name: he.saved.back }));
+    await user.click(await screen.findByRole("link", { name: he.saved.openList("טיול צפון") }));
+    expect(await screen.findByText(he.saved.listEmpty.title)).toBeInTheDocument();
   });
 
   it("says an unknown list id does not exist instead of showing an empty one", async () => {

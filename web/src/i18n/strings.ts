@@ -221,6 +221,11 @@ const he = {
     deleteListConfirm: "למחוק את הרשימה? המקומות עצמם לא נמחקים מהמאגר.",
     delete: "מחיקה",
     cancel: "ביטול",
+    // The search-and-tick shared by every sheet that puts places into a list.
+    picker: {
+      searchPlaceholder: "חיפוש מקום להוספה",
+      noResults: "לא נמצא מקום בשם הזה.",
+    },
     // The new-list sheet.
     create: {
       title: "רשימה חדשה",
@@ -230,10 +235,21 @@ const he = {
       nameTaken: "כבר קיימת רשימה בשם הזה.",
       addPlaces: "הוספת מקומות",
       addPlacesLead: "אפשר לבחור כמה מקומות עכשיו, ואפשר להוסיף בהמשך.",
-      searchPlaceholder: "חיפוש מקום להוספה",
-      noResults: "לא נמצא מקום בשם הזה.",
       selected: (n: number) => (n === 1 ? "מקום אחד נבחר" : `${n} מקומות נבחרו`),
       submit: "יצירת הרשימה",
+    },
+    // Adding to a list that already exists. Every tap here commits immediately.
+    add: {
+      title: (list: string) => `הוספת מקומות ל״${list}״`,
+      action: "הוספת מקומות",
+      lead: "כל סימון נשמר מיד. סימון חוזר מוציא את המקום מהרשימה.",
+      done: "סיום",
+    },
+    // The sheet the heart opens once there is more than one list.
+    saveTo: {
+      title: "שמירה לרשימה",
+      close: "סגירת החלון",
+      createWith: "יצירה ושמירה",
     },
   },
 
@@ -591,6 +607,10 @@ const en: Strings = {
     deleteListConfirm: "Delete this list? The places themselves stay in our records.",
     delete: "Delete",
     cancel: "Cancel",
+    picker: {
+      searchPlaceholder: "Search for a place to add",
+      noResults: "No place by that name.",
+    },
     create: {
       title: "New list",
       close: "Close",
@@ -599,10 +619,19 @@ const en: Strings = {
       nameTaken: "You already have a list with that name.",
       addPlaces: "Add places",
       addPlacesLead: "Pick a few now, or add them later.",
-      searchPlaceholder: "Search for a place to add",
-      noResults: "No place by that name.",
       selected: (n: number) => (n === 1 ? "1 selected" : `${n} selected`),
       submit: "Create list",
+    },
+    add: {
+      title: (list: string) => `Add places to “${list}”`,
+      action: "Add places",
+      lead: "Every tick is saved right away. Tick again to take a place back out.",
+      done: "Done",
+    },
+    saveTo: {
+      title: "Save to list",
+      close: "Close",
+      createWith: "Create and save",
     },
   },
 

@@ -19,6 +19,7 @@ import { decidingCertificate } from "../api/viewmodel";
 import { EvidencePanel } from "../components/EvidencePanel";
 import { FitScoreBar } from "../components/FitScoreBar";
 import { tintClass } from "../components/RestaurantCard";
+import { SaveToListHost } from "../components/SaveToListSheet";
 import { VerdictPill } from "../components/VerdictPill";
 import { ChevronIcon, HeartIcon, PhoneIcon, ShareIcon } from "../components/icons";
 import { ErrorState, LoadingList, NotFoundState, OfflineBanner } from "../components/states";
@@ -266,6 +267,8 @@ export function Restaurant() {
           {t.restaurant.report}
         </p>
       </div>
+
+      <SaveToListHost />
     </div>
   );
 }

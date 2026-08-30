@@ -28,8 +28,10 @@ import {
 interface SavedValue {
   state: SavedState;
   isSaved: (restaurantId: string) => boolean;
-  /** Saves into the named list, creating it on first use. */
+  /** Saves into the named list, creating it on first use. The heart's quick path. */
   save: (place: SavedPlace, listName: string) => void;
+  /** Saves into one existing list, by id — what every list picker commits through. */
+  addToList: (listId: string, place: SavedPlace) => void;
   /** Removes the place from every list — what un-hearting a restaurant means. */
   unsave: (restaurantId: string) => void;
   /** Creates a list, optionally already holding places. One commit. */
@@ -63,6 +65,7 @@ export function SavedProvider({ children }: { children: ReactNode }) {
         }
         commit(addPlace(next, list.id, place));
       },
+      addToList: (listId, place) => commit(addPlace(state, listId, place)),
       unsave: (restaurantId) => commit(removePlace(state, restaurantId)),
       addList: (name, places = []) => {
         const [next, list] = createList(state, name, places);
