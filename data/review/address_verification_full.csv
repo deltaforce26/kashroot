@@ -1,0 +1,371 @@
+﻿row_number,restaurant_name_he,city_he,city_en,current_address_he,google_address_he,verdict,verdict_note,evidence_url,corroborating_urls,candidates,needs_review,search_note
+2,אברמיטו,בית שמש,Beit Shemesh,יגאל אלון 6,"שד' יגאל אלון 6, בית שמש",SAME,,https://www.d.co.il/80366803/35790/,https://www.rest.co.il/rest/80366803/; https://avramito.co.il/,,FALSE,
+3,איטליוני,בני ברק,Bnei Brak,ירושלים 36,,AMBIGUOUS,,,,"ירושלים 36, בני ברק (https://www.kosharot.co.il/index2.php?id=440631&lang=HEB); הירקון 8, בני ברק (פרדס כץ) (https://www.d.co.il/80297591/39460/)",FALSE,two distinct addresses found for the same business name
+4,ג'סט מיט,בני ברק,Bnei Brak,מצדה 7,"מצדה 7, בני ברק",SAME,,https://www.kosharot.co.il/index2.php?id=432689&lang=HEB,https://www.just-meat.co.il/contact; https://easy.co.il/page/27108991,,FALSE,"chain; also delivery-listed under BSR4 tower, same Bnei Brak location per multiple sources"
+5,גריל בשרים (הכל בפיתה),בית שמש,Beit Shemesh,שדרות האמוראים 59,,NOT_FOUND,,,,,FALSE,only aggregator/list pages surfaced (easy.co.il area listings); no single business-page URL confirming address located
+6,הבגט,חולון,Holon,הר הצופים 22,"הבגט - הר הצופים 42, חולון",CHANGED_NUMBER,one source names the street more fully than the other,https://easy.co.il/page/10162292,,,FALSE,"found street number (42) differs from corpus (22); reporting as published, not adjudicating"
+7,הטאבון של מאיה,בני ברק,Bnei Brak,ז'בוטינסקי 88,"זאב ז'בוטינסקי 88, בני ברק",SAME,one source names the street more fully than the other,https://www.d.co.il/80386571/39460/,https://www.rest.co.il/rest/80386571/,,FALSE,
+8,המסעדה היהודית,בני ברק,Bnei Brak,כנרת 4,"כנרת 4, בני ברק",SAME,,https://easy.co.il/en/page/8827075,https://rest.jdn.co.il/rest/1279/,,FALSE,
+9,המעדניה של בני ברק,בני ברק,Bnei Brak,רבי עקיבא 150,,AMBIGUOUS,,,,"יונה הנביא 14, בני ברק (https://easy.co.il/en/page/3083354); רבי עקיבא 150, בני ברק (https://www.kosharot.co.il/index2.php?id=400124&lang=HEB)",FALSE,sources disagree on street for same business name
+10,הקדרה,בני ברק,Bnei Brak,בר אילן 24,,NOT_FOUND,,,,,FALSE,"no listing found under the name הקדרה on Bar Ilan St, Bnei Brak; searches surfaced unrelated delis instead"
+11,השוויגער,בית שמש,Beit Shemesh,שדרות האמוראים 69,"שדרות האמוראים 69, בית שמש",SAME,,https://www.kosharot.co.il/index2.php?id=432752&lang=HEB,https://hashviger.co.il/,,FALSE,
+12,חברים מהדרין,ירושלים,Jerusalem,קניון רמות,,AMBIGUOUS,,,,"קניון רמות, ירושלים (https://easy.co.il/en/page/27245176); שדרות יצחק רבין 10, ירושלים (סינמה סיטי) (https://easy.co.il/en/page/27111896)",FALSE,chain has multiple branches in Jerusalem; phone number on Ramot Mall listing matches corpus phone
+13,טעים בבית,בני ברק,Bnei Brak,שאול המלך 21,,NOT_FOUND,,,,,FALSE,business confirmed to exist near Shaul HaMelech St (phone matches) but no listing gave a house number
+14,טשולנטזיץ,עפולה,Afula,"קק""ל 24",,NOT_FOUND,,,,,FALSE,no credible results for this business name in Afula; searches returned unrelated businesses
+15,מאמה מיה,טבריה,Tiberias,מדרחוב הבנים,"מדרחוב הבנים, טבריה",SAME,house number missing on one side; compared on street name only,https://www.kosharot.co.il/index2.php?id=420305&lang=HEB,https://rest.jdn.co.il/rest/782/,,FALSE,
+16,מוכן ומזומן,בני ברק,Bnei Brak,חזון איש 17,"חזון איש 17, בני ברק",SAME,,https://www.d.co.il/12883490/30450/,https://easy.co.il/en/page/8827060,,FALSE,
+17,מורדי'ס,צפת,Safed,בר יוחאי 1,,NOT_FOUND,,,,,FALSE,no listing found for this business name in Safed
+18,מטעמים,חיפה,Haifa,מיכאל 7,"מיכאל 7, חיפה",SAME,,https://www.kosharot.co.il/index2.php?id=413450&lang=HEB,https://www.waze.com/live-map/directions/%D7%9E%D7%98%D7%A2%D7%9E%D7%99%D7%9D-%D7%9E%D7%99%D7%9B%D7%90%D7%9C-7-%D7%97%D7%99%D7%A4%D7%94,,FALSE,
+19,מנטה בייגל,בני ברק,Bnei Brak,ירושלים 23,"ירושלים 23, בני ברק",SAME,,https://www.d.co.il/80060671/30442/,https://easy.co.il/en/page/3520002,,FALSE,
+20,מסובין,בית שמש,Beit Shemesh,שדרות יגאל אלון 2,"שדרות יגאל אלון 2, בית שמש",SAME,,https://www.d.co.il/80295173/35790/,https://easy.co.il/en/page/26161941,,FALSE,
+21,מעדני פרידמן,בני ברק,Bnei Brak,"ראב""ד 32",,NOT_FOUND,,,,,FALSE,no listing under this business name; only a same-surname dentist and a differently-named deli (מעדניית שף) at Rav'ad St turned up
+22,"מעדני ש""פ",בני ברק,Bnei Brak,"ראב""ד 26","ראב""ד 26, בני ברק",SAME,,https://easy.co.il/en/page/26121994,https://www.dunsguide.co.il/Ca110b04395efe10bda632a09af6fc142_%D7%9E%D7%A2%D7%93%D7%A0%D7%99%D7%95%D7%AA/%D7%9E%D7%A2%D7%93%D7%A0%D7%99%D7%99%D7%AA_%D7%A9%D7%A4/,,FALSE,"business listed online as 'מעדניית שף' - plausible name variant of corpus 'מעדני ש""פ'; address matches corpus exactly"
+23,משולשים אקספרס,בית שמש,Beit Shemesh,שדרות האמוראים 26,,AMBIGUOUS,,,,"שדרות יגאל אלון 6, בית שמש (https://easy.co.il/en/page/26327157); נחל קישון 48, בית שמש (https://www.d.co.il/80303180/39460/)",FALSE,chain has multiple Beit Shemesh branches; no listing found matching corpus street (שדרות האמוראים 26)
+24,משולשים אקספרס,ביתר עילית,Beitar Illit,"הר""ן 7","הר""ן 7, ביתר עילית",SAME,,https://www.d.co.il/80316704/39460/,https://easy.co.il/en/page/10060509,,FALSE,
+25,משולשים אקספרס,בית שמש,Beit Shemesh,יגאל אלון 6,,AMBIGUOUS,,,,"שדרות יגאל אלון 6, בית שמש (https://easy.co.il/en/page/26327157); נחל קישון 48, בית שמש (https://www.d.co.il/80303180/39460/)",FALSE,"chain has multiple Beit Shemesh branches; one candidate matches corpus address exactly, but rule requires reporting all branches, not picking"
+26,משולשים אקספרס,בית שמש,Beit Shemesh,נחל שורק 48,,AMBIGUOUS,,,,"שדרות יגאל אלון 6, בית שמש (https://easy.co.il/en/page/26327157); נחל קישון 48, בית שמש (https://www.d.co.il/80303180/39460/)",FALSE,"chain has multiple Beit Shemesh branches; corpus street 'נחל שורק' vs found 'נחל קישון' - possible name confusion, flagging rather than guessing"
+27,סול - מסעדת דגים ובשרים,טבריה,Tiberias,מדרחוב הבנים,"הבנים 17, בטבריה",SAME,house number missing on one side; compared on street name only,https://www.d.co.il/80383884/30420/,https://www.soltiberias.co.il/,,FALSE,
+28,פינת הגלידה,בני ברק,Bnei Brak,כהנמן 107,"כהנמן 107, בני ברק",SAME,,https://www.10bis.co.il/next/restaurants/menu/delivery/42209/%D7%A4%D7%99%D7%A0%D7%AA-%D7%94%D7%92%D7%9C%D7%99%D7%93%D7%94-%D7%9B%D7%94%D7%A0%D7%9E%D7%9F-107,https://wolt.com/en/isr/tel-aviv/restaurant/pinat-haglida-kahanman-107,,FALSE,"chain has multiple Bnei Brak branches (Rabbi Akiva 67, Aharonovitz 12, Rimonim center); this listing specifically confirms Kahaneman 107"
+29,פינת הגלידה,בני ברק,Bnei Brak,אהרונוביץ 10,"אהרונוביץ' 12, מרכז רימונים, בני ברק",CHANGED_NUMBER,,https://il.near-place.com/pynt-hglydh-mrkz-rymwnym-hrwnwbyz-12-bny-brq,https://www.instagram.com/pinathaglida/; https://www.10bis.co.il/next/restaurants/menu/delivery/29016/%D7%A4%D7%99%D7%A0%D7%AA-%D7%94%D7%92%D7%9C%D7%99%D7%93%D7%94-%D7%9E%D7%A8%D7%9B%D7%96-%D7%A8%D7%99%D7%9E%D7%95%D7%A0%D7%99%D7%9D,,FALSE,corpus house number 10 vs listing 12 (Rimonim center branch); chain has multiple Bnei Brak branches
+30,פינת הגלידה,אלעד,Elad,רבי יהודה הנשיא 94,"יהודה הנשיא 94, אלעד",SAME,one source names the street more fully than the other,https://www.d.co.il/80269522/9010163/,https://easy.co.il/en/page/10016841; https://www.kosharot.co.il/index2.php?id=440629&lang=HEB,,FALSE,
+31,פינת הגלידה,בית שמש,Beit Shemesh,שדרות האמוראים 2,,NOT_FOUND,,,,,FALSE,"no Beit Shemesh branch of this chain found in two searches; chain confirmed only in Bnei Brak, Elad, Jerusalem"
+32,פיצה ועוד בטאבון,בני ברק,Bnei Brak,זבוטינסקי 134,"ז'בוטינסקי 134, בני ברק",SAME,,https://www.kosharot.co.il/index2.php?id=436575&lang=HEB,https://www.mishloha.co.il/r/%D7%A4%D7%99%D7%A6%D7%94%20%D7%95%D7%A2%D7%95%D7%93%20%D7%91%D7%98%D7%90%D7%91%D7%95%D7%9F%20%D7%91%D7%A0%D7%99%20%D7%91%D7%A8%D7%A7; https://www.10bis.co.il/next/restaurants/menu/delivery/41961/%D7%A4%D7%99%D7%A6%D7%94-%D7%95%D7%A2%D7%95%D7%93%D7%91%D7%98%D7%90%D7%91%D7%95%D7%9F,,FALSE,
+33,פלאפל רבי עקיבא - גריל בשרים,בני ברק,Bnei Brak,רבי עקיבא 31,"רבי עקיבא 31, בני ברק",SAME,,https://www.d.co.il/80164977/30457/,https://easy.co.il/en/page/20854159; https://rest.jdn.co.il/rest/769/,,FALSE,
+34,פקורינו - מסעדה חלבית וקייטרינג,טבריה,Tiberias,יצחק בן צבי 1,"בן צבי 1, טבריה",SAME,one source names the street more fully than the other,https://www.d.co.il/80368772/39460/,https://www.rest.co.il/rest/80368772/,,FALSE,phone in search result (053-9379475) differs from corpus phone (04-6735111); address matches
+35,צלילי האש,בני ברק,Bnei Brak,זבוטינסקי 100,"ז'בוטינסקי 100, בני ברק",SAME,,https://www.d.co.il/80272491/30445/,https://easy.co.il/page/26386879; https://www.kosharot.co.il/index2.php?id=412944&lang=HEB,,FALSE,
+36,שאבעס ביג - מחלקת אוכל מוכן,בני ברק,Bnei Brak,בן יעקב 26,"בן יעקב 26, בני ברק",SAME,,https://www.kosharot.co.il/index2.php?id=440678&lang=HEB,,,FALSE,
+37,קברנה,ירושלים,Jerusalem,שבתי חזקיה 31,,NOT_FOUND,,,,,FALSE,found a 'קברנה אירועים' catering review listing but no address given; could not confirm same business
+38,רויאל,בני ברק,Bnei Brak,שלמה המלך 31,"שלמה המלך 31, בני ברק",SAME,,https://www.ulam.co.il/listing/royal/,https://www.b144.co.il/b144_sip/401D0D1A4370655D4B10031544/,,FALSE,
+39,שאבעס ביג - מחלקת אוכל מוכן,בני ברק,Bnei Brak,בן יעקב 26,"בן יעקב 26, בני ברק",SAME,,https://www.kosharot.co.il/index2.php?id=440678&lang=HEB,,,FALSE,duplicate input row of row 36
+40,"שביט - לכבוד שבת ויו""ט",בני ברק,Bnei Brak,"רש""י 24",,NOT_FOUND,,,,,FALSE,no listing found for this business name after two searches
+41,שווארמה פלאפל רבי עקיבא,אלעד,Elad,שמעון בן שטח 8,,NOT_FOUND,,,,,FALSE,corpus phone number now shows in results attributed to a differently-named business (שווארמה לב בשר) in Elad; no listing found confirming this business name/address
+42,שטיסל,בני ברק,Bnei Brak,בר יוחאי 4,"בר יוחאי 4 (פינת השומר 94), בני ברק",SAME,,https://rest.jdn.co.il/rest/776/,https://www.2eat.co.il/restaurant.aspx?restid=13774,,FALSE,chain has two Bnei Brak branches (Bar Yochai 4 and Rav Shach 14); this listing confirms the Bar Yochai branch specifically
+43,שטיסל,בני ברק,Bnei Brak,הרב שך 14,"הרב ש""ך 14, בני ברק",SAME,,https://www.d.co.il/26169100/30450/,https://rest.jdn.co.il/rest/774/,,FALSE,chain has two Bnei Brak branches; this listing confirms the Rav Shach branch specifically
+44,שניצל וולנו,בני ברק,Bnei Brak,מצדה 6,,NOT_FOUND,,,,,FALSE,business listing found on 10bis delivery platform but street address not visible in search results (JS-rendered page); could not confirm Matzada 6
+45,שניצלשף,בני ברק,Bnei Brak,ירושלים 8,"ירושלים 8, בני ברק",SAME,,https://easy.co.il/page/10115295,https://www.t.co.il/Business/Card-776145.html; https://wolt.com/en/isr/tel-aviv/restaurant/schnitzel-chef,,FALSE,
+46,שפסל בשטייטל,בני ברק,Bnei Brak,הלפרין 10,,NOT_FOUND,,,,,FALSE,no matching listing found after two searches; only unrelated businesses on Halperin St. found
+47,בית מאפה למהדרין,אופקים,Ofakim,אליהו גולומב 14,"אליהו גולומב 14, אופקים",SAME,,https://easy.co.il/page/3473864,https://www.d.co.il/19191740/22590/,,FALSE,
+48,קצפת,אשדוד,Ashdod,"צה""ל 1","צה""ל 1, אשדוד",SAME,,https://www.d.co.il/80366320/9010163/,https://www.kosharot.co.il/index2.php?id=432542&lang=HEB,,FALSE,
+49,פיצה בואנו,בית שמש,Beit Shemesh,הרב מנחם פורוש 1 קניון השדרה,"הרב מנחם פורוש 1, קניון השדרה, בית שמש",SAME,,https://www.dunsguide.co.il/C02917d03ccb5f23cc2f7d50fc0ab98bb_%D7%9E%D7%A1%D7%A2%D7%93%D7%95%D7%AA/%D7%A4%D7%99%D7%A6%D7%94_%D7%91%D7%95%D7%90%D7%A0%D7%95/,https://wolt.com/en/isr/beit-shemesh-area/restaurant/pizza-boeno; https://www.instagram.com/p/DYjpP9ts9qj/,,FALSE,
+50,ג'לטו,בית שמש,Beit Shemesh,הרב מנחם פורוש 1 קניון השדרה,,NOT_FOUND,,,,,FALSE,no listing for a business named ג'לטו at this mall found after two searches; only an unrelated gelato brand ('אייס') found in the mall directory
+51,סושי טוקיו,בית שמש,Beit Shemesh,נחל ניצנים 8,"נחל ניצנים 8, בית שמש",SAME,,https://easy.co.il/en/page/27309976,https://www.d.co.il/80373580/30456/; https://www.kosharot.co.il/index2.php?id=436446&lang=HEB,,FALSE,
+52,גלידלנד,בית שמש,Beit Shemesh,נחל ניצנים 16,"נחל ניצנים 16, בית שמש",SAME,,https://www.kosharot.co.il/index2.php?id=400025&lang=HEB,https://www.d.co.il/80262552/30180/; https://openinghours.co.il/%D7%92%D7%9C%D7%99%D7%93%D7%9C%D7%A0%D7%93-%D7%A0%D7%97%D7%9C-%D7%A0%D7%99%D7%A6%D7%A0%D7%99%D7%9D-16-%D7%91%D7%99%D7%AA-%D7%A9%D7%9E%D7%A9,,FALSE,one listing (d.co.il) describes this name/address as event-equipment rental rather than an ice cream parlor; other kosher-directory listings confirm an ice cream parlor at the same name/address
+53,קצפת,בית שמש,Beit Shemesh,נחל קישון 48,"שדרות נחל הקישון 48, בית שמש",SAME,,https://easy.co.il/en/page/27031931,https://www.kosharot.co.il/index2.php?id=436437&lang=HEB; https://rest.jdn.co.il/rest/1512/,,FALSE,
+54,מאפיית חלת הבית,בית שמש,Beit Shemesh,נחל ניצנים 3,,AMBIGUOUS,,,,"הרצל 9, בית שמש (https://www.d.co.il/80106597/22620/); שד' האומראים 24, בית שמש (רמת בית שמש) (https://www.d.co.il/80365316/22620/); יחזקאל הנביא, בית שמש (https://www.waze.com/live-map/directions/%D7%9E%D7%90%D7%A4%D7%99%D7%99%D7%AA-%D7%97%D7%9C%D7%AA-%D7%94%D7%91%D7%99%D7%AA-%D7%99%D7%97%D7%96%D7%A7%D7%90%D7%9C-%D7%94%D7%A0%D7%91%D7%99%D7%90-%D7%91%D7%99%D7%AA-%D7%A9%D7%9E%D7%A9?to=place.w.22937917.229248098.434090)",FALSE,chain with multiple branches in Beit Shemesh; corpus address (Nachal Nitzanim 3) not directly confirmed on any listing page found
+55,פיצה האט,בית שמש,Beit Shemesh,יצחק רבין 13,"יצחק רבין 13, בית שמש",SAME,,https://pizzadelivery.co.il/%D7%A4%D7%99%D7%A6%D7%94-%D7%94%D7%90%D7%98-%D7%91%D7%99%D7%AA-%D7%A9%D7%9E%D7%A9/,https://www.pizzahut.co.il/branch/%D7%91%D7%99%D7%AA-%D7%A9%D7%9E%D7%A9/,,FALSE,
+56,וופל בר,בית שמש,Beit Shemesh,יגאל אלון 6,"שד' יגאל אלון 6, בית שמש",SAME,,https://www.rest.co.il/rest/80247790/,https://www.d.co.il/80247790/8930/,,FALSE,
+57,מיסטר מיט,בית שמש,Beit Shemesh,יחזקאל הנביא 22,"רחוב יחזקאל, בית שמש (מרכז מסחרי)",SAME,one source names the street more fully than the other; house number missing on one side; compared on street name only,https://418.co.il/?p=15566,https://www.kosharot.co.il/index2.php?id=440431&lang=HEB,,FALSE,local news article names street (Yechezkel) but not confirmed house number 22
+58,מאפיית חלת הבית,בית שמש,Beit Shemesh,משה רבינו 2,,AMBIGUOUS,,,,"הרצל 9, בית שמש (https://www.d.co.il/80106597/22620/); שד' האומראים 24, בית שמש (רמת בית שמש) (https://www.d.co.il/80365316/22620/); יחזקאל הנביא, בית שמש (https://www.waze.com/live-map/directions/%D7%9E%D7%90%D7%A4%D7%99%D7%99%D7%AA-%D7%97%D7%9C%D7%AA-%D7%94%D7%91%D7%99%D7%AA-%D7%99%D7%97%D7%96%D7%A7%D7%90%D7%9C-%D7%94%D7%A0%D7%91%D7%99%D7%90-%D7%91%D7%99%D7%AA-%D7%A9%D7%9E%D7%A9?to=place.w.22937917.229248098.434090)",FALSE,chain with multiple branches in Beit Shemesh; corpus address (Moshe Rabbeinu 2) not among branches confirmed on listings found
+59,חומוס אליהו,בית שמש,Beit Shemesh,יגאל אלון 2,"שד' יגאל אלון 2, בית שמש",SAME,,https://www.d.co.il/80330696/30457/,https://www.t.co.il/Business/Card-780230.html,,FALSE,
+60,קצפת,בית שמש,Beit Shemesh,יגאל אלון 6,,AMBIGUOUS,,,,"שד' יגאל אלון 6, בית שמש (https://www.d.co.il/80259807/9010163/); קניון שער העיר, בית שמש (https://rest.jdn.co.il/rest/1505/); נחל קישון 48, בית שמש (https://www.b144.co.il/b144_sip/4A1404134470655D49160D174472675E49/)",FALSE,chain (Katsefet) with multiple branches in Beit Shemesh
+61,דובי דגים,בית שמש,Beit Shemesh,נחל ניצנים 8,"נחל ניצנים 8, בית שמש",SAME,,https://www.d.co.il/77257320/11660/,https://easy.co.il/page/24358412,,FALSE,
+62,הולי בייגל,בית שמש,Beit Shemesh,נחל דולב 19,"נחל דולב 19, בית שמש",SAME,,https://www.d.co.il/80192339/8930/,https://www.holybagel-j.co.il/%D7%94%D7%95%D7%9C%D7%99-%D7%91%D7%99%D7%99%D7%92%D7%9C-%D7%91%D7%99%D7%AA-%D7%A9%D7%9E%D7%A9/,,FALSE,
+63,פיצה כמעט חינם,בית שמש,Beit Shemesh,חלקת יהושע 10,,AMBIGUOUS,,,,"הרצל 37, בית שמש (https://www.d.co.il/80344308/39460/); רמת בית שמש (פיצריה) - כולל אזור חלקת יהושע (https://www.rest.co.il/rest/80346373/); הרצל 5, בית שמש (https://www.badatz.biz/biz/%D7%A4%D7%99%D7%A6%D7%94-%D7%9B%D7%9E%D7%A2%D7%98-%D7%97%D7%99%D7%A0%D7%9D-%D7%91%D7%99%D7%AA-%D7%A9%D7%9E%D7%A9/)",FALSE,chain with multiple branches in Beit Shemesh; corpus address not clearly pinned to one listing
+64,מאפיית חלת הבית,בית שמש,Beit Shemesh,שד' האומראים 24,,AMBIGUOUS,,,,"הרצל 9, בית שמש (https://www.d.co.il/80106597/22620/); שד' האומראים 24, בית שמש (רמת בית שמש) (https://www.d.co.il/80365316/22620/); יחזקאל הנביא, בית שמש (https://www.waze.com/live-map/directions/%D7%9E%D7%90%D7%A4%D7%99%D7%99%D7%AA-%D7%97%D7%9C%D7%AA-%D7%94%D7%91%D7%99%D7%AA-%D7%99%D7%97%D7%96%D7%A7%D7%90%D7%9C-%D7%94%D7%A0%D7%91%D7%99%D7%90-%D7%91%D7%99%D7%AA-%D7%A9%D7%9E%D7%A9?to=place.w.22937917.229248098.434090)",FALSE,chain with multiple branches in Beit Shemesh; Ha'Amoraim 24 candidate matches corpus but not confirmed via exact street text on the listing page
+65,סמוקין טיז,בית שמש,Beit Shemesh,שד' האומראים 2,"נחל דולב 56, בית שמש",CHANGED_BOTH,,https://www.d.co.il/80373686/35790/,https://www.rest.co.il/rest/80373686/,,FALSE,"only one address found on listings, differs from corpus address"
+66,מאפיית הלל,גבעת זאב,Givat Ze'ev,הכינור 15,"הכינור 15, גבעת זאב",SAME,,https://meshelanu.co.il/BusinessPage?slug=business-mukz2t,https://www.kosharot.co.il/index2.php?id=443930&lang=HEB,,FALSE,
+67,היימיש סושי,ביתר עילית,Beitar Illit,פנים מאירים 3,,AMBIGUOUS,,,,"פנים מאירים 3, ביתר עילית (https://easy.co.il/page/10150036); כנסת מרדכי 7, ביתר עילית (https://www.mishloha.co.il/r/inactive/%D7%94%D7%99%D7%99%D7%9E%D7%99%D7%A9%20%D7%A1%D7%95%D7%A9%D7%99%20%D7%91%D7%99%D7%AA%D7%A8%20%D7%A2%D7%99%D7%9C%D7%99%D7%AA); רבי אלעזר המודעי 7, ביתר עילית (https://www.rest.co.il/rest/80386874/)",FALSE,"sources disagree on address; one listing (mishloha) marked inactive, possibly a relocation"
+68,תמר,ביתר עילית,Beitar Illit,רבי עקיבא 23,,NOT_FOUND,,,,,FALSE,"no credible business listing found for a catering/platters business named תמר in Beitar Illit; results returned unrelated businesses (clinic, post office, library) sharing the name"
+69,מאפיית מן הארץ,ביתר עילית,Beitar Illit,אלעזר המודעי 17,,AMBIGUOUS,,,,"אלעזר המודעי 17, ביתר עילית (https://beitar24.co.il/b/listing/4720); אלעזר המודעי 15, ביתר עילית (https://www.badatz.biz/biz/%D7%9E%D7%90%D7%A4%D7%99%D7%AA-%D7%9E%D7%9F-%D7%94%D7%90%D7%A8%D7%A5-%D7%A2%D7%95%D7%96%D7%99-%D7%97%D7%99%D7%98%D7%9E%D7%9F/)",FALSE,"sources disagree on house number (15 vs 17), same street"
+70,קצפת,ביתר עילית,Beitar Illit,בנין דוד 8,"בניין דוד 8, ביתר עלית",SAME,street spelling variant,https://www.xn----8hcbjj5cq0blc.co.il/opening_hours.asp?eid=46843&eSnifName=%D7%92%D7%9C%D7%99%D7%93%D7%A8%D7%99%D7%99%D7%AA+%D7%A7%D7%A6%D7%A4%D7%AA+%D7%91%D7%99%D7%AA%D7%A8+%D7%A2%D7%9C%D7%99%D7%AA,https://katsefet.co.il/%D7%A1%D7%A0%D7%99%D7%A4%D7%99%D7%9D/,,FALSE,
+71,יוסלה,ביתר עילית,Beitar Illit,"הר""ן 14","הר""ן 14, ביתר עילית",SAME,,https://www.d.co.il/80351674/30455/,https://beitar24.co.il/b/listing/4648/,,FALSE,
+72,פיצה האט,ביתר עילית,Beitar Illit,הרב ברים 4,"הרב ברים 4, ביתר עילית",SAME,,https://www.pizzahut.co.il/branch/%D7%91%D7%99%D7%AA%D7%A8-%D7%A2%D7%9C%D7%99%D7%AA/,https://www.d.co.il/80368810/39460/,,FALSE,
+73,פיצה האט,בני ברק,Bnei Brak,ז'בוטינסקי 2,"זאב ז'בוטינסקי 2, בני ברק",SAME,one source names the street more fully than the other,https://easy.co.il/en/page/26519280,https://www.waze.com/live-map/directions/%D7%A4%D7%99%D7%A6%D7%94-%D7%94%D7%90%D7%98-%D7%91%D7%A0%D7%99-%D7%91%D7%A8%D7%A7-2-%D7%96%D7%90%D7%91-%D7%96%D7%91%D7%95%D7%98%D7%99%D7%A0%D7%A1%D7%A7%D7%99-2,,FALSE,
+74,זיסלק,בני ברק,Bnei Brak,רבי עקיבא 76,"רבי עקיבא 76, בני ברק",SAME,,https://easy.co.il/page/27042793,https://www.kosharot.co.il/index2.php?id=428582&lang=HEB,,FALSE,
+75,מושיקו מבית מונטה קרלו,בני ברק,Bnei Brak,אברבנאל 72,"אברבנאל 72, בני ברק",SAME,,https://www.kosharot.co.il/index2.php?id=432552&lang=HEB,,,FALSE,
+76,פיצוחי אביב,בני ברק,Bnei Brak,אברבנאל 72,"אברבנאל 72, בני ברק",SAME,,https://www.kosharot.co.il/index2.php?id=432554&lang=HEB,,,FALSE,
+77,טייסטי מיט,בני ברק,Bnei Brak,הרב קוק 4,"הרב אברהם יצחק הכהן קוק 4, בני ברק",SAME,one source names the street more fully than the other,https://easy.co.il/en/page/27203723,https://www.kosharot.co.il/index2.php?id=436452&lang=HEB,,FALSE,"chain also has a Ramat Gan branch (different city), not a conflict for this row"
+78,קצפת,בני ברק,Bnei Brak,זבוטינסקי 9 מגדל הכשרת היישוב,"מגדל הכשרת היישוב, 9 זאב ז'בוטינסקי, בני ברק",SAME,one source names the street more fully than the other,https://www.waze.com/live-map/directions/%D7%9E%D7%92%D7%93%D7%9C-%D7%94%D7%9B%D7%A9%D7%A8%D7%AA-%D7%94%D7%99%D7%99%D7%A9%D7%95%D7%91-%D7%96%D7%90%D7%91-%D7%96%D7%91%D7%95%D7%98%D7%99%D7%A0%D7%A1%D7%A7%D7%99-9-%D7%91%D7%A0%D7%99-%D7%91%D7%A8%D7%A7?to=place.w.22806849.228265097.539925,https://www.kosharot.co.il/index2.php?id=429779&lang=HEB,,FALSE,evidence is a mapping service (Waze) rather than a business-listing site; no dedicated listing page found with the street number
+79,הערינגס',בני ברק,Bnei Brak,זבוטינסקי 7,"דרך זאב ז'בוטינסקי 7, בני ברק",SAME,one source names the street more fully than the other,https://easy.co.il/en/page/27078774,https://www.herings.co.il/,,FALSE,
+80,מעדנייה בסביבה,בני ברק,Bnei Brak,חלוצים 19,,NOT_FOUND,,,,,FALSE,no listing found under this business name in Bnei Brak; search surfaced only unrelated delis
+81,פיצה טוונטי פייב,בני ברק,Bnei Brak,הרב כהנמן 100,"כהנמן 100, בני ברק",SAME,one source names the street more fully than the other,https://www.d.co.il/80189182/39460/,https://www.rest.co.il/rest/80189182/; https://easy.co.il/en/page/26125151,,FALSE,
+82,מסעדת פרמזן,בני ברק,Bnei Brak,מצדה 9 ב',"מצדה 9, בני ברק",SAME,,https://easy.co.il/page/10134931,https://parmesan.co.il/; https://www.kosharot.co.il/index2.php?id=436453&lang=HEB,,FALSE,
+83,קצפת,גבעת שמואל,Givat Shmuel,זבוטינסקי 514,,AMBIGUOUS,,,,"ז'בוטינסקי 406, גבעת שמואל (https://easy.co.il/en/page/26955629); מתחם פארק ה-100, גבעת שמואל (https://www.xn----8hcbjj5cq0blc.co.il/opening_hours.asp?eid=39171&eSnifName=%D7%92%D7%9C%D7%99%D7%93%D7%A8%D7%99%D7%99%D7%AA+%D7%A7%D7%A6%D7%A4%D7%AA+); ז'בוטינסקי 514, גבעת שמואל (per d.co.il snippet) (https://www.d.co.il/80344572/9010163/)",FALSE,sources disagree on street number / complex name for this branch
+84,וי אר בית מאפה,חיפה,Haifa,האצטדיון 25 קרית חיים,"האיצטדיון 25, קרית חיים",SAME,street spelling variant,https://www.vainerbakery.com/,https://www.zooz360.co.il/biz/VAINERBAKERY/; https://www.rest.co.il/rest/80291540/,,FALSE,"business is branded 'Vainer' (ויינר), matches corpus phone"
+85,ויינר איטליאנו,חיפה,Haifa,האצטדיון 25 קרית חיים,"האיצטדיון 25, חיפה (קרית חיים)",SAME,street spelling variant,https://www.d.co.il/80371433/30442/,https://easy.co.il/en/page/27170117; https://www.rest.co.il/rest/80371433/; https://www.vaineritaliano.com/,,FALSE,
+86,פיצה העמק,חצור הגלילית,Hatzor HaGlilit,בן גוריון 9,"בן גוריון 9, חצור הגלילית",SAME,,https://www.d.co.il/80304068/39460/,https://openinghours.co.il/%D7%A4%D7%99%D7%A6%D7%94-%D7%94%D7%A2%D7%9E%D7%A7-%D7%97%D7%A6%D7%95%D7%A8-%D7%94%D7%92%D7%9C%D7%99%D7%9C%D7%99%D7%AA-%D7%91%D7%9F-%D7%92%D7%95%D7%A8%D7%99%D7%95%D7%9F-9-10300,,FALSE,
+87,פיצוחי הגליל כהן,חצור הגלילית,Hatzor HaGlilit,מעלה חוני המעגל 38,"אזור התעשייה 51, חצור הגלילית",CHANGED_BOTH,,https://www.dunsguide.co.il/C6095e78999a46a36c72b5c0e8ec59b76_%D7%A4%D7%99%D7%A6%D7%95%D7%97%D7%99%D7%9D_%D7%95%D7%A4%D7%99%D7%A8%D7%95%D7%AA_%D7%99%D7%91%D7%A9%D7%99%D7%9D/%D7%9B%D7%94%D7%9F_%D7%99%D7%94%D7%95%D7%93%D7%94/,https://www.b144.co.il/b144_sip/4D120D104570655F491405/; https://441il.com/list/%D7%A4%D7%99%D7%A6%D7%95%D7%97%D7%99+%D7%94%D7%92%D7%9C%D7%99%D7%9C+%D7%9B%D7%94%D7%9F+%D7%A9%D7%9C%D7%95%D7%9D/%D7%90%D7%96%D7%95%D7%A8+%D7%AA%D7%A2%D7%A9%D7%99%D7%94+%D7%97%D7%A6%D7%95%D7%A8+51+%D7%97%D7%A6%D7%95%D7%A8+%D7%94%D7%92%D7%9C%D7%99%D7%9C%D7%99%D7%AA/04/6931002.html,,FALSE,found address (industrial zone) differs from corpus street address
+88,קצפת,ירושלים,Jerusalem,שד' הרצל 102 בית הכרם,"שד' הרצל 102, ירושלים",SAME,,https://easy.co.il/en/page/25882211,https://il.polomap.com/%D7%99%D7%A8%D7%95%D7%A9%D7%9C%D7%99%D7%9D/28760; https://kosheronly.net/restaurant/%D7%A7%D7%A6%D7%A4%D7%AA-%D7%99%D7%A8%D7%95%D7%A9%D7%9C%D7%99%D7%9D-%D7%91%D7%99%D7%AA-%D7%94%D7%9B%D7%A8%D7%9D/,,FALSE,
+89,מאפיית לחם פיינגולד,ירושלים,Jerusalem,עוזיאל 92 בית וגן,"האומן 29, ירושלים (תלפיות)",CHANGED_BOTH,,https://www.d.co.il/80332903/22620/,https://www.rest.co.il/rest/80332903/; https://feingold.co.il/; https://www.kolhair.co.il/food/113654/,,FALSE,"found address is in Talpiot, not Beit VeGan as in corpus; sources consistently agree on Ha'uman 29"
+90,סושי בית וגן,ירושלים,Jerusalem,הפסגה 37 בית וגן,"הפסגה 37, ירושלים",SAME,,https://easy.co.il/en/page/3078293,https://www.kosharot.co.il/index2.php?id=432558&lang=HEB; https://wolt.com/en/isr/jerusalem/restaurant/sushi-bayit-vegan-jerusalem,,FALSE,
+91,מזנון הפסגה,ירושלים,Jerusalem,הפסגה 23 בית וגן,"הפסגה 10, ירושלים",CHANGED_NUMBER,,https://www.d.co.il/21782750/25140/,https://www.dunsguide.co.il/C70dce4372e7d7607fc51738254bbbe0a_%D7%9E%D7%A1%D7%A2%D7%93%D7%95%D7%AA/%D7%9E%D7%96%D7%A0%D7%95%D7%9F_%D7%94%D7%A4%D7%A1%D7%92%D7%94/; https://www.kosharot.co.il/index2.php?id=400024&lang=HEB,,FALSE,found house number (10) differs from corpus (23); phone number matches corpus exactly
+92,קצפת,ירושלים,Jerusalem,ישראל זנגוויל 1 בית וגן,"ישראל זנגוויל 1, ירושלים",SAME,,https://easy.co.il/en/page/27166376,https://katsefet.co.il/%D7%A1%D7%A0%D7%99%D7%A4%D7%99%D7%9D/,,FALSE,
+93,נוגטין,ירושלים,Jerusalem,עוזיאל 28 בית וגן,,AMBIGUOUS,,,,"הרב עוזיאל 28, ירושלים (https://www.d.co.il/80077965/43740/); הרב עוזיאל 86, ירושלים (https://easy.co.il/en/page/9182400)",FALSE,two different house numbers across listing sites; phone number matches corpus on the '28' listing
+94,קצפת,ירושלים,Jerusalem,שמגר 16 קניון רב שפע בעלז,"שמגר 16, קניון רב שפע, ירושלים",SAME,,https://www.d.co.il/61931300/31810/,https://www.rest.co.il/rest/80138304/; https://rest.jdn.co.il/rest/1539/,,FALSE,
+95,מיני קצפת,ירושלים,Jerusalem,שמגר 21 בעלז,,NOT_FOUND,,,,,FALSE,no credible business-listing page found for this exact business name/address after two searches
+96,בורגר ביט,ירושלים,Jerusalem,שמגר 16 קניון רב שפע בעלז,"שמגר 16, קניון רב שפע, ירושלים",SAME,,https://easy.co.il/en/page/6606810,https://www.kosharot.co.il/index2.php?id=411901&lang=HEB; https://rest.jdn.co.il/rest/1466/,,FALSE,phone number matches corpus exactly
+97,מיסטר בייגל,ירושלים,Jerusalem,שמגר 16 קניון רב שפע בעלז,"שמגר 16, קניון רב שפע, ירושלים",SAME,,https://easy.co.il/page/26824802,https://www.kosharot.co.il/index2.php?id=434036&lang=HEB,,FALSE,
+98,מאפיית THE RYE,ירושלים,Jerusalem,הרב סרוצקין 18 בעלז,"הרב סרוצקין 18, ירושלים (בעלז)",SAME,,https://miluim.hanochdaum.com/business/3402/,,,FALSE,phone number matches corpus exactly
+99,מיץ פרי,ירושלים,Jerusalem,הישיבה 1 גאולה,"הישיבה 1, גאולה, ירושלים",SAME,,https://www.kosharot.co.il/index2.php?id=400293&lang=HEB,https://openinghours.co.il/%D7%9E%D7%99%D7%A5-%D7%A4%D7%A8%D7%99-%D7%94%D7%99%D7%A9%D7%99%D7%91%D7%94-1-%D7%99%D7%A8%D7%95%D7%A9%D7%9C%D7%99%D7%9D,,FALSE,phone number matches corpus exactly
+100,סאם בייגל,ירושלים,Jerusalem,מלכי ישראל 26 גאולה,"מלכי ישראל 26, גאולה, ירושלים",SAME,,https://www.d.co.il/80011944/8930/,https://www.2eat.co.il/restaurant.aspx?restid=17122; https://www.kosharot.co.il/index2.php?id=400039&lang=HEB,,FALSE,phone number matches corpus exactly
+101,קרדו בייקרי,ירושלים,Jerusalem,מלכי ישראל 34 גאולה,,NOT_FOUND,,,,,FALSE,no listing found for this business name; search returned only unrelated 'Cardo' historical/street results
+102,טשולנט על הגג,ירושלים,Jerusalem,מלכי ישראל 5 גאולה,"מלכי ישראל 5, גאולה, ירושלים",SAME,,https://jerusalem.mynet.co.il/food_leisure/article/rkyzeqp8je,,,FALSE,"found via media article on cholent restaurants, not a directory listing"
+103,חלב ודבש בוטיק קפה,ירושלים,Jerusalem,ההגנה 21 מרכז מסחרי גבעה הצרפתית,"ההגנה 21, ירושלים",SAME,,https://www.d.co.il/80376483/8930/,https://easy.co.il/en/page/10136427; https://www.rest.co.il/rest/80376483/; https://www.kosharot.co.il/index2.php?id=436477&lang=HEB,,FALSE,
+104,ריז בורגר,ירושלים,Jerusalem,כנפי נשרים 13 גבעת שאול,"כנפי נשרים 13, ירושלים",SAME,,https://www.d.co.il/80383675/30455/,https://easy.co.il/page/27298830; https://www.kosharot.co.il/index2.php?id=440433&lang=HEB,,FALSE,
+105,פיצה לארי,ירושלים,Jerusalem,כנפי נשרים 66 גבעת שאול,"כנפי נשרים 66, ירושלים",SAME,,https://www.d.co.il/41255890/39460/,https://www.rest.co.il/rest/41255890/; https://www.netpage.co.il/%D7%A4%D7%99%D7%A6%D7%A8%D7%99%D7%95%D7%AA/%D7%A4%D7%99%D7%A6%D7%94-%D7%9C%D7%90%D7%A8%D7%99.htm,,FALSE,
+106,איטליז מטעם חפץ חיים,ירושלים,Jerusalem,בית הדפוס 13 גבעת שאול,,AMBIGUOUS,,,,"בית הדפוס 15, ירושלים (https://www.d.co.il/80108966/7280/); אגריפס 30, ירושלים (https://www.d.co.il/9357750/2490/)",FALSE,listings disagree on address for this exact business name
+107,יוסלה מוקיר שבת,ירושלים,Jerusalem,אלקבץ 2 גבעת שאול,,AMBIGUOUS,,,,"שלמה אלקבץ 4, ירושלים (https://easy.co.il/page/26885851); שלמה אלקבץ 2, ירושלים (https://www.waze.com/he/live-map/directions/il/directions?to=place.w.23068990.230624363.220851)",FALSE,"sources disagree on house number, 2 vs 4"
+108,ביג אפל פיצה,ירושלים,Jerusalem,כנפי נשרים 35 גבעת שאול,,AMBIGUOUS,,,,"כנפי נשרים 35, גבעת שאול, ירושלים (https://www.bigapplepizza.co.il/en/branches/%D7%A1%D7%A0%D7%99%D7%A3-%D7%92%D7%91%D7%A2%D7%AA-%D7%A9%D7%90%D7%95%D7%9C/); אביזוהר 8, בית הכרם, ירושלים (https://www.openclosed.co.il/%D7%A8%D7%99%D7%A9%D7%95%D7%9D/%D7%91%D7%99%D7%92-%D7%90%D7%A4%D7%9C-%D7%A4%D7%99%D7%A6%D7%94-%D7%99%D7%A8%D7%95%D7%A9%D7%9C%D7%99%D7%9D-%D7%91%D7%99%D7%AA-%D7%9B%D7%A8%D7%9D/); הגננת 240, גילה, ירושלים (https://www.bigapplepizza.co.il/en/branches/%D7%A1%D7%A0%D7%99%D7%A3-%D7%92%D7%99%D7%9C%D7%94/); יוחנן בן זכאי 7, קטמון, ירושלים (https://www.openclosed.co.il/%D7%A8%D7%99%D7%A9%D7%95%D7%9D/%D7%91%D7%99%D7%92-%D7%90%D7%A4%D7%9C-%D7%A4%D7%99%D7%A6%D7%94-%D7%99%D7%A8%D7%95%D7%A9%D7%9C%D7%99%D7%9D-%D7%A9%D7%9B%D7%95%D7%A0%D7%AA-%D7%A7%D7%98%D7%9E%D7%95%D7%9F/)",FALSE,chain with multiple Jerusalem branches; Givat Shaul branch page matches corpus address exactly
+109,מוסקט,ירושלים,Jerusalem,כנפי נשרים 24 גבעת שאול,"כנפי נשרים 24, ירושלים",SAME,,https://www.d.co.il/31434010/30442/,https://www.rest.co.il/rest/31434010/; https://www.kosharot.co.il/index2.php?id=400047&lang=HEB; https://www.rol.co.il/restaurant/moskat-jerusalem,,FALSE,
+110,מאמא טעם של בית,ירושלים,Jerusalem,עם ועולמו 3 גבעת שאול,"עם ועולמו 3, ירושלים",SAME,,https://easy.co.il/page/10101243,https://www.kosharot.co.il/index2.php?id=436478&lang=HEB,,FALSE,
+111,סי דג,ירושלים,Jerusalem,יעקב אהליהב 5 גבעת שאול,,NOT_FOUND,,,,,FALSE,"found business listings (facebook, jerusalem religious council registry) but none rendered a verifiable street address; two candidate pages were egress-blocked"
+112,פאזל סלט קפה ובייגל,ירושלים,Jerusalem,כנפי נשרים 10 גבעת שאול,"כנפי נשרים 10, גבעת שאול, ירושלים",SAME,,https://www.d.co.il/80197604/8930/,https://easy.co.il/en/page/20574427; https://www.rest.co.il/rest/80197604/; https://www.kosharot.co.il/index2.php?id=432562&lang=HEB,,FALSE,
+113,קצפת,ירושלים,Jerusalem,כנפי נשרים 35 גבעת שאול,"כנפי נשרים 35, ירושלים",SAME,,https://www.d.co.il/80087351/9010163/,https://www.rest.co.il/rest/80087351/; https://www.kosharot.co.il/index2.php?id=436479&lang=HEB,,FALSE,
+114,נוגטין,ירושלים,Jerusalem,המרפא 1 הר חוצבים,,AMBIGUOUS,,,,"הרב עוזיאל 86, ירושלים (https://easy.co.il/en/page/9182400); הרב עוזיאל 28, ירושלים (https://www.rest.co.il/rest/80077965/); שאולזון 49, ירושלים (https://www.kosharot.co.il/index2.php?id=412952&lang=HEB)",FALSE,"multiple distinct addresses found under the name Nougatine; none match corpus address (HaMarpe 1, Har Chotzvim); likely multiple branches/locations"
+115,"ד""ר פיצה",ירושלים,Jerusalem,הרטום 10 הר חוצבים,"הרטום 10, ירושלים",SAME,,https://easy.co.il/en/page/10030514,https://www.rest.co.il/rest/80153776/; https://www.kosharot.co.il/index2.php?id=400032&lang=HEB,,FALSE,
+116,רודריגז,ירושלים,Jerusalem,קרית מדע 3 הר חוצבים,"קרית מדע 3, ירושלים",SAME,,https://www.d.co.il/80152173/30420/,https://www.rest.co.il/rest/80152173/; https://easy.co.il/en/page/10001547,,FALSE,
+117,סאם בורגר,ירושלים,Jerusalem,קרית מדע 3 הר חוצבים,"קרית מדע 3, ירושלים",SAME,,https://www.d.co.il/80308540/30420/,https://www.rest.co.il/rest/80308540/; https://www.kosharot.co.il/index2.php?id=415790&lang=HEB,,FALSE,
+118,חומוס אליהו,ירושלים,Jerusalem,קרית מדע 3 הר חוצבים,"קרית מדע 3, ירושלים",SAME,,https://easy.co.il/en/page/10099027,https://wolt.com/en/isr/jerusalem/restaurant/hummus-eliyahu-kiryat-hamada; https://www.kosharot.co.il/index2.php?id=422768&lang=HEB,,FALSE,
+119,קייטרינג לה קארט,ירושלים,Jerusalem,קצנלבויגן 55 הר נוף,,NOT_FOUND,,,,,FALSE,"kosharot listing confirms street name (Katzenelbogen) only, no house number found on any listing"
+120,בייגלס הר נוף,ירושלים,Jerusalem,שאולזון 58 הר נוף,"הרב ש. שאולזון 58, ירושלים",SAME,one source names the street more fully than the other,https://www.d.co.il/80187211/30420/,https://easy.co.il/en/page/9175984; https://www.kosharot.co.il/index2.php?id=400049&lang=HEB,,FALSE,
+121,נוגטין,ירושלים,Jerusalem,שאולזון 49 הר נוף,,AMBIGUOUS,,,,"הרב עוזיאל 86, ירושלים (https://easy.co.il/en/page/9182400); הרב עוזיאל 28, ירושלים (https://www.rest.co.il/rest/80077965/); שאולזון 49, ירושלים (https://www.kosharot.co.il/index2.php?id=412952&lang=HEB)",FALSE,"multiple distinct addresses found under the name Nougatine; one candidate (Shaulzon 49) matches corpus, but business appears to have several locations under the same name"
+122,סושי בית וגן,ירושלים,Jerusalem,כדורי יצחק 2 הר חומה,"כדורי יצחק 2, ירושלים",SAME,,https://www.kosharot.co.il/index2.php?id=443934&lang=HEB,https://wolt.com/en/isr/jerusalem/restaurant/sushi-bayit-vegan-har-homa; https://www.facebook.com/p/%D7%A1%D7%95%D7%A9%D7%99-%D7%91%D7%99%D7%AA-%D7%95%D7%92%D7%9F-%D7%A1%D7%A0%D7%99%D7%A3-%D7%94%D7%A8-%D7%97%D7%95%D7%9E%D7%94-61584396823357/,,FALSE,
+123,סושי טוקיו,ירושלים,Jerusalem,זוננפלד 12 מיר,,AMBIGUOUS,,,,"הרב זוננפלד 12, ירושלים (בית ישראל) (https://easy.co.il/page/27021098); אגריפס 111, ירושלים (מחנה יהודה) (https://www.d.co.il/80366568/30456/)",FALSE,chain with more than one Jerusalem branch; Zunenfeld 12 branch matches corpus address
+124,פליימס,ירושלים,Jerusalem,בית ישראל 2 מיר,"בית ישראל 2, ירושלים",SAME,,https://www.d.co.il/80354854/35790/,https://easy.co.il/page/10098984; https://www.rest.co.il/rest/80354854/,,FALSE,
+125,טשולנט עולמי / מיטיים,ירושלים,Jerusalem,הנגר 2 מיר,"הנגר 2, ירושלים",SAME,,https://www.kosharot.co.il/index2.php?id=428596&lang=HEB,https://www.kosharot.co.il/index2.php?id=441599&lang=HEB; https://wolt.com/en/isr/jerusalem/restaurant/cholent-olami,,FALSE,
+126,פיזליה,ירושלים,Jerusalem,משה הס 3 ממילה,"משה הס 3, ירושלים",SAME,,https://wolt.com/he/isr/jerusalem/restaurant/pizzelia-je,,,FALSE,only a delivery aggregator listing corroborates the address
+127,פיצה פפידו,ירושלים,Jerusalem,שטראוס 3 מרכז,"שטראוס 3, ירושלים",SAME,,https://www.d.co.il/80386727/39460/,https://www.rest.co.il/rest/80386727/; https://www.kosharot.co.il/index2.php?id=440437&lang=HEB,,FALSE,
+128,פיצה האט TAKE AWAY,ירושלים,Jerusalem,בן הלל 15 מרכז,,AMBIGUOUS,,,,"מרדכי בן הלל 15, ירושלים (https://www.pizzahut.co.il/branch/jerusalem-ben-hilel/); יפו 228 (תחנה מרכזית), ירושלים (https://www.pizzahut.co.il/branch/jerusalem-central/)",FALSE,chain with multiple Jerusalem branches; Ben Hillel branch page matches corpus address exactly
+129,פיצה האט TAKE AWAY,ירושלים,Jerusalem,יפו 228 מרכז,,AMBIGUOUS,,,,"מרדכי בן הלל 15, ירושלים (https://www.pizzahut.co.il/branch/jerusalem-ben-hilel/); יפו 228 (תחנה מרכזית), ירושלים (https://www.pizzahut.co.il/branch/jerusalem-central/)",FALSE,chain with multiple Jerusalem branches; Central Station (Yafo 228) branch page matches corpus address exactly
+130,סושי פיוז,ירושלים,Jerusalem,מרכז,,AMBIGUOUS,,,,"כנפי נשרים 20, ירושלים (https://easy.co.il/page/27112429); שמעון הצדיק 22, ירושלים (https://kosher-basviva.com/restaurant-details/69fb3ede44aa71ec4f6be4dd/%D7%A1%D7%95%D7%A9%D7%99%20%D7%A4%D7%99%D7%95%D7%96)",FALSE,listings disagree on street address
+131,מאפיית לחם פיינגולד,ירושלים,Jerusalem,פינת האפרסק 1 מרכז,,AMBIGUOUS,,,,"האומן 29, ירושלים (https://www.d.co.il/80332903/22620/); ירמיהו 68, ירושלים (https://www.kosharot.co.il/index2.php?id=436485&lang=HEB); פארן 7 (מרכז מסחרי רמת אשכול), ירושלים (https://www.kolhair.co.il/food/113654/)",FALSE,multiple bakery locations found; none match corpus address (Pinat HaAfarsek 1)
+132,MEAT CHOICE,ירושלים,Jerusalem,אגריפס 88 מרכז,"אגריפס 88, ירושלים",SAME,,https://il.revieweuro.com/jerusalem/meat-choice-2370242,https://www.waze.com/live-map/directions/meat-choice-%D7%90%D7%92%D7%A8%D7%99%D7%A4%D7%A1-88-%D7%99%D7%A8%D7%95%D7%A9%D7%9C%D7%99%D7%9D?to=place.w.23068990.230755435.483568,,FALSE,phone matches corpus (+972 2-677-0779)
+133,סושי טוקיו,ירושלים,Jerusalem,אגריפס 111 מרכז,"אגריפס 111, ירושלים",SAME,,https://www.d.co.il/80366568/30456/,https://www.rest.co.il/rest/80366568/; https://easy.co.il/en/page/10120494,,FALSE,
+134,איטליז מטעם חפץ חיים,ירושלים,Jerusalem,אגריפס 8 מרכז,,AMBIGUOUS,,,,"אגריפס 30, ירושלים (https://www.d.co.il/9357750/2490/); בית הדפוס 15, ירושלים (https://www.d.co.il/80108966/7280/)",FALSE,"two distinct d.co.il listings under this name, different streets; neither matches corpus address"
+135,מגדניית מרציפן,ירושלים,Jerusalem,אגריפס 44 מרכז,"אגריפס 44, ירושלים",SAME,,https://www.d.co.il/21796610/43740/,https://easy.co.il/en/page/10018847; https://www.t.co.il/Business/Card-774040.html,,FALSE,
+136,מגדניית מרציפן,ירושלים,Jerusalem,אגריפס 81 מרכז,,NOT_FOUND,,,,,FALSE,"second kosharot.co.il listing id (432567) exists distinct from the Agripas-44 one, but page fetch was blocked (egress) so address could not be confirmed from source text; not reported as FOUND"
+137,גבינה ועגבניה,ירושלים,Jerusalem,המלך ג'ורג' 52 מרכז,"המלך ג'ורג' 52, ירושלים",SAME,,https://www.d.co.il/80223344/39460/,https://easy.co.il/en/page/9215368,,FALSE,
+138,פיצה האט,ירושלים,Jerusalem,זלמן שניאור 1 ת. דקל מנטה ניות,"זלמן שניאור 1, ירושלים",SAME,,https://www.d.co.il/40641840/39460/,https://pizzadelivery.co.il/%D7%A4%D7%99%D7%A6%D7%94-%D7%94%D7%90%D7%98-%D7%99%D7%A8%D7%95%D7%A9%D7%9C%D7%99%D7%9D-%D7%A0%D7%99%D7%95%D7%AA/,,FALSE,chain (Pizza Hut); this specific branch listing matches corpus street
+139,פיצה רויאל,ירושלים,Jerusalem,מרכז מסחרי נווה יעקב,"מרכז מסחרי נווה יעקב מול הקו אופ, ירושלים",SAME,one source names the street more fully than the other; house number missing on one side; compared on street name only,https://www.d.co.il/80092444/39460/,https://easy.co.il/page/8848751; https://www.kosharot.co.il/index2.php?id=400102&lang=HEB,,FALSE,
+140,מפגש האש שלי,ירושלים,Jerusalem,מרכז מסחרי נווה יעקב,"שד' נוה יעקב 611, ירושלים",CHANGED_STREET,house number missing on one side; compared on street name only,https://www.d.co.il/80383742/30455/,https://easy.co.il/en/page/10145427; https://www.kosharot.co.il/index2.php?id=436481&lang=HEB,,FALSE,"listing describes location as Pisgat Ze'ev, not the corpus's generic 'מרכז מסחרי נווה יעקב'"
+141,לעילא,ירושלים,Jerusalem,עלי הכהן 15 עזרת תורה,,NOT_CHECKED,,,,,FALSE,first search inconclusive; narrowing retry could not run - WebSearch session budget exhausted
+142,מאפיית לחם פיינגולד,ירושלים,Jerusalem,"הפלמ""ח 42 עמק רפאים",,NOT_CHECKED,,,,,FALSE,not processed - WebSearch session budget exhausted before this row could be searched
+143,מאפיית לחם פיינגולד,ירושלים,Jerusalem,הרכבת 20 קטמון,,NOT_CHECKED,,,,,FALSE,not processed - WebSearch session budget exhausted before this row could be searched
+144,פיצה האט,ירושלים,Jerusalem,אורגוואי 1 מרכז מסחרי קרית יובל,,NOT_CHECKED,,,,,FALSE,not processed - WebSearch session budget exhausted before this row could be searched
+145,סושי טוקיו,ירושלים,Jerusalem,תפארת ישראל 7 רובע יהודי,,NOT_CHECKED,,,,,FALSE,not processed - WebSearch session budget exhausted before this row could be searched
+146,מיט סטיישן,ירושלים,Jerusalem,תפארת ישראל 2 רובע יהודי,,NOT_CHECKED,,,,,FALSE,not processed - WebSearch session budget exhausted before this row could be searched
+147,פאפס,ירושלים,Jerusalem,תפארת ישראל 2 רובע יהודי,,NOT_CHECKED,,,,,FALSE,not processed - WebSearch session budget exhausted before this row could be searched
+148,גלידה ברובע,ירושלים,Jerusalem,תפארת ישראל 18 רובע יהודי,,NOT_CHECKED,,,,,FALSE,not processed - WebSearch session budget exhausted before this row could be searched
+149,סלט אקספרס,ירושלים,Jerusalem,משגב לדך 40 רובע יהודי,,NOT_CHECKED,,,,,FALSE,not processed - WebSearch session budget exhausted before this row could be searched
+150,מעדני השבת,ירושלים,Jerusalem,"חב""ד 62 רובע יהודי",,NOT_CHECKED,,,,,FALSE,not processed - WebSearch session budget exhausted before this row could be searched
+151,קצפת,ירושלים,Jerusalem,היהודים 123 רובע יהודי,,NOT_CHECKED,,,,,FALSE,not processed - WebSearch session budget exhausted before this row could be searched
+152,פיצה מוצרלה,ירושלים,Jerusalem,בית אל 1 רובע יהודי,,NOT_CHECKED,,,,,FALSE,not processed - WebSearch session budget exhausted before this row could be searched
+153,הולי בייגל,ירושלים,Jerusalem,תפארת ישראל 5 רובע יהודי,,NOT_CHECKED,,,,,FALSE,not processed - WebSearch session budget exhausted before this row could be searched
+154,קינג סלמון,ירושלים,Jerusalem,ירמיהו 21 רוממה,,NOT_CHECKED,,,,,FALSE,not processed - WebSearch session budget exhausted before this row could be searched
+155,אצה סושי בר,ירושלים,Jerusalem,ירמיהו 13 רוממה,,NOT_CHECKED,,,,,FALSE,not processed - WebSearch session budget exhausted before this row could be searched
+156,קצפת,ירושלים,Jerusalem,שרי ישראל 15 רוממה,,NOT_CHECKED,,,,,FALSE,not processed - WebSearch session budget exhausted before this row could be searched
+157,מאפיית לחם פיינגולד,ירושלים,Jerusalem,ירמיהו 68 רוממה,,NOT_CHECKED,,,,,FALSE,not processed - WebSearch session budget exhausted before this row could be searched
+158,קצפת,ירושלים,Jerusalem,קרן קיימת 19 רחביה,"קרן קיימת לישראל 19, ירושלים",SAME,one source names the street more fully than the other,https://www.d.co.il/80332860/9010163/,https://easy.co.il/page/24954043,,FALSE,
+159,מאפיית מזון פנאני,ירושלים,Jerusalem,"רמב""ן 8 רחביה","רמב""ן 8, ירושלים",SAME,,https://www.kosharot.co.il/index2.php?id=443944&lang=HEB,https://k-map.co.il/rest/%D7%9E%D7%90%D7%A4%D7%99%D7%99%D7%AA-%D7%9E%D7%96%D7%95%D7%9F-%D7%A4%D7%A0%D7%90%D7%A0%D7%99/,,FALSE,
+160,גרין גוט פוד,ירושלים,Jerusalem,קרן קיימת 26 רחביה,"קרן קיימת 26, ירושלים",SAME,,https://www.kosharot.co.il/index2.php?id=400068&lang=HEB,https://www.b144.co.il/b144_sip/401C04134676635C48120D16.aspx; https://www.2eat.co.il/restaurant.aspx?restid=17574,,FALSE,"sources list the business as 'גרין גוד פוד' (Good, not Gut) but same address/phone as corpus"
+161,הקפה של נתן,ירושלים,Jerusalem,אוסישקין 37 רחביה,,NOT_FOUND,,,,,FALSE,no listing found for this name; two searches surfaced only unrelated Ussishkin-named cafes in other cities
+162,דה פורסט,ירושלים,Jerusalem,דרך החורש 90 רמות,"דרך החורש 90, ירושלים",SAME,,https://www.d.co.il/80382579/30420/,https://theforestcafe.co.il/he/contact/; https://www.rest.co.il/rest/80382579/,,FALSE,
+163,פיצה האט,ירושלים,Jerusalem,שד' גולדה מאיר קניון רמות,"קניון רמות, שדרות גולדה מאיר, ירושלים",SAME,one source names the street more fully than the other; house number missing on one side; compared on street name only,https://www.pizzahut.co.il/branch/jerusalem-ramot/,https://ramot-mall.co.il/shops/2366/; https://rest.jdn.co.il/rest/1627/,,FALSE,
+164,אדמה ציפס,ירושלים,Jerusalem,שד' גולדה מאיר קניון רמות,"שדרות גולדה מאיר 255, ירושלים",SAME,one source names the street more fully than the other; house number missing on one side; compared on street name only,https://www.kenyonim.com/store.asp?sid=14207,,,FALSE,mall directory lists it simply as 'אדמה' (without ציפס)
+165,וופל בר,ירושלים,Jerusalem,שד' גולדה מאיר קניון רמות,"שדרות גולדה מאיר 255, שכונת רמות, ירושלים (קומה 3)",SAME,one source names the street more fully than the other; house number missing on one side; compared on street name only,https://www.d.co.il/80316394/8930/,https://waffle-bar.co.il/branches/%D7%A8%D7%9E%D7%95%D7%AA/; https://ramot-mall.co.il/shops/%D7%95%D7%95%D7%A4%D7%9C-%D7%91%D7%A8/,,FALSE,
+166,ג'וסי בר,ירושלים,Jerusalem,שד' גולדה מאיר קניון רמות,,NOT_FOUND,,,,,FALSE,no listing found under this name in Ramot Mall directory or elsewhere; two searches (incl. with phone number) surfaced only unrelated Burgers Bar
+167,הולי בייגל,ירושלים,Jerusalem,שד' גולדה מאיר קניון רמות,"גולדה מאיר 255, רמות אלון, ירושלים",SAME,one source names the street more fully than the other; house number missing on one side; compared on street name only,https://ramot-mall.co.il/shops/%D7%94%D7%95%D7%9C%D7%99-%D7%91%D7%99%D7%99%D7%92%D7%9C/,https://www.rest.co.il/rest/80129833/; https://easy.co.il/en/page/20023202,,FALSE,
+168,קצפת,ירושלים,Jerusalem,שד' גולדה מאיר קניון רמות,"שדרות גולדה מאיר 255, שכונת רמות, ירושלים",SAME,one source names the street more fully than the other; house number missing on one side; compared on street name only,https://www.d.co.il/80157179/31810/,https://easy.co.il/page/27306893; https://ramot-mall.co.il/shops/%D7%A7%D7%A6%D7%A4%D7%AA/,,FALSE,chain with another branch in Rechavia (see row 158); this is the Ramot Mall branch
+169,פיצה ירושלים 2,ירושלים,Jerusalem,כיסופים 801 רמות,"כיסופים 801, רמות אלון, ירושלים",SAME,,https://www.d.co.il/24282740/39460/,https://www.rest.co.il/rest/24282740/; https://www.kosharot.co.il/index2.php?id=436489&lang=HEB,,FALSE,
+170,קייטרינג פריים,ירושלים,Jerusalem,רובין 30 רמות,,NOT_CHECKED,,,,,FALSE,no specific listing found for this catering business; only unrelated Jerusalem catering directories surfaced; retry search blocked by session web-search budget exhaustion
+171,פסטה בר 20,ירושלים,Jerusalem,שד' גולדה מאיר קניון רמות,,NOT_CHECKED,,,,,FALSE,not checked - session web-search budget exhausted before this row could be searched
+172,שימיס,ירושלים,Jerusalem,פארן 7 רמת אשכול,,NOT_CHECKED,,,,,FALSE,not checked - session web-search budget exhausted before this row could be searched
+173,ביג אפל פיצה,ירושלים,Jerusalem,פארן 5 רמת אשכול,,NOT_CHECKED,,,,,FALSE,not checked - session web-search budget exhausted before this row could be searched
+174,אין בורגר,ירושלים,Jerusalem,פארן 7 רמת אשכול,,NOT_CHECKED,,,,,FALSE,not checked - session web-search budget exhausted before this row could be searched
+175,וופל בר,ירושלים,Jerusalem,פארן 7 רמת אשכול,,NOT_CHECKED,,,,,FALSE,not checked - session web-search budget exhausted before this row could be searched
+176,מגדנית גרליץ,ירושלים,Jerusalem,מעבר המתלה 5 רמת אשכול,,NOT_CHECKED,,,,,FALSE,not checked - session web-search budget exhausted before this row could be searched
+177,סאם בייגל,ירושלים,Jerusalem,פארן 15 רמת אשכול,,NOT_CHECKED,,,,,FALSE,not checked - session web-search budget exhausted before this row could be searched
+178,מאפיית לחם פיינגולד,ירושלים,Jerusalem,פארן 7 רמת אשכול,,NOT_CHECKED,,,,,FALSE,not checked - session web-search budget exhausted before this row could be searched
+179,פיצה רימיני,ירושלים,Jerusalem,פארן 9 רמת אשכול,,NOT_CHECKED,,,,,FALSE,not checked - session web-search budget exhausted before this row could be searched
+180,קצפת,ירושלים,Jerusalem,פארן 9 רמת אשכול,,NOT_CHECKED,,,,,FALSE,not checked - session web-search budget exhausted before this row could be searched
+181,סמודי,ירושלים,Jerusalem,פארן 14 רמת אשכול,,NOT_CHECKED,,,,,FALSE,not checked - session web-search budget exhausted before this row could be searched
+182,"ד""ר טוסט",ירושלים,Jerusalem,שמואל הנביא 100,,NOT_CHECKED,,,,,FALSE,not checked - session web-search budget exhausted before this row could be searched
+183,דנבר סטייק האוס,ירושלים,Jerusalem,דרך חברון 101 תלפיות,,NOT_CHECKED,,,,,FALSE,not checked - session web-search budget exhausted before this row could be searched
+184,מאפיית פיינגולד,ירושלים,Jerusalem,האומן 29 תלפיות,,AMBIGUOUS,,,,"האומן 29, ירושלים (תלפיות) (https://www.d.co.il/80332903/22620/); ירמיהו 68, ירושלים (https://easy.co.il/en/page/27256969)",FALSE,"multiple branches/stores in Jerusalem for this bakery (Talpiot factory store, Yirmeyahu store); listings differ"
+185,קצפת,כרמי גת,Karmei Gat,שד' לכיש 153,,AMBIGUOUS,,,,"שד' לכיש 153, קריית גת (https://www.checkid.co.il/company/%D7%A7%D7%A6%D7%A4%D7%AA-%D7%9B%D7%A8%D7%9E%D7%99-%D7%92%D7%AA-%D7%91%D7%A2~%D7%9E-517090718); ביג כרמי גת, קריית גת (מיקום קניון) (https://www.facebook.com/100091269815510/posts/438662635852727/)",FALSE,"chain with possible second ('southern') branch per Facebook; d.co.il listing did not show street address in snippet, company registry vs mall location disagree"
+186,פיצה האט,לוד,Lod,משה אדרת 1,"משה אדרת 1, רמלה",SAME,,https://easy.co.il/en/page/20560798,https://www.pizzahut.co.il/branch/ramle-lod/; https://www.mishlohim.co.il/menu/5701/,,FALSE,branch listed as serving Ramla-Lod combined; city on listing is רמלה not לוד
+187,אצל שמעון,מירון,Meron,צומת מושב מירון,צומת מירון,SAME,one source names the street more fully than the other; house number missing on one side; compared on street name only,https://easy.co.il/page/10092047,https://www.kosharot.co.il/index2.php?id=416997&lang=HEB,,FALSE,
+188,בית מאפה עידית,מישור אדומים,Mishor Adumim,פריאל 3,"פריאל 3, מעלה אדומים",SAME,,https://easy.co.il/page/26826970,https://www.kosharot.co.il/index2.php?id=400310&lang=HEB,,FALSE,listing city is מעלה אדומים (parent municipality) rather than מישור אדומים
+189,פיצה מאנציז,מישור אדומים,Mishor Adumim,דקלה 6,"דקלה 6, מישור אדומים",SAME,,https://www.kosharot.co.il/index2.php?id=432573&lang=HEB,,,FALSE,"address text not directly visible in search snippet title, only in search synthesis; lower confidence"
+190,פיצה סופר,נתיבות,Netivot,שד' ירושלים 134,"שדרות ירושלים 134, נתיבות",SAME,,https://easy.co.il/en/page/20201596,https://www.d.co.il/80349425/39460/; https://www.mishlohim.co.il/menu/6086/,,FALSE,
+191,פיצה האט,פסגת זאב,Jerusalem (Pisgat Ze'ev),שד' משה דיין 164,"משה דיין 164, ירושלים (פסגת זאב)",SAME,,https://www.pizzahut.co.il/branch/jerusalem-zeev/,https://www.facebook.com/pizzahutJerusalem/posts/2006874396244359/; https://wolt.com/en/isr/jerusalem/restaurant/pizza-hut-pisgat-zeev,,FALSE,
+192,קצפת,פסגת זאב,Jerusalem (Pisgat Ze'ev),שד' משה דיין קניון לב הפסגה,,NOT_CHECKED,,,,,FALSE,row not searched before session web-search budget was exhausted
+193,ג'ולייטה,פתח תקוה,Petah Tikva,ישעיהו המשורר 11,,NOT_FOUND,,,,,FALSE,"search results conflated with a different business (ג'ויה); only a kashrut-council directory entry (mpt.org.il) found with no address visible in snippet, avoided guessing"
+194,פיצה האט,פתח תקוה,Petah Tikva,עין גנים 96,"עין גנים 96, פתח תקווה",SAME,,https://www.d.co.il/80256568/39460/,https://www.pizzahut.co.il/branch/%D7%A2%D7%99%D7%9F-%D7%92%D7%A0%D7%99%D7%9D/,,FALSE,
+195,מאפיית פת הנחתום,פתח תקוה,Petah Tikva,המלך כורש 1,,AMBIGUOUS,,,,"צלח שלום 30, פתח תקווה (https://easy.co.il/page/27173729); צלח שלום 28, פתח תקווה (https://www.d.co.il/80373924/22620/)",FALSE,sources disagree with each other on house number (28 vs 30); both differ from corpus street entirely
+196,"פיצה רשב""י",צפת,Safed,וייצמן 11,,AMBIGUOUS,,,,"ויצמן 11, צפת (https://www.d.co.il/80103288/39460/); חיים וייצמן 13, צפת (https://easy.co.il/en/page/3044624)",FALSE,sources disagree on house number (11 vs 13)
+197,שניצל פלוס,צפת,Safed,הרצל 20,"הרצל 20, צפת",SAME,,https://www.d.co.il/80386343/30455/,https://www.rest.co.il/rest/80386343/,,FALSE,
+198,שווארמה חזאקי,רחובות,Rehovot,זכריה מדאר 30,"דרך ירושלים 2, רחובות",CHANGED_BOTH,,https://www.d.co.il/80371807/30457/,https://easy.co.il/en/page/10127510,,FALSE,listed address differs substantially from corpus address; both listings agree with each other
+199,פיצה הכפריה,רחובות,Rehovot,וינר יוסף 9,,AMBIGUOUS,,,,"ההגנה 2, רחובות (https://www.d.co.il/80060442/39460/); וינר יוסף 9, רחובות (https://www.mapeat.co.il/%D7%A4%D7%99%D7%A6%D7%94-%D7%94%D7%9B%D7%A4%D7%A8%D7%99%D7%94)",FALSE,"sources disagree: d.co.il lists ההגנה 2, another directory lists וינר יוסף 9 (matches corpus)"
+200,פלאפל הלב הרחב,רחובות,Rehovot,וינר יוסף 9,,NOT_CHECKED,,,,,FALSE,session web-search budget exhausted before this row could be searched
+201,בילקעל'ה,רחובות,Rehovot,"חי""ש 3",,NOT_CHECKED,,,,,FALSE,session web-search budget exhausted before this row could be searched
+202,מאפיית דהרי זכריה,רחובות,Rehovot,אפרים זקש 48,,NOT_CHECKED,,,,,FALSE,session web-search budget exhausted before this row could be searched
+203,הערשי'ס קייטרינג,רחובות,Rehovot,"חי""ש 3",,NOT_CHECKED,,,,,FALSE,session web-search budget exhausted before this row could be searched
+204,פיצה האט,רמלה,Ramla,משה לוי 23,,NOT_CHECKED,,,,,FALSE,session web-search budget exhausted before this row could be searched
+205,טייסטי מיט,רמת גן,Ramat Gan,חיבת ציון 45,,NOT_CHECKED,,,,,FALSE,session web-search budget exhausted before this row could be searched
+206,בייגלק,שילת,Shilat,מרכז ירדן צומת שילת,,NOT_CHECKED,,,,,FALSE,session web-search budget exhausted before this row could be searched
+207,א טעימה,ירושלים,Jerusalem,זוננפלד 30,,NOT_CHECKED,,,,,TRUE,session web-search budget exhausted before this row could be searched
+208,אנטריקוט,ירושלים,Jerusalem,קרית המדע 1 הר חוצבים,,NOT_CHECKED,,,,,TRUE,session web-search budget exhausted before this row could be searched
+209,בורגר פלאפל בר אילן - בשרי,ירושלים,Jerusalem,שמואל הנביא 99 צומת בר אילן,,NOT_CHECKED,,,,,TRUE,session web-search budget exhausted before this row could be searched
+210,גולדיס בית ישראל,ירושלים,Jerusalem,עזרת תורה 18,"עזרת תורה 18, ירושלים",SAME,,https://www.openclosed.co.il/%D7%A8%D7%99%D7%A9%D7%95%D7%9D/%D7%9E%D7%A1%D7%A2%D7%93%D7%AA-%D7%92%D7%95%D7%9C%D7%93%D7%99%D7%A1-%D7%91%D7%99%D7%AA-%D7%99%D7%A9%D7%A8%D7%90%D7%9C/,https://www.hakkolasakim.com/%D7%92%D7%95%D7%9C%D7%93%D7%99%D7%A1-%D7%91%D7%99%D7%AA-%D7%99%D7%A9%D7%A8%D7%90%D7%9C-%D7%90%D7%95%D7%9B%D7%9C-%D7%9E%D7%95%D7%9B%D7%9F-%D7%95%D7%91%D7%99%D7%99%D7%A7%D7%A8%D7%99-02-620-0100; https://rest.jdn.co.il/rest/196/,,TRUE,
+211,בני'ס,ירושלים,Jerusalem,אדוניהו הכהן 9,,NOT_FOUND,,,,,TRUE,no listing found under this name in Jerusalem after two search attempts
+212,הדר גאולה,ירושלים,Jerusalem,פארן מרכז מסחרי / גבעת משה 5 / מלכי ישראל 13,,AMBIGUOUS,,,https://www.rest.co.il/rest/80127719/; https://www.kosherest.co.il/rests/jerusalem/6440-%D7%94%D7%93%D7%A8-%D7%92%D7%90%D7%95%D7%9C%D7%94,"גבעת משה 5, ירושלים (https://www.d.co.il/80127719/30420/); מלכי ישראל 13, ירושלים (https://www.d.co.il/24112210/30750/)",TRUE,multiple branches found (Giv'at Moshe and Malchei Yisrael); corpus's third listed location (Paran) not independently confirmed
+213,המסעדה של קרויזר,ירושלים,Jerusalem,חסידי קרלין 16,"חסידי קרלין 16, ירושלים",SAME,,https://www.d.co.il/80320530/35790/,https://easy.co.il/en/page/26116133; https://www.rest.co.il/rest/80320530/,,TRUE,
+214,המעדנייה לייזרוביץ,ירושלים,Jerusalem,הפסגה 25 בית וגן,,NOT_FOUND,,,https://cholenet.co.il/cholenet/hmadnyh-lyyzrvbytz/,,TRUE,"only listing found (cholenet.co.il) does not state an address; other results on 'HaPisga 25' referred to an unrelated post office branch, not this business"
+215,זלמנ'ס רוממה,ירושלים,Jerusalem,קניון רמות / ירמיהו 9 מתחם שערי רווחה,,AMBIGUOUS,,,https://www.rest.co.il/rest/80338752/; https://rest.jdn.co.il/rest/114/,"לואיס ברנדייס 5, ירושלים (Shaarei Ravacha, Romema) (https://www.d.co.il/80338752/30420/)",TRUE,chain has separate Romema and Ramot branches (confirmed via separate Wolt listings); Romema branch address on d.co.il differs from corpus's Yirmiyahu 9
+216,לימונ'ס (מתחם שערי רווחה),ירושלים,Jerusalem,בריינדס 3,,NOT_FOUND,,,,,TRUE,search results did not surface a direct listing for this business; a candidate address found (Kanfei Nesharim) had no traceable source URL so was discarded rather than reported
+217,יואלי'ס,ירושלים,Jerusalem,זוננפלד 3,,NOT_CHECKED,,,,,TRUE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+218,מסעדת הבית לה קאזה,ירושלים,Jerusalem,יעקב מאיר 12,,NOT_CHECKED,,,,,TRUE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+219,מעדני גאולה,ירושלים,Jerusalem,שטראוס 38,,NOT_CHECKED,,,,,TRUE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+220,מעדני מלכות,ירושלים,Jerusalem,יחזקאל 20,,NOT_CHECKED,,,,,TRUE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+221,מפגש האש,ירושלים,Jerusalem,ירמיהו 23,,NOT_CHECKED,,,,,TRUE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+222,קבלרו,ירושלים,Jerusalem,המרפא 1 הר חוצבים,,NOT_CHECKED,,,,,TRUE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+223,קוריץ,ירושלים,Jerusalem,"רלב""ח 5",,NOT_CHECKED,,,,,TRUE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+224,אייס סטורי,ירושלים,Jerusalem,שמגר 14,,NOT_CHECKED,,,,,FALSE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+225,בוש בייגלס,ירושלים,Jerusalem,צפניה 61 פינת בר אילן,,NOT_CHECKED,,,,,FALSE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+226,בייגל קפה אקספרס,ירושלים,Jerusalem,פארן 7 מרכז מסחרי,,NOT_CHECKED,,,,,FALSE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+227,ביג בייט,ירושלים,Jerusalem,שמגר 16,,NOT_CHECKED,,,,,FALSE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+228,בריזל מעדנים,ירושלים,Jerusalem,דוד 2,,NOT_CHECKED,,,,,FALSE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+229,בריזל,ירושלים,Jerusalem,מאה שערים 9,,NOT_CHECKED,,,,,FALSE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+230,ברכת משה,ירושלים,Jerusalem,מנחם משיב 3,,NOT_CHECKED,,,,,FALSE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+231,היימישע בייגל,ירושלים,Jerusalem,פרי חדש 18,,NOT_CHECKED,,,,,FALSE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+232,מסעדה באלי איטלקי,ירושלים,Jerusalem,הרטום 7 הר חוצבים,,NOT_CHECKED,,,,,FALSE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+233,נישנוש,ירושלים,Jerusalem,חנה 11,,NOT_CHECKED,,,,,FALSE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+234,סושי בייגלס,ירושלים,Jerusalem,ירמיהו 68,,NOT_CHECKED,,,,,FALSE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+235,פיצה אורי,ירושלים,Jerusalem,לבוש מרדכי 2 / בריינדס 3 / כנפי נשרים,,NOT_CHECKED,,,,,FALSE,NOT SEARCHED: session-wide WebSearch budget (200/200) exhausted before this row could be processed
+236,פיצה ביתית,ירושלים,Jerusalem,חסידי קרלין 12,,NOT_CHECKED,,,,"חסידי קרלין 12, ירושלים; צפניה 72, ירושלים (https://rest.jdn.co.il/rest/1341/)",FALSE,same business name has two branches in Jerusalem; could not confirm which listing URL maps to which address before search budget ran out
+237,פיצה ירושלים,ירושלים,Jerusalem,מלכי ישראל 43,"מלכי ישראל 43, ירושלים",SAME,,https://www.d.co.il/21683340/39460/,https://www.netpage.co.il/%D7%A4%D7%99%D7%A6%D7%A8%D7%99%D7%95%D7%AA/%D7%A4%D7%99%D7%A6%D7%94-%D7%99%D7%A8%D7%95%D7%A9%D7%9C%D7%99%D7%9D.htm,,FALSE,d.co.il listing phone (025382877) matches corpus phone exactly
+238,פיצה טראמפ,ירושלים,Jerusalem,יעקב מאיר 11,"יעקב מאיר 11, ירושלים",SAME,,https://www.kosharot.co.il/index2.php?id=440239&lang=HEB,https://www.mishlohim.co.il/menu/12157/,,FALSE,a different-named business (פיצה קלינטון) also listed at same street/number; did not affect this business's own listing
+239,בית מלון בוטיק ביכורים,ירושלים,Jerusalem,הנביאים 27,"הנביאים 27, ירושלים",SAME,,https://www.kosharot.co.il/index2.php?id=433197&lang=HEB,,,FALSE,"phone 026715551 matches corpus exactly; a separate unrelated hotel ('הנביאים בוטיק') at Haneviim 25 exists nearby, not to be confused"
+240,"המטבח וחדר האוכל במלון עין כרם (בביה""ח הדסה)",ירושלים,Jerusalem,עין כרם,"מתחם הדסה עין כרם, ירושלים",SAME,one source names the street more fully than the other; house number missing on one side; compared on street name only,https://www.kosharot.co.il/index2.php?id=433199&lang=HEB,,,FALSE,"listing gives only the Hadassah Ein Kerem medical campus as location, no street+house number published, same granularity as corpus"
+241,פיקנטי,קרית גת,Kiryat Gat,גאון הירדן 43,,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+242,גלי תמר,אשקלון,Ashkelon,יקותיאל אדם 9,,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+243,מלון ציפורי בכפר,חפץ חיים,Hafetz Haim,חפץ חיים,,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+244,רשת מאה,אשדוד,Ashdod,העבודה 64,,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+245,שפע ברכה - מחלקת דגים טריים בלבד,קרית מלאכי,Kiryat Malakhi,משה בראזני 35,,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+246,סיטונאות רחמים - מחלקת דגים טריים בלבד,קרית גת,Kiryat Gat,נתיבות שלום 16,,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+247,מאפיית חן הלחם,אשדוד,Ashdod,העבודה 18,,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+248,מאפיית עיני,אשדוד,Ashdod,הורקנוס 8,,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+249,א גרויסע פיצה,אשדוד,Ashdod,"רשב""י 15",,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+250,פיצל'ה,קרית גת,Kiryat Gat,גאון הירדן 43,,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+251,פיצה בא כיס,קרית גת,Kiryat Gat,משה בראזני 35,,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+252,פיצה שמש,קרית מלאכי,Kiryat Malakhi,"רש""י 11",,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+253,פיצה שמש,רחובות,Rehovot,שער הימים 95,,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+254,בר כל טוב,אופקים,Ofakim,הרצל 717,,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+255,גוד מרקט,אופקים,Ofakim,הרב עובדיה יוסף 10,,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+256,יש חסד,אשדוד,Ashdod,חנה סנש 9 רובע ג',,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+257,בר כל טוב,אשדוד,Ashdod,רוזובסקי 7,,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+258,בר כל טוב,אשדוד,Ashdod,ינאי 7 רובע ז',,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+259,בר כל טוב,אשקלון,Ashkelon,עמק האלה 49,,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+260,סופר מטרו,ערד,Arad,יהודה 30,,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+261,פיצוחי א. מזרחי,אשדוד,Ashdod,"רשב""י 15 / קק""ל 13",,NOT_CHECKED,,,,,FALSE,web search budget exhausted (200/200) before this row could be searched
+262,פיצוחי פינקס,אשדוד,Ashdod,רבי אלעזר בן הורקנוס 8,,NOT_CHECKED,,,,,FALSE,
+263,קליית בראשית,אשדוד,Ashdod,"רשב""י 13 / הפלמח 20",,NOT_CHECKED,,,,,FALSE,
+264,פיצוחי מזרחי,קרית גת,Kiryat Gat,"האדמו""ר מחב""ד 4",,NOT_CHECKED,,,,,FALSE,
+265,תוצרת הארץ,נתיבות,Netivot,יוסף סמילו 16,,NOT_CHECKED,,,,,FALSE,
+266,קייטי מרקט,חריש,Harish,החברותא 13 מרכז סיטי,,NOT_CHECKED,,,,,FALSE,
+267,בר כל טוב,צפת,Safed,"מרדכי חדד 1 / צה""ל 13",,NOT_CHECKED,,,,,FALSE,
+268,הסיטונאים,צפת,Safed,מתחם רסקו,,NOT_CHECKED,,,,,FALSE,
+269,ככר השבת,צפת,Safed,"אצל 206 / צה""ל 7",,NOT_CHECKED,,,,,FALSE,
+270,צרכניית רב חסד,צפת,Safed,ירושלים 13,,NOT_CHECKED,,,,,FALSE,
+271,שפע טוב,צפת,Safed,העליה 4,,NOT_CHECKED,,,,,FALSE,
+272,יש חסד,צפת,Safed,"הגדוד השלישי, קניון שערי העיר כנען",,NOT_CHECKED,,,,,FALSE,
+273,סופר מאור חיים,צפת,Safed,"צה""ל 3/5",,NOT_CHECKED,,,,,FALSE,
+274,מאה אחוז טבעי,צפת,Safed,"קרית חב""ד 220/05",,NOT_CHECKED,,,,,FALSE,
+275,סופר מירון פלוס,מירון,Meron,מושב מירון,,NOT_CHECKED,,,,,FALSE,
+276,מכולת הקריה,טבריה,Tiberias,הרב וורנר 11,,NOT_CHECKED,,,,,FALSE,
+277,יש חסד,טבריה,Tiberias,ויצמן 1117 טבריה עילית,,NOT_CHECKED,,,,,FALSE,
+278,בר כל טוב,חיפה,Haifa,טרומפלדור 54 נוה שאנן,,NOT_CHECKED,,,,,FALSE,
+279,גוד מרקט,חיפה,Haifa,גאולה 28,,NOT_CHECKED,,,,,FALSE,
+280,יש בשכונה,חיפה,Haifa,דרך צרפת 11 / חניתה 64,,NOT_CHECKED,,,,,FALSE,
+281,נתיב החסד,חיפה,Haifa,מיכאל 9 / מיכאל 16,,NOT_CHECKED,,,,,FALSE,
+282,שוק מהדרין,חיפה,Haifa,הרצל,,NOT_CHECKED,,,,,FALSE,
+283,קרפור,חיפה,Haifa,הרצל 97,,NOT_CHECKED,,,,,FALSE,
+284,בר כל טוב,אור הגנוז,Or HaGanuz,אור הגנוז,,NOT_CHECKED,,,,,FALSE,
+285,מזון בשפע,נוף הגליל,Nof HaGalil,הרב עובדיה יוסף 1,,NOT_CHECKED,,,,,FALSE,
+286,נתיב החסד,נוף הגליל,Nof HaGalil,"האדמו""ר מבעלזא 5",,NOT_CHECKED,,,,,FALSE,
+287,בר כל טוב,בית שאן,Beit She'an,הנגב 2,,NOT_CHECKED,,,,,TRUE,
+288,נתיב החסד,זכרון יעקב,Zikhron Ya'akov,אבן גבירול 49 / צבי פנקס,,NOT_CHECKED,,,,,FALSE,
+289,יש חסד,עפולה,Afula,צבי פוקס 24,,NOT_CHECKED,,,,,FALSE,
+290,נתיב החסד,עפולה,Afula,הלל יפה 14,,NOT_CHECKED,,,,,TRUE,
+291,בר כל טוב,רכסים,Rekhasim,כיכר המועצה / רימונים 1,,NOT_CHECKED,,,,,FALSE,
+292,בר כל טוב,רכסים,Rekhasim,מרכז כפר חסידים,,NOT_CHECKED,,,,,TRUE,
+293,מעיין 2000,רכסים,Rekhasim,א.ת. רכסים,,NOT_CHECKED,,,,,FALSE,
+294,יש חסד,רכסים,Rekhasim,הכלניות 49,,NOT_CHECKED,,,,,TRUE,
+295,יש בשכונה,קרית אתא,Kiryat Ata,זבולון 14,,NOT_CHECKED,,,,,FALSE,
+296,קרפור מרקט,קרית אתא,Kiryat Ata,העצמאות 42,,NOT_CHECKED,,,,,FALSE,
+297,יש חסד,יוקנעם,Yokneam,שד' היובלים 6,,NOT_CHECKED,,,,,FALSE,
+298,דגי כנרת,טבריה,Tiberias,דרך גדוד ברק 1,,NOT_CHECKED,,,,,FALSE,
+299,אורוקוס בשר פרימיום,דלתון,Dalton,מושב דלתון,,NOT_CHECKED,,,,,FALSE,
+300,קלוי,חיפה,Haifa,מיכאל 2,,NOT_CHECKED,,,,,FALSE,
+301,קלוי,רכסים,Rekhasim,כלניות 39,,NOT_CHECKED,,,,,FALSE,
+302,שזיפרון,דלתון,Dalton,א.ת. דלתון,,NOT_CHECKED,,,,,FALSE,
+303,פיצוחי א. מזרחי,טבריה,Tiberias,המשור 55 בנין קורונדו,,NOT_CHECKED,,,,,FALSE,
+304,מיני סופר,מירון,Meron,צומת מירון,,NOT_CHECKED,,,,,TRUE,
+305,קליית בראשית,צפת,Safed,העליה 8 ב',,NOT_CHECKED,,,,,FALSE,
+306,מנדי'ס,צפת,Safed,ירושלים 35,,NOT_CHECKED,,,,,FALSE,
+307,באשערט (מבית מנדיס),צפת,Safed,ירושלים 35,,NOT_CHECKED,,,,,FALSE,
+308,אוכל מהיר,צפת,Safed,"תרפ""ט 18",,NOT_CHECKED,,,,,TRUE,
+309,השטעטל,צפת,Safed,מרכז מסחרי רסקו,,NOT_CHECKED,,,,,FALSE,
+310,מלון קדמון,צפת,Safed,אחד העם 61,,NOT_CHECKED,,,,,TRUE,
+311,זאפטיג,מירון,Meron,מושב מירון,,NOT_CHECKED,,,,,FALSE,
+312,מלון כינורות,טבריה,Tiberias,זיידל 9,,NOT_CHECKED,,,,,FALSE,
+313,טועמיה - סירוטה,טבריה,Tiberias,ברץ 3,,NOT_CHECKED,,,,,TRUE,
+314,מלון ציפורי בכנרת,טבריה,Tiberias,אהל יעקב 4,,NOT_CHECKED,,,,,FALSE,
+315,פערל'ס פלאם,טבריה,Tiberias,ברץ 3,,NOT_CHECKED,,,,,TRUE,
+316,מלון מיתרים,טבריה,Tiberias,אהלי יעקב 15,,NOT_CHECKED,,,,,TRUE,
+317,הטשלוניה,חיפה,Haifa,הנגב 27,,NOT_CHECKED,,,,,TRUE,
+318,ניחוחות,חיפה,Haifa,חרמון 31,,NOT_CHECKED,,,,,TRUE,
+320,כמיסה,דלתון,Dalton,א.ת. דלתון,,NOT_CHECKED,,,,,FALSE,
+322,סטאריק'ס קוגל,נוף הגליל,Nof HaGalil,"האדמו""ר מבעלז",,NOT_CHECKED,,,,,FALSE,
+323,לשובע,נוף הגליל,Nof HaGalil,"האדמו""ר מבעלזא 12",,NOT_CHECKED,,,,,FALSE,
+327,הינדיג,נוף הגליל,Nof HaGalil,דרך השוקולד 1,,NOT_CHECKED,,,,,TRUE,
+329,בית הארחה תומר דבורה,טבריה,Tiberias,דוד רמז 89,,NOT_CHECKED,,,,,TRUE,
+331,אריאל,צפת,Safed,ירושלים 83,,NOT_CHECKED,,,,,FALSE,
+332,חטיפי תימן,צפת,Safed,מרדכי חדד 1,,NOT_CHECKED,,,,,TRUE,
+333,חצקל'ס,טבריה,Tiberias,ויצמן 6,,NOT_CHECKED,,,,,TRUE,
+334,צפת בייקרי,צפת,Safed,א.ת. צפת,,NOT_CHECKED,,,,,FALSE,
+335,מאפה בעתיקה,צפת,Safed,ירושלים 17,,NOT_CHECKED,,,,,FALSE,
+336,מולינו - לרגישי גלוטן,צפת,Safed,ק. מאור חיים,,NOT_CHECKED,,,,,FALSE,
+337,אנג'ל,צפת,Safed,ירושלים 81,,NOT_CHECKED,,,,,TRUE,
+338,חלב חיטים,מירון,Meron,צומת מירון,,NOT_CHECKED,,,,,FALSE,
+339,המאפיה של יוסי,טבריה,Tiberias,שיכון ד',,NOT_CHECKED,,,,,TRUE,
+340,אור חיים,טבריה,Tiberias,לב האגם 3,,NOT_CHECKED,,,,,TRUE,
+341,אריאל,חיפה,Haifa,סירקין 36,,NOT_CHECKED,,,,,TRUE,
+342,אריאל,חיפה,Haifa,חניתה 26,,NOT_CHECKED,,,,,TRUE,
+343,ארץ חמדה טובה,נוף הגליל,Nof HaGalil,"האדמו""ר מבעלזא 4",,NOT_CHECKED,,,,,TRUE,
+344,אריאל,קרית ים,Kiryat Yam,משה שרת 2,,NOT_CHECKED,,,,,FALSE,
+345,אריאל,קרית מוצקין,Kiryat Motzkin,שד' בן גוריון 82,,NOT_CHECKED,,,,,FALSE,
+346,ברכת משה,קרית ים,Kiryat Yam,שד' ירושלים 29,,NOT_CHECKED,,,,,FALSE,
+347,ברכת משה,קרית אתא,Kiryat Ata,העצמאות 35,,NOT_CHECKED,,,,,FALSE,
+348,ברכת משה,קריות,Krayot,הנשיא ויצמן 17,,NOT_CHECKED,,,,,TRUE,
+349,ברכת משה,נשר,Nesher,שדרות טרומפלדור 1,,NOT_CHECKED,,,,,FALSE,
+350,אריאל,מגדל העמק,Migdal HaEmek,שאול עמור 77,,NOT_CHECKED,,,,,FALSE,
+351,אריאל,עפולה,Afula,מרכז רסקו,,NOT_CHECKED,,,,,TRUE,
+352,בייקרי,נתניה,Netanya,גורליץ 9,,NOT_CHECKED,,,,,FALSE,
+354,ברכת משה,נתניה,Netanya,בן 16,,NOT_CHECKED,,,,,TRUE,
+355,ברכת משה,יוקנעם,Yokneam,האירוסים 2,,NOT_CHECKED,,,,,FALSE,
+356,פיצה שמש,חריש,Harish,דרך ארץ 11,,NOT_CHECKED,,,,,FALSE,
+357,פיצה פלוס,עפולה,Afula,בר כוכבא 7,,NOT_CHECKED,,,,,FALSE,
+358,פיצה שמש,עפולה,Afula,גאולה 31,,NOT_CHECKED,,,,,TRUE,
+359,אקסטרא פיצה,טבריה,Tiberias,אלחדיף 5,,NOT_CHECKED,,,,,FALSE,
+360,פיצה ברכת יוסף,טבריה,Tiberias,יצחק בן צבי 28,,NOT_CHECKED,,,,,FALSE,
+361,פיצה שמש דלישס,טבריה,Tiberias,העצמאות 2,,NOT_CHECKED,,,,,FALSE,
+362,פיצה בארכה - פיצה פלאפל,טבריה,Tiberias,אבוחצירה 1,,NOT_CHECKED,,,,,FALSE,
+363,פלאפל אקסטרא,טבריה,Tiberias,אהל יעקב 3,,NOT_CHECKED,,,,,FALSE,
+364,טעם הצפון,צפת,Safed,ירושלים 22,,NOT_CHECKED,,,,,TRUE,
+365,פיצה פרקטו,נתניה,Netanya,קפלן 8,,NOT_CHECKED,,,,,FALSE,
+366,פיצה שמש,נתניה,Netanya,משה שרת 3,,NOT_CHECKED,,,,,FALSE,
+367,פינה לק,נוף הגליל,Nof HaGalil,"האדמו""ר מבעלזא 6",,NOT_CHECKED,,,,,TRUE,
+368,חנות המקווה,נוף הגליל,Nof HaGalil,מרן 26,,NOT_CHECKED,,,,,TRUE,
+369,קפיטריה שגיא,קרית שמואל,Kiryat Shmuel,אור החיים 8,,NOT_CHECKED,,,,,TRUE,
+370,פיצה שמש,חיפה,Haifa,הרצל 51 / פנחס לבון 39,,NOT_CHECKED,,,,,FALSE,
+371,אקסטרא פיצה,צפת,Safed,ירושלים 114,,NOT_CHECKED,,,,,FALSE,
+372,פיצה שמש דלישס,צפת,Safed,ירושלים 81,,NOT_CHECKED,,,,,FALSE,
+373,פיצה צפת,צפת,Safed,ירושלים 39,,NOT_CHECKED,,,,,FALSE,
+374,פיצה סמייל-לק,צפת,Safed,השבעה 202,,NOT_CHECKED,,,,,TRUE,
+375,צפת בייקרי,צפת,Safed,"צה""ל 2 מאור חיים",,NOT_CHECKED,,,,,FALSE,
+376,מנדיס בייגל'ס,צפת,Safed,ירושלים 29,,NOT_CHECKED,,,,,FALSE,
+377,המאפים של גיטי,צפת,Safed,ירושלים 35,,NOT_CHECKED,,,,,FALSE,
+378,פלאפל נועם,צפת,Safed,ירושלים 26,,NOT_CHECKED,,,,,FALSE,
+379,פיצה הר מירון,מירון,Meron,צומת מירון,,NOT_CHECKED,,,,,FALSE,
