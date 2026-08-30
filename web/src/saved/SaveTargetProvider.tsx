@@ -1,12 +1,12 @@
 /**
  * Which list is the heart aiming at?
  *
- * With one list there is no question and the heart just saves. With several there
- * is, and the answer cannot be guessed: dropping every tap into a list called
- * "Saved" while the user keeps three named ones is the app quietly ignoring what
- * they built. So the heart asks — but only when the question is real.
+ * Only when *adding*, and only with several lists. Clearing a filled heart is never
+ * a question — it un-saves in one tap — but choosing where a new save lands cannot
+ * be guessed: dropping every tap into a list called "Saved" while the user keeps
+ * three named ones is the app quietly ignoring what they built.
  *
- * The state lives here rather than in each screen because four screens draw hearts
+ * The state lives here rather than in each screen because three screens draw hearts
  * and one sheet answers for all of them. The sheet itself is rendered by
  * `<SaveToListHost />` *inside* a screen's `.shell`, which is what the bottom-sheet
  * layout is positioned against.
