@@ -18,7 +18,7 @@
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { SearchRequest } from "../api/types";
-import { ChevronIcon, PinIcon, SlidersIcon } from "../components/icons";
+import { ChevronIcon, PinIcon } from "../components/icons";
 import { tintClass } from "../components/RestaurantCard";
 import { VerdictPill } from "../components/VerdictPill";
 import { EmptyResults, ErrorState, LoadingList } from "../components/states";
@@ -89,7 +89,11 @@ export function MapList() {
           aria-pressed={source === "device"}
           onClick={requestDeviceLocation}
         >
-          {source === "device" ? <PinIcon size={16} /> : <SlidersIcon size={16} />}
+          {/* The pin in both states, as on the map: this control means "measure
+              from where I am", and swapping its glyph for the filters sliders made
+              it read as a second, unrelated control. Whether it is in use is
+              `aria-pressed` and the ring the class draws, not a different icon. */}
+          <PinIcon size={16} />
         </button>
       </header>
 
