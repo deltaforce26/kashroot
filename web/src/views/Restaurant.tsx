@@ -261,17 +261,6 @@ export function Restaurant() {
               <PhoneIcon />
             </a>
           )}
-
-          <button
-            type="button"
-            className="action-circle glass"
-            aria-label={saved ? t.restaurant.saved : t.restaurant.save}
-            aria-pressed={saved}
-            onClick={() => toggle(data)}
-          >
-            <BookmarkIcon size={17} filled={saved} />
-          </button>
-
         </div>
 
         <p className="hint" style={{ paddingBottom: 12 }}>
