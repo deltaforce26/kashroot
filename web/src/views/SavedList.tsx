@@ -16,9 +16,10 @@
 
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { AddPlacesSheet } from "../components/AddPlacesSheet";
 import { DegradationBanner } from "../components/DegradationBanner";
 import { RestaurantRowCard, tintClass } from "../components/RestaurantCard";
-import { ChevronIcon, ShareIcon } from "../components/icons";
+import { ChevronIcon, PlusIcon, ShareIcon } from "../components/icons";
 import { TabBar } from "../components/TabBar";
 import { pickName, useI18n } from "../i18n/I18nProvider";
 import { toPayload } from "../profile/profile";
@@ -73,6 +74,7 @@ export function SavedList() {
   const { profile } = useProfile();
 
   const [copied, setCopied] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const list = listId ? listById(state, listId) : null;
@@ -156,16 +158,28 @@ export function SavedList() {
           </h1>
           <div style={{ fontSize: 12.5, color: "var(--sub)" }}>{meta}</div>
         </div>
-        {list.places.length > 0 && (
+        <div style={{ display: "flex", gap: 8, flex: "none" }}>
+          {list.places.length > 0 && (
+            <button
+              type="button"
+              className="circle glass"
+              aria-label={t.saved.share}
+              onClick={handleShare}
+            >
+              <ShareIcon />
+            </button>
+          )}
+          {/* Adding after the fact is the gap the create-sheet alone left: a list you
+              named last week has to be fillable from the list itself. */}
           <button
             type="button"
             className="circle glass"
-            aria-label={t.saved.share}
-            onClick={handleShare}
+            aria-label={t.saved.add.title(list.name)}
+            onClick={() => setAdding(true)}
           >
-            <ShareIcon />
+            <PlusIcon />
           </button>
-        )}
+        </div>
       </header>
 
       <div className="shell__scroll" style={{ paddingTop: 14 }}>
@@ -180,6 +194,11 @@ export function SavedList() {
             <span className="state__mark tint-neutral" aria-hidden="true" />
             <h2 className="state__title">{t.saved.listEmpty.title}</h2>
             <p className="state__body">{t.saved.listEmpty.body}</p>
+            <div className="state__actions">
+              <button type="button" className="cta" onClick={() => setAdding(true)}>
+                {t.saved.add.action}
+              </button>
+            </div>
           </div>
         ) : (
           <>
@@ -261,6 +280,8 @@ export function SavedList() {
           </button>
         )}
       </div>
+
+      {adding && <AddPlacesSheet list={list} onClose={() => setAdding(false)} />}
 
       <TabBar />
     </div>

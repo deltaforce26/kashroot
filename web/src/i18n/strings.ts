@@ -153,7 +153,13 @@ const he = {
     noExpiry: "לא פורסם תאריך תפוגה",
     verifiedBy: (who: string) => `אומת ע״י ${who}`,
     verifiedAgo: (days: number) =>
-      days === 0 ? "אומת היום" : days === 1 ? "אומת אתמול" : `אומת לפני ${days} ימים`,
+      days === 0
+        ? "אומת היום"
+        : days === 1
+          ? "אומת אתמול"
+          : days > 365
+            ? "אומת לפני יותר משנה"
+            : `אומת לפני ${days} ימים`,
     neverVerified: "לא אומת מעולם על ידינו",
     source: "מקור",
     sources: {
@@ -221,6 +227,11 @@ const he = {
     deleteListConfirm: "למחוק את הרשימה? המקומות עצמם לא נמחקים מהמאגר.",
     delete: "מחיקה",
     cancel: "ביטול",
+    // The search-and-tick shared by every sheet that puts places into a list.
+    picker: {
+      searchPlaceholder: "חיפוש מקום להוספה",
+      noResults: "לא נמצא מקום בשם הזה.",
+    },
     // The new-list sheet.
     create: {
       title: "רשימה חדשה",
@@ -230,10 +241,21 @@ const he = {
       nameTaken: "כבר קיימת רשימה בשם הזה.",
       addPlaces: "הוספת מקומות",
       addPlacesLead: "אפשר לבחור כמה מקומות עכשיו, ואפשר להוסיף בהמשך.",
-      searchPlaceholder: "חיפוש מקום להוספה",
-      noResults: "לא נמצא מקום בשם הזה.",
       selected: (n: number) => (n === 1 ? "מקום אחד נבחר" : `${n} מקומות נבחרו`),
       submit: "יצירת הרשימה",
+    },
+    // Adding to a list that already exists. Every tap here commits immediately.
+    add: {
+      title: (list: string) => `הוספת מקומות ל״${list}״`,
+      action: "הוספת מקומות",
+      lead: "כל סימון נשמר מיד. סימון חוזר מוציא את המקום מהרשימה.",
+      done: "סיום",
+    },
+    // The sheet the heart opens once there is more than one list.
+    saveTo: {
+      title: "שמירה לרשימה",
+      close: "סגירת החלון",
+      createWith: "יצירה ושמירה",
     },
   },
 
@@ -526,7 +548,13 @@ const en: Strings = {
     noExpiry: "No expiry date published",
     verifiedBy: (who: string) => `Verified by ${who}`,
     verifiedAgo: (days: number) =>
-      days === 0 ? "Verified today" : days === 1 ? "Verified yesterday" : `Verified ${days} days ago`,
+      days === 0
+        ? "Verified today"
+        : days === 1
+          ? "Verified yesterday"
+          : days > 365
+            ? "Verified over a year ago"
+            : `Verified ${days} days ago`,
     neverVerified: "Never verified by us",
     source: "Source",
     sources: {
@@ -591,6 +619,10 @@ const en: Strings = {
     deleteListConfirm: "Delete this list? The places themselves stay in our records.",
     delete: "Delete",
     cancel: "Cancel",
+    picker: {
+      searchPlaceholder: "Search for a place to add",
+      noResults: "No place by that name.",
+    },
     create: {
       title: "New list",
       close: "Close",
@@ -599,10 +631,19 @@ const en: Strings = {
       nameTaken: "You already have a list with that name.",
       addPlaces: "Add places",
       addPlacesLead: "Pick a few now, or add them later.",
-      searchPlaceholder: "Search for a place to add",
-      noResults: "No place by that name.",
       selected: (n: number) => (n === 1 ? "1 selected" : `${n} selected`),
       submit: "Create list",
+    },
+    add: {
+      title: (list: string) => `Add places to “${list}”`,
+      action: "Add places",
+      lead: "Every tick is saved right away. Tick again to take a place back out.",
+      done: "Done",
+    },
+    saveTo: {
+      title: "Save to list",
+      close: "Close",
+      createWith: "Create and save",
     },
   },
 

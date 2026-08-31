@@ -19,8 +19,9 @@ import { decidingCertificate } from "../api/viewmodel";
 import { EvidencePanel } from "../components/EvidencePanel";
 import { FitScoreBar } from "../components/FitScoreBar";
 import { tintClass } from "../components/RestaurantCard";
+import { SaveToListHost } from "../components/SaveToListSheet";
 import { VerdictPill } from "../components/VerdictPill";
-import { ChevronIcon, HeartIcon, PhoneIcon, ShareIcon } from "../components/icons";
+import { BookmarkIcon, ChevronIcon, PhoneIcon, ShareIcon } from "../components/icons";
 import { ErrorState, LoadingList, NotFoundState, OfflineBanner } from "../components/states";
 import { useGoBack } from "../hooks/useReturnTo";
 import { useCity } from "../location/useCity";
@@ -171,7 +172,7 @@ export function Restaurant() {
             aria-pressed={saved}
             onClick={() => toggle(data)}
           >
-            <HeartIcon filled={saved} />
+            <BookmarkIcon size={17} filled={saved} />
           </button>
         </div>
       </header>
@@ -266,6 +267,8 @@ export function Restaurant() {
           {t.restaurant.report}
         </p>
       </div>
+
+      <SaveToListHost />
     </div>
   );
 }

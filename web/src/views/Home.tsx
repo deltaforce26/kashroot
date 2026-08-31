@@ -31,6 +31,7 @@ import {
   NoVerifiedMatchesBanner,
   OfflineBanner,
 } from "../components/states";
+import { SaveToListHost } from "../components/SaveToListSheet";
 import { TabBar } from "../components/TabBar";
 import { InstallPrompt } from "../components/InstallPrompt";
 import { PAGE_SIZE } from "../config";
@@ -229,6 +230,7 @@ export function Home() {
 
       {pickingPlace && <LocationSheet onClose={() => setPickingPlace(false)} />}
       <InstallPrompt />
+      <SaveToListHost />
       <TabBar />
     </div>
   );

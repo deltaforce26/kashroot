@@ -21,7 +21,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { SearchRequest, Verdict } from "../api/types";
 import { certifierLabel, type ResultView } from "../api/viewmodel";
-import { ChevronIcon, PinIcon, SlidersIcon } from "../components/icons";
+import { ChevronIcon, PinIcon } from "../components/icons";
 import { tintClass } from "../components/RestaurantCard";
 import { VerdictPill } from "../components/VerdictPill";
 import { ErrorState, LoadingList } from "../components/states";
@@ -238,7 +238,7 @@ export function MapView() {
                   </div>
                 </div>
               </div>
-              <button type="button" className="cta" onClick={() => navigate("/")}>
+              <button type="button" className="cta" onClick={() => navigate("/map/list")}>
                 {t.map.toList}
               </button>
             </div>
@@ -251,7 +251,9 @@ export function MapView() {
           type="button"
           className="circle glass"
           aria-label={t.states.back}
-          onClick={() => navigate(-1)}
+          // Home, not history: the map and its list toggle between each other, so
+          // "back" through history can bounce between the two instead of leaving.
+          onClick={() => navigate("/")}
         >
           <ChevronIcon />
         </button>
@@ -259,7 +261,7 @@ export function MapView() {
           <button type="button" aria-pressed={true}>
             {t.map.map}
           </button>
-          <button type="button" aria-pressed={false} onClick={() => navigate("/")}>
+          <button type="button" aria-pressed={false} onClick={() => navigate("/map/list")}>
             {t.map.list}
           </button>
         </span>
@@ -270,7 +272,7 @@ export function MapView() {
           aria-pressed={source === "device"}
           onClick={requestDeviceLocation}
         >
-          {source === "device" ? <PinIcon size={16} /> : <SlidersIcon size={16} />}
+          <PinIcon size={16} />
         </button>
       </div>
 

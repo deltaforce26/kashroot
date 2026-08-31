@@ -13,9 +13,11 @@ import { API_MODE } from "./api";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useI18n } from "./i18n/I18nProvider";
 import { isProfileUsable } from "./profile/profile";
+import { SaveTargetProvider } from "./saved/SaveTargetProvider";
 import { useProfile } from "./profile/ProfileProvider";
 import { Filters } from "./views/Filters";
 import { Home } from "./views/Home";
+import { MapList } from "./views/MapList";
 import { MapView } from "./views/MapView";
 import { NotFound } from "./views/NotFound";
 import { OnboardingCertifiers } from "./views/OnboardingCertifiers";
@@ -47,79 +49,95 @@ export default function App() {
   return (
     <ErrorBoundary>
       <MockRibbon />
-      <Routes>
-        <Route path="/onboarding/preset" element={<OnboardingPreset />} />
-        <Route path="/onboarding/certifiers" element={<OnboardingCertifiers />} />
-        <Route
-          path="/"
-          element={
-            <RequireProfile>
-              <Home />
-            </RequireProfile>
-          }
-        />
-        <Route
-          path="/filters"
-          element={
-            <RequireProfile>
-              <Filters />
-            </RequireProfile>
-          }
-        />
-        <Route
-          path="/search"
-          element={
-            <RequireProfile>
-              <Search />
-            </RequireProfile>
-          }
-        />
-        <Route
-          path="/r/:id"
-          element={
-            <RequireProfile>
-              <Restaurant />
-            </RequireProfile>
-          }
-        />
-        <Route
-          path="/saved"
-          element={
-            <RequireProfile>
-              <Saved />
-            </RequireProfile>
-          }
-        />
-        <Route
-          path="/saved/:listId"
-          element={
-            <RequireProfile>
-              <SavedList />
-            </RequireProfile>
-          }
-        />
-        <Route
-          path="/map"
-          element={
-            <RequireProfile>
-              <MapView />
-            </RequireProfile>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <RequireProfile>
-              <Profile />
-            </RequireProfile>
-          }
-        />
-        {/*
-          * A bad address gets a page that says so, not a silent bounce home. The
-          * redirect it replaces made every broken link look like a working one.
-          */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      {/*
+        * Every route sits inside the save-target provider: the save button on a card
+        * can appear on any of them, and the sheet it opens needs one shared target.
+        */}
+      <SaveTargetProvider>
+        <Routes>
+          <Route path="/onboarding/preset" element={<OnboardingPreset />} />
+          <Route path="/onboarding/certifiers" element={<OnboardingCertifiers />} />
+          <Route
+            path="/"
+            element={
+              <RequireProfile>
+                <Home />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/filters"
+            element={
+              <RequireProfile>
+                <Filters />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/search"
+            element={
+              <RequireProfile>
+                <Search />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/r/:id"
+            element={
+              <RequireProfile>
+                <Restaurant />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/saved"
+            element={
+              <RequireProfile>
+                <Saved />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/saved/:listId"
+            element={
+              <RequireProfile>
+                <SavedList />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/map"
+            element={
+              <RequireProfile>
+                <MapView />
+              </RequireProfile>
+            }
+          />
+          {/* The map's own results, listed. It is a sibling of /map rather than a
+              child so the map tab stays highlighted on both. */}
+          <Route
+            path="/map/list"
+            element={
+              <RequireProfile>
+                <MapList />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <RequireProfile>
+                <Profile />
+              </RequireProfile>
+            }
+          />
+          {/*
+            * A bad address gets a page that says so, not a silent bounce home. The
+            * redirect it replaces made every broken link look like a working one.
+            */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </SaveTargetProvider>
     </ErrorBoundary>
   );
 }
