@@ -19,7 +19,7 @@ import { EvidencePanel } from "../components/EvidencePanel";
 import { FitScoreBar } from "../components/FitScoreBar";
 import { tintClass } from "../components/RestaurantCard";
 import { VerdictPill } from "../components/VerdictPill";
-import { ChevronIcon, HeartIcon, PhoneIcon, ShareIcon } from "../components/icons";
+import { BookmarkIcon, ChevronIcon, PhoneIcon, ShareIcon } from "../components/icons";
 import { ErrorState, LoadingList, NotFoundState, OfflineBanner } from "../components/states";
 import { useCity } from "../location/useCity";
 import { isNetworkError, useRestaurant } from "../hooks/useApi";
@@ -143,7 +143,7 @@ export function Restaurant() {
             aria-pressed={saved}
             onClick={() => toggle(data)}
           >
-            <HeartIcon filled={saved} />
+            <BookmarkIcon size={17} filled={saved} />
           </button>
         </div>
       </header>
@@ -233,7 +233,7 @@ export function Restaurant() {
             aria-pressed={saved}
             onClick={() => toggle(data)}
           >
-            <HeartIcon filled={saved} />
+            <BookmarkIcon size={17} filled={saved} />
           </button>
         </div>
 
