@@ -21,7 +21,7 @@ import { FitScoreBar } from "../components/FitScoreBar";
 import { tintClass } from "../components/RestaurantCard";
 import { SaveToListHost } from "../components/SaveToListSheet";
 import { VerdictPill } from "../components/VerdictPill";
-import { ChevronIcon, HeartIcon, PhoneIcon, ShareIcon } from "../components/icons";
+import { BookmarkIcon, ChevronIcon, PhoneIcon, ShareIcon } from "../components/icons";
 import { ErrorState, LoadingList, NotFoundState, OfflineBanner } from "../components/states";
 import { useGoBack } from "../hooks/useReturnTo";
 import { useCity } from "../location/useCity";
@@ -172,7 +172,7 @@ export function Restaurant() {
             aria-pressed={saved}
             onClick={() => toggle(data)}
           >
-            <HeartIcon filled={saved} />
+            <BookmarkIcon size={17} filled={saved} />
           </button>
         </div>
       </header>
@@ -261,6 +261,17 @@ export function Restaurant() {
               <PhoneIcon />
             </a>
           )}
+
+          <button
+            type="button"
+            className="action-circle glass"
+            aria-label={saved ? t.restaurant.saved : t.restaurant.save}
+            aria-pressed={saved}
+            onClick={() => toggle(data)}
+          >
+            <BookmarkIcon size={17} filled={saved} />
+          </button>
+
         </div>
 
         <p className="hint" style={{ paddingBottom: 12 }}>
