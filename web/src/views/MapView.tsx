@@ -251,7 +251,9 @@ export function MapView() {
           type="button"
           className="circle glass"
           aria-label={t.states.back}
-          onClick={() => navigate(-1)}
+          // Home, not history: the map and its list toggle between each other, so
+          // "back" through history can bounce between the two instead of leaving.
+          onClick={() => navigate("/")}
         >
           <ChevronIcon />
         </button>
