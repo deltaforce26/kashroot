@@ -51,6 +51,11 @@
   --cta-ink: #fff;
   --green: #2f7a4d;
   --green-soft: rgba(47, 122, 77, 0.12);
+  /* The logo gradient (design/Kashroot Launch Animation.dc.html). Deliberately not
+     redefined in the dark block: the design keeps the same two stops in both themes,
+     because a mark that changes colour is a different mark. */
+  --mark-from: #9ccb56;
+  --mark-to: #2f7a4d;
   --amber: #96721c;
   --amber-soft: rgba(150, 114, 28, 0.12);
   /* Added by Track C: the design has no NO_MATCH visual. Same family, negative side. */
@@ -64,6 +69,10 @@
   --radius-tile: 18px;
   --radius-pill: 99px;
   --shell-max: 430px;
+  /* The floating tab bar's own height plus the gap it keeps from the screen edge —
+     what a scrolling list has to reserve so its last row clears the bar. Not
+     theme-dependent, so it is defined here only. */
+  --tabbar-space: calc(78px + env(safe-area-inset-bottom));
 }
 
 :root[data-theme="dark"] {
@@ -126,17 +135,37 @@ html[dir="rtl"] {
   box-sizing: border-box;
 }
 
+/*
+ * The document itself never scrolls — `.shell__scroll` is the only scroller in the
+ * app, and the tab bar floats over it. Locking `html`/`body` is what makes that a
+ * guarantee rather than an accident of the shell happening to fit: when a browser
+ * reports a viewport taller than what it actually shows (iOS standalone does this on
+ * reload), the shell overhangs the screen, and without the lock the whole page turns
+ * into a second scroller — the tab bar drops below the fold, and you have to scroll
+ * the page to reach it. `overscroll-behavior` has to be declared here and not only on
+ * `body`: only the root element's value is propagated to the viewport, so the copy on
+ * `body` alone never suppressed the rubber-band.
+ */
 html,
 body {
   height: 100%;
+  overflow: hidden;
+  overscroll-behavior-y: none;
 }
 
 /* Column so the dev ribbon (when present) takes its height off the shell rather
-   than pushing it past the viewport. */
+   than pushing it past the viewport.
+
+   Height is the smaller of the two measures on purpose. `100%` resolves against the
+   initial containing block, which is the real screen in a standalone PWA; `100dvh`
+   tracks the mobile browser's collapsing URL bar. Taking `100%` as the height and
+   `100dvh` as the cap means whichever of the two is currently honest wins, and the
+   shell can never be taller than what the user can see. */
 #root {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: 100%;
+  max-height: 100dvh;
 }
 
 body {
@@ -145,7 +174,6 @@ body {
   color: var(--ink);
   font-family: Assistant, "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  overscroll-behavior-y: none;
 }
 
 button {
@@ -202,6 +230,15 @@ a {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/*
+ * The tab bar floats *over* this list rather than sitting under it, so its glass has
+ * something to be glass against. That means the list has to reserve the bar's height
+ * itself, or the last card ends up parked underneath it and unreachable.
+ */
+.shell:has(.tabbar) .shell__scroll {
+  padding-bottom: var(--tabbar-space);
 }
 
 /*
@@ -1006,9 +1043,19 @@ a {
 
 /* ── Tab bar ───────────────────────────────────────────────────────────── */
 
+/*
+ * Floating, not stacked. As a flow sibling below `.shell__scroll` the bar had nothing
+ * behind it — `backdrop-filter` blurs whatever it overlaps, and it overlapped only
+ * the flat page background, so the glass read as no bar at all. Lifting it over the
+ * list is what makes the translucency visible: cards pass under it and come through
+ * blurred.
+ */
 .tabbar {
+  position: absolute;
+  z-index: 10;
+  inset-inline: 24px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
   display: flex;
-  margin: 10px 24px 16px;
   border-radius: var(--radius-pill);
   padding: 9px 10px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
@@ -1540,4 +1587,271 @@ a {
   flex-direction: column;
   gap: 12px;
   z-index: 2;
+}
+
+/* ── Launch animation (5a / 5b / 5c) ───────────────────────────────────── */
+
+/*
+ * Implements design/Kashroot Launch Animation.dc.html. The doc's own keyframes run
+ * on a 4.5-5s canvas loop so all three variants can be watched side by side; these
+ * are the same gesture re-cut to the real on-device timing its prose specifies —
+ * pip 0.00-0.55s, bowl 0.20-1.20s, wordmark 1.05-1.35s, hand-off 460ms.
+ *
+ * The overlay is portalled to <body>, not nested in #root, so the hand-off can
+ * transform #root underneath it without dragging the mark along for the ride.
+ */
+
+.launch {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  background-attachment: fixed;
+  color: var(--ink);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow: hidden;
+}
+
+.launch__stopFrom {
+  stop-color: var(--mark-from);
+}
+
+.launch__stopTo {
+  stop-color: var(--mark-to);
+}
+
+/* The pip starts 46px above the mark and lifts 12px out of it on the way out, so the
+   96px box must not clip. */
+.launch__mark {
+  overflow: visible;
+}
+
+.launch__bowl {
+  stroke-dasharray: 150;
+  animation: launchBowl 1000ms cubic-bezier(0.32, 0.72, 0.28, 1) 200ms both;
+}
+
+.launch__pip {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: launchPip 550ms cubic-bezier(0.3, 1.2, 0.4, 1) both;
+}
+
+.launch__word {
+  position: absolute;
+  bottom: calc(54px + env(safe-area-inset-bottom));
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  animation: launchWord 300ms ease-out 1050ms both;
+}
+
+.launch__wordHe {
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.launch__wordLatin {
+  font-weight: 600;
+  font-size: 9.5px;
+  line-height: 1;
+  letter-spacing: 0.22em;
+  color: var(--sub);
+}
+
+/* ── 5b — slow ─────────────────────────────────────────────────────────── */
+
+.launch__status {
+  position: absolute;
+  bottom: calc(132px + env(safe-area-inset-bottom));
+  margin: 0;
+  width: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 11px;
+  animation: launchStatus 300ms ease-out both;
+}
+
+.launch__statusText {
+  font-size: 12.5px;
+  color: var(--sub);
+  text-align: center;
+}
+
+.launch__track {
+  display: block;
+  width: 100%;
+  height: 2.5px;
+  border-radius: var(--radius-pill);
+  background: var(--glass-line);
+  overflow: hidden;
+}
+
+.launch__sweep {
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--green);
+  animation: launchSweep 1.5s cubic-bezier(0.55, 0.1, 0.45, 0.9) infinite;
+}
+
+/* The pip keeps breathing so the screen is visibly alive while the wait continues.
+   The bowl stays drawn — it finished, and redrawing it would read as a retry. */
+.launch[data-phase="slow"] .launch__pip {
+  animation:
+    launchPip 550ms cubic-bezier(0.3, 1.2, 0.4, 1) both,
+    launchBob 2.2s cubic-bezier(0.4, 0.6, 0.4, 1) 1350ms infinite;
+}
+
+/* ── Exit ──────────────────────────────────────────────────────────────── */
+
+/*
+ * 5c — the hand-off into a Home header logo slot, with a stack of skeleton cards
+ * rising behind it — is deliberately not built. Neither the slot nor that card stack
+ * exists in the shipped Home.
+ *
+ * What is left is 5a's own tail, which the doc does specify: at 96-100% the pip
+ * lifts 12px and scales to .9 while the bowl and the wordmark fade. The app is
+ * released from its hold the moment this starts, so it is already in place and the
+ * overlay simply cross-fades off it. Nothing in the app moves.
+ */
+.launch[data-phase="exit"] {
+  animation: launchExit 320ms cubic-bezier(0.4, 0, 0.6, 1) both;
+  pointer-events: none;
+}
+
+.launch[data-phase="exit"] .launch__pip {
+  animation: launchPipOut 320ms cubic-bezier(0.4, 0, 0.6, 1) both;
+}
+
+:root[data-launch="hold"] #root {
+  opacity: 0;
+}
+
+@keyframes launchPip {
+  0% {
+    opacity: 0;
+    transform: translateY(-46px) scale(0.55);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(-22px) scale(0.8);
+  }
+  60% {
+    transform: translateY(0) scale(1.12);
+  }
+  80% {
+    transform: translateY(0) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes launchBowl {
+  from {
+    stroke-dashoffset: 150;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes launchWord {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes launchBob {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-7px) scale(1);
+  }
+}
+
+@keyframes launchStatus {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes launchSweep {
+  from {
+    transform: translateX(calc(var(--arrow-flip) * 100%));
+  }
+  to {
+    transform: translateX(calc(var(--arrow-flip) * -240%));
+  }
+}
+
+@keyframes launchExit {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* kpPip, 96–100%: the pip lifts out of the bowl as the mark goes. */
+@keyframes launchPipOut {
+  from {
+    transform: translateY(0) scale(1);
+  }
+  to {
+    transform: translateY(-12px) scale(0.9);
+  }
+}
+
+/*
+ * Reduced motion keeps the screen and drops the movement: the finished mark, the
+ * wordmark, and a cross-fade. The sweep bar becomes a static 42% bar rather than
+ * disappearing — it is the only thing on screen saying the wait is ongoing.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .launch__bowl,
+  .launch__pip,
+  .launch__word,
+  .launch__status,
+  .launch__sweep,
+  .launch[data-phase="slow"] .launch__pip,
+  .launch[data-phase="exit"] .launch__pip {
+    animation: none;
+  }
+
+  .launch__bowl {
+    stroke-dashoffset: 0;
+  }
+
+  /* The one movement kept: without it the splash vanishes between two frames. */
+  .launch[data-phase="exit"] {
+    animation: launchExit 200ms linear both;
+  }
 }

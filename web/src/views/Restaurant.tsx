@@ -1,26 +1,29 @@
 /**
  * Restaurant — tinted hero, glass verdict panel (design 3d). The money screen.
  *
- * Order of the page is the order of the argument: the verdict, then why, then the
- * certificate that produced it with its provenance, then everything soft. The fit
- * score sits near the bottom, deliberately far from the verdict pill and under its
- * own explanatory label.
+ * Order of the page is the order of the argument: the name of the place, then why
+ * it matches you, both above the hero, then the hero verdict, then the certificate
+ * that produced it with its provenance, then everything soft. The fit score sits
+ * near the bottom, deliberately far from the verdict pill and under its own
+ * explanatory label.
  *
  * The design's Shabbat/erev-chag hours block is not rendered: Israel hours logic is
  * out of POC scope and the detail response carries no hours, so inventing rows here
  * would be the one fabricated thing on the screen that matters most.
  */
 
-import { useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import type { CertificateEvidenceOut } from "../api/types";
 import { decidingCertificate } from "../api/viewmodel";
 import { EvidencePanel } from "../components/EvidencePanel";
 import { FitScoreBar } from "../components/FitScoreBar";
 import { tintClass } from "../components/RestaurantCard";
+import { SaveToListHost } from "../components/SaveToListSheet";
 import { VerdictPill } from "../components/VerdictPill";
 import { BookmarkIcon, ChevronIcon, PhoneIcon, ShareIcon } from "../components/icons";
 import { ErrorState, LoadingList, NotFoundState, OfflineBanner } from "../components/states";
+import { useGoBack } from "../hooks/useReturnTo";
 import { useCity } from "../location/useCity";
 import { isNetworkError, useRestaurant } from "../hooks/useApi";
 import { formatDate, formatDistance, pickName, useI18n } from "../i18n/I18nProvider";
@@ -52,12 +55,6 @@ function CertificateCard({ evidence }: { evidence: CertificateEvidenceOut }) {
         <div className="cert-card__title">{t.restaurant.certificate}</div>
         <span>{certifierName}</span>
         <span>{validUntil ? t.restaurant.validUntil(validUntil) : t.restaurant.noExpiry}</span>
-        <span>
-          {t.restaurant.source}: {t.restaurant.sources[evidence.provenance.source]}
-          {evidence.provenance.verified_by_label
-            ? ` · ${t.restaurant.verifiedBy(evidence.provenance.verified_by_label)}`
-            : ""}
-        </span>
         <span className={`badge-soft badge-soft--${freshness.tone}`}>{freshness.text}</span>
       </div>
     </section>
@@ -66,11 +63,14 @@ function CertificateCard({ evidence }: { evidence: CertificateEvidenceOut }) {
 
 export function Restaurant() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { t, lang } = useI18n();
   const { profile } = useProfile();
   const { toggle, isSaved } = useSaveToggle();
   const { city } = useCity();
+  // Landing here from a shared link leaves onboarding behind us, not a list.
+  const goBack = useGoBack();
+
+  const [copied, setCopied] = useState(false);
 
   const payload = useMemo(() => toPayload(profile), [profile]);
   // Same centre the list used, so the distance shown here is the same number.
@@ -99,7 +99,7 @@ export function Restaurant() {
           ) : error ? (
             <ErrorState onRetry={reload} />
           ) : (
-            <NotFoundState onBack={() => navigate(-1)} />
+            <NotFoundState onBack={goBack} />
           )}
         </div>
       </div>
@@ -121,6 +121,30 @@ export function Restaurant() {
 
   const saved = isSaved(data.id);
 
+  /**
+   * Web Share where the browser has it (the native sheet is what a phone user
+   * expects), clipboard otherwise. A cancelled share sheet is not an error and
+   * must not fall through to a silent copy, so the two paths never chain.
+   */
+  async function handleShare() {
+    const url = window.location.href;
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: name, url });
+      } catch {
+        // Cancelled, or the sheet refused the payload. Nothing to report.
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // No clipboard permission — the address bar still holds the link.
+    }
+  }
+
   return (
     <div className="shell">
       <header className="shell__header" style={{ justifyContent: "space-between" }}>
@@ -128,14 +152,19 @@ export function Restaurant() {
           type="button"
           className="circle glass"
           aria-label={t.states.back}
-          onClick={() => navigate(-1)}
+          onClick={goBack}
         >
           <ChevronIcon />
         </button>
         <div style={{ display: "flex", gap: 8 }}>
-          <span className="circle glass" aria-hidden="true">
+          <button
+            type="button"
+            className="circle glass"
+            aria-label={t.restaurant.share}
+            onClick={handleShare}
+          >
             <ShareIcon />
-          </span>
+          </button>
           <button
             type="button"
             className="circle glass"
@@ -149,6 +178,19 @@ export function Restaurant() {
       </header>
 
       <div className="shell__scroll" style={{ paddingTop: 12 }}>
+        {copied && (
+          <p role="status" className="hint" style={{ margin: 0 }}>
+            {t.restaurant.linkCopied}
+          </p>
+        )}
+
+        <div>
+          <h1 style={{ font: "700 28px Assistant, sans-serif", margin: 0 }}>{name}</h1>
+          <div style={{ fontSize: 13, color: "var(--sub)", marginTop: 2 }}>{meta}</div>
+        </div>
+
+        <EvidencePanel match={data.kashrut} deciding={deciding} />
+
         <div className={`hero ${tintClass(data.dietType)}`}>
           <span className="hero__photo stripe" aria-hidden="true">
             {t.photoPlaceholder}
@@ -157,13 +199,6 @@ export function Restaurant() {
             <VerdictPill verdict={data.kashrut.verdict} size="lg" long />
           </span>
         </div>
-
-        <div>
-          <h1 style={{ font: "700 28px Assistant, sans-serif", margin: 0 }}>{name}</h1>
-          <div style={{ fontSize: 13, color: "var(--sub)", marginTop: 2 }}>{meta}</div>
-        </div>
-
-        <EvidencePanel match={data.kashrut} deciding={deciding} />
 
         {deciding ? (
           <CertificateCard evidence={deciding} />
@@ -226,6 +261,7 @@ export function Restaurant() {
               <PhoneIcon />
             </a>
           )}
+
           <button
             type="button"
             className="action-circle glass"
@@ -235,12 +271,15 @@ export function Restaurant() {
           >
             <BookmarkIcon size={17} filled={saved} />
           </button>
+
         </div>
 
         <p className="hint" style={{ paddingBottom: 12 }}>
           {t.restaurant.report}
         </p>
       </div>
+
+      <SaveToListHost />
     </div>
   );
 }

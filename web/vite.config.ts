@@ -11,7 +11,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icons/apple-touch-icon.png", "fonts/*.woff2", "fonts/fonts.css"],
+      includeAssets: ["icons/apple-touch-icon.png", "icons/icon.svg", "fonts/*.woff2", "fonts/fonts.css"],
       manifest: {
         name: "Kashroot — כשרות לפי הסטנדרט שלך",
         short_name: "Kashroot",
@@ -27,6 +27,7 @@ export default defineConfig({
         theme_color: "#f4f4ef",
         categories: ["food", "travel", "lifestyle"],
         icons: [
+          { src: "icons/icon.svg", sizes: "any", type: "image/svg+xml" },
           { src: "icons/icon-192.png", sizes: "192x192", type: "image/png" },
           { src: "icons/icon-512.png", sizes: "512x512", type: "image/png" },
           { src: "icons/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
@@ -67,7 +68,12 @@ export default defineConfig({
     // default is — otherwise `.env` switching the demo to the live API would quietly
     // turn the fixture suite into a suite that needs a database. The two live
     // integration files opt back in with `vi.stubEnv` and skip when :8000 is down.
-    env: { VITE_API_MODE: "mock" },
+    //
+    // The maps key is pinned empty for the same reason: `.env.local` on a machine
+    // that has a real browser key would otherwise silently take the map screen out
+    // of its no-key fallback, and the two tests asserting that fallback would fail
+    // on that machine only. A test that wants a key opts in with `vi.stubEnv`.
+    env: { VITE_API_MODE: "mock", VITE_GOOGLE_MAPS_BROWSER_KEY: "" },
     // The full-app flow tests each mount the router, walk onboarding and wait on the
     // fixture server's simulated latency. Individually they take ~1s; run alongside
     // the other files on a loaded machine they can pass 5s, and a timeout here reads

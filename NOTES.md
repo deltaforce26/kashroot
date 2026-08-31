@@ -4,6 +4,57 @@ Running notes on decisions, gotchas, and open items that are not obvious from th
 code or the PRD. Newest sections first. (Locked product decisions live in
 CLAUDE.md; this file is for everything worth remembering that isn't locked.)
 
+## Local Rabbanut is a collapsed picker group, not a stored abstraction (Aug 2026)
+
+**Product decision.** ~130 local religious councils cannot all be shown on onboarding —
+a wall of 130 unfamiliar names on the first screen reads as intimidating, not as choice.
+The picker therefore collapses them:
+
+- The certifier list shows a single **"Local Rabbanut"** entry alongside the individual
+  badatzim, rather than 130 sibling rows.
+- Tapping it opens a sub-picker of every local council, **with a search bar** — the user
+  can select any council individually, which is the requirement this design must not
+  break.
+- Selecting the group header itself selects **all** local councils.
+
+**Storage: snapshot, not rule.** "All local Rabbanut" expands at selection time into one
+concrete `profile_certifier_whitelist` row per council that exists *then*. There is no
+"all_rabbanut_local" flag on `user_profile`, and no rule evaluated at match time.
+
+The reason is the fail-safe rule. A stored rule would auto-trust a council added to the
+database next month — flipping a restaurant to MATCH on the authority of a certifier the
+user has never seen or approved. That is the app deciding whom to trust, which is exactly
+what the product does not do. With a snapshot, a new council is simply not whitelisted:
+its restaurants show UNKNOWN until the user opts in. Doubt → UNKNOWN.
+
+Consequence to accept: a user who picked "all local Rabbanut" in January does not
+silently gain Rabbanut Ashdod in March. Surfacing that ("3 new councils since you chose
+— review?") is a fast-follow, and needs a notification surface that does not exist yet.
+
+**This is why `certifier.type` exists.** `rabbanut_local` is the grouping key the
+collapsed picker selects on; without it there is no way to build this screen. `type` is
+still barred from *ordering* (below).
+
+**Guards that must be revisited when this is built:**
+
+- `web/src/views/OnboardingCertifiers.tsx` header comment currently asserts "The
+  certifier list is flat and alphabetical. No grouping by type" — that becomes false.
+- `web/src/test/profile.test.ts` — "does not group Badatz certifiers ahead of Rabbanut
+  ones" asserts a flat sorted list.
+
+The neutrality rule they encode is about **ranking and implied stringency**, not about
+collapsing a 130-item set for usability. Both need rewording to that narrower claim, and
+the implementation must not let the collapse *become* a ranking: the "Local Rabbanut"
+entry sorts alphabetically among the badatzim like any other row, carries no badge, and
+must not read as a lesser drawer beneath the "real" certifiers. That is a live risk in
+this design and worth a explicit test.
+
+**Still open:** `expandPreset`'s `mehadrin` case uses `type` as a proxy for "publishes a
+Mehadrin tier" (`web/src/profile/profile.ts:71`). Those are not the same fact. A
+`certifier.publishes_levels` boolean would state it directly and take the inference out
+of client code. Not urgent — all three corpus certifiers are `badatz` today, so the
+rabbanut branch is unexercised.
+
 ## Shared-building addresses defeat one-point-per-restaurant (Aug 2026)
 
 - `Restaurant.google_place_id` is **unique**, and Google returns one place for a whole

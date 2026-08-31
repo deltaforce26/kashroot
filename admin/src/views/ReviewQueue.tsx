@@ -7,18 +7,32 @@ import type {
   ReviewQueueItem,
   ReviewResolution,
 } from "../api/types";
-import { CertificateSummary, certifierName, Data, restaurantName } from "../components/data";
+import {
+  CertificateSummary,
+  certifierName,
+  Data,
+  Ltr,
+  restaurantName,
+} from "../components/data";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PhotoUploadButton } from "../components/PhotoUploadButton";
 import { CityFilter, Pager } from "../components/QueueControls";
 import { EmptyState, ErrorState, LoadingState } from "../components/states";
 import { useToast } from "../components/Toast";
 import { usePagedQuery } from "../hooks/usePagedQuery";
+import {
+  CERTIFICATE_STATE_LABELS,
+  CERTIFICATION_LEVEL_LABELS,
+  DIET_TYPE_LABELS,
+  label,
+  RECORD_STATE_LABELS,
+  RESTAURANT_STATUS_LABELS,
+} from "../labels";
 
 const RESOLUTION_LABELS: Record<ReviewResolution, string> = {
-  approve: "Approve",
-  reject: "Reject",
-  needs_more_info: "Needs more info",
+  approve: "אישור",
+  reject: "דחייה",
+  needs_more_info: "דרוש מידע נוסף",
 };
 
 export function ReviewQueue() {
@@ -31,24 +45,24 @@ export function ReviewQueue() {
 
   return (
     <section>
-      <h2>Review queue</h2>
+      <h2>תור בדיקה</h2>
       <div className="controls">
         <CityFilter value={city} onChange={setCity} />
       </div>
       {loading && <LoadingState />}
       {!loading && error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && items.length === 0 && (
-        <EmptyState message="Queue is clear — nothing needs review." />
+        <EmptyState message="התור נקי — אין רשומות הממתינות לבדיקה." />
       )}
       {!loading && !error && items.length > 0 && (
         <table className="data-table">
           <thead>
             <tr>
-              <th>Restaurant</th>
-              <th>City</th>
-              <th>Certifier(s)</th>
-              <th>Record state</th>
-              <th>Provenance</th>
+              <th>מסעדה</th>
+              <th>עיר</th>
+              <th>גופי כשרות</th>
+              <th>מצב הרשומה</th>
+              <th>מקור ואימות</th>
             </tr>
           </thead>
           <tbody>
@@ -64,18 +78,20 @@ export function ReviewQueue() {
                   </td>
                   <td>
                     {item.certificates.length === 0 ? (
-                      <span className="muted">no certificates</span>
+                      <span className="muted">אין תעודות</span>
                     ) : (
                       item.certificates.map((c) => (
                         <span key={c.id} className={`badge badge-${c.state}`}>
-                          <Data value={certifierName(c)} /> · {c.level} · {c.state}
+                          <Data value={certifierName(c)} /> ·{" "}
+                          {label(CERTIFICATION_LEVEL_LABELS, c.level)} ·{" "}
+                          {label(CERTIFICATE_STATE_LABELS, c.state)}
                         </span>
                       ))
                     )}
                   </td>
-                  <td>{item.record_state}</td>
+                  <td>{label(RECORD_STATE_LABELS, item.record_state)}</td>
                   <td>
-                    corroboration ×{item.corroboration_count}
+                    אימות מוצלב ×{item.corroboration_count}
                     {item.notes && (
                       <>
                         {" · "}
@@ -123,14 +139,14 @@ function ReviewDetail({
   const [busy, setBusy] = useState(false);
   const [confirmingReject, setConfirmingReject] = useState(false);
 
-  /** API requires min 5 chars on reject / needs_more_info; approve just needs a note. */
+  /** ה־API דורש 5 תווים לפחות בדחייה / דרוש מידע נוסף; אישור מסתפק בהערה כלשהי. */
   function validateNote(resolution: ReviewResolution): boolean {
     const min = resolution === "approve" ? 1 : 5;
     if (note.trim().length < min) {
       setValidation(
         min === 1
-          ? "A note is required for every resolution."
-          : "A note is required (at least 5 characters).",
+          ? "נדרשת הערה לכל הכרעה."
+          : "נדרשת הערה (5 תווים לפחות).",
       );
       return false;
     }
@@ -148,15 +164,15 @@ function ReviewDetail({
         body,
       });
       if (resolution === "needs_more_info") {
-        showToast("Kept in queue; note recorded in the audit log.");
+        showToast("נשאר בתור; ההערה נרשמה ביומן הביקורת.");
       } else {
         showToast(
-          `${RESOLUTION_LABELS[resolution]} recorded and audited — removed from queue.`,
+          `ההכרעה "${RESOLUTION_LABELS[resolution]}" נרשמה ותועדה — הרשומה הוסרה מהתור.`,
         );
       }
       onResolved(resolution);
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : "Action failed unexpectedly");
+      setActionError(err instanceof ApiError ? err.message : "הפעולה נכשלה באופן בלתי צפוי");
     } finally {
       setBusy(false);
       setConfirmingReject(false);
@@ -166,20 +182,22 @@ function ReviewDetail({
   return (
     <div className="detail">
       <dl className="detail-grid">
-        <dt>Address</dt>
+        <dt>כתובת</dt>
         <dd>
           <Data value={item.address_he} />
         </dd>
-        <dt>Phone</dt>
+        <dt>טלפון</dt>
         <dd>
-          <Data value={item.phone} />
+          <Ltr value={item.phone ?? "—"} />
         </dd>
-        <dt>Diet type</dt>
-        <dd>{item.diet_type ?? "—"}</dd>
-        <dt>Status</dt>
-        <dd>{item.status}</dd>
-        <dt>Created</dt>
-        <dd>{item.created_at}</dd>
+        <dt>סוג מטבח</dt>
+        <dd>{item.diet_type ? label(DIET_TYPE_LABELS, item.diet_type) : "—"}</dd>
+        <dt>סטטוס</dt>
+        <dd>{label(RESTAURANT_STATUS_LABELS, item.status)}</dd>
+        <dt>נוצר</dt>
+        <dd>
+          <Ltr value={item.created_at} />
+        </dd>
       </dl>
       {item.certificates.map((c) => (
         <div key={c.id} className="cert-block">
@@ -188,12 +206,12 @@ function ReviewDetail({
         </div>
       ))}
       <label className="note-label">
-        Resolution note (required)
+        הערת הכרעה (חובה)
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
-          placeholder="What did you check, and what did you find?"
+          placeholder="מה בדקת, ומה מצאת?"
         />
       </label>
       {validation && <p className="field-error">{validation}</p>}
@@ -206,7 +224,7 @@ function ReviewDetail({
             if (validateNote("approve")) void resolve("approve");
           }}
         >
-          Approve
+          אישור
         </button>
         <button
           type="button"
@@ -216,7 +234,7 @@ function ReviewDetail({
             if (validateNote("reject")) setConfirmingReject(true);
           }}
         >
-          Reject
+          דחייה
         </button>
         <button
           type="button"
@@ -225,22 +243,21 @@ function ReviewDetail({
             if (validateNote("needs_more_info")) void resolve("needs_more_info");
           }}
         >
-          Needs more info
+          דרוש מידע נוסף
         </button>
       </div>
       {confirmingReject && (
         <ConfirmDialog
-          title="Reject record?"
-          confirmLabel="Reject record"
+          title="לדחות את הרשומה?"
+          confirmLabel="דחיית הרשומה"
           busy={busy}
           onCancel={() => setConfirmingReject(false)}
           onConfirm={() => void resolve("reject")}
         >
           <p>
-            The record could not be verified: its record state degrades to{" "}
-            <strong>unknown pending verification</strong> and it will show as{" "}
-            <strong>UNKNOWN</strong> to users. The decision is audited and cannot be undone from
-            the console.
+            הרשומה לא אומתה: מצב הרשומה יורד ל<strong>לא ידוע — ממתין לאימות</strong>, והיא
+            תוצג למשתמשים כ־<strong>UNKNOWN</strong>. ההחלטה מתועדת ואינה ניתנת לביטול
+            מהקונסולה.
           </p>
         </ConfirmDialog>
       )}

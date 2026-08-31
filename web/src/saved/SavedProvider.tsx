@@ -2,6 +2,11 @@
  * Saved-list state. Device-local; every mutation writes straight back to
  * `localStorage` so a reload — or an offline launch from the home screen — sees
  * exactly what the user saved.
+ *
+ * Every mutation is one commit over the pure functions in `./saved`. A screen that
+ * creates a list with places in it calls `addList` once rather than a create
+ * followed by n saves: each call reads the `state` captured in this render, so a
+ * burst of calls would each write over the last one's result.
  */
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
@@ -14,6 +19,7 @@ import {
   persistSaved,
   removeList,
   removePlace,
+  removePlaceFromList,
   type SavedList,
   type SavedPlace,
   type SavedState,
@@ -22,10 +28,16 @@ import {
 interface SavedValue {
   state: SavedState;
   isSaved: (restaurantId: string) => boolean;
-  /** Saves into the named list, creating it on first use. */
+  /** Saves into the named list, creating it on first use. The heart's quick path. */
   save: (place: SavedPlace, listName: string) => void;
+  /** Saves into one existing list, by id — what every list picker commits through. */
+  addToList: (listId: string, place: SavedPlace) => void;
+  /** Removes the place from every list — what un-hearting a restaurant means. */
   unsave: (restaurantId: string) => void;
-  addList: (name: string) => SavedList;
+  /** Creates a list, optionally already holding places. One commit. */
+  addList: (name: string, places?: SavedPlace[]) => SavedList;
+  /** Removes one place from one list, leaving any other list holding it alone. */
+  removeFromList: (listId: string, restaurantId: string) => void;
   deleteList: (listId: string) => void;
 }
 
@@ -53,12 +65,15 @@ export function SavedProvider({ children }: { children: ReactNode }) {
         }
         commit(addPlace(next, list.id, place));
       },
+      addToList: (listId, place) => commit(addPlace(state, listId, place)),
       unsave: (restaurantId) => commit(removePlace(state, restaurantId)),
-      addList: (name) => {
-        const [next, list] = createList(state, name);
+      addList: (name, places = []) => {
+        const [next, list] = createList(state, name, places);
         commit(next);
         return list;
       },
+      removeFromList: (listId, restaurantId) =>
+        commit(removePlaceFromList(state, listId, restaurantId)),
       deleteList: (listId) => commit(removeList(state, listId)),
     }),
     [state, commit],

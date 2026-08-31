@@ -13,6 +13,12 @@ interface PagedQueryState<T> {
   reload: () => void;
   /** Optimistically drop rows after a successful action (actions are audited, not undoable). */
   removeItem: (predicate: (item: T) => boolean) => void;
+  /**
+   * Replace a row in place with the server's response. Unlike `removeItem` this is
+   * not optimistic: callers pass what the API returned, so the row on screen and the
+   * row in the database cannot drift.
+   */
+  replaceItem: (predicate: (item: T) => boolean, next: T) => void;
   next: () => void;
   prev: () => void;
 }
@@ -64,7 +70,7 @@ export function usePagedQuery<T>(
         if (cancelled) return;
         setItems([]);
         setTotal(0);
-        setError(err instanceof ApiError ? err.message : "Unexpected error loading data");
+        setError(err instanceof ApiError ? err.message : "שגיאה בלתי צפויה בטעינת הנתונים");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -102,6 +108,10 @@ export function usePagedQuery<T>(
     [paramsKey, limit],
   );
 
+  const replaceItem = useCallback((predicate: (item: T) => boolean, updated: T) => {
+    setItems((prev) => prev.map((item) => (predicate(item) ? updated : item)));
+  }, []);
+
   const next = useCallback(() => {
     setPage({
       key: paramsKey,
@@ -113,5 +123,16 @@ export function usePagedQuery<T>(
     setPage({ key: paramsKey, offset: Math.max(0, snapshot.current.offset - limit) });
   }, [paramsKey, limit]);
 
-  return { items, total, loading, error, offset, reload, removeItem, next, prev };
+  return {
+    items,
+    total,
+    loading,
+    error,
+    offset,
+    reload,
+    removeItem,
+    replaceItem,
+    next,
+    prev,
+  };
 }

@@ -1,427 +1,922 @@
+/*
+ * Kashroot moderation console — same design language as the PWA.
+ *
+ * Every token below is lifted verbatim from `web/src/styles.css` (which in turn
+ * lifts them from design/Kashroot Mobile.dc.html), so the console and the app are
+ * one artefact rather than two products that happen to share a name. What changes
+ * here is density, not vocabulary: the phone's 390px column becomes a 1180px page,
+ * cards become tables, and the type scale steps up a notch for desktop reading.
+ * One deliberate divergence: the console sets everything in Assistant, including
+ * headings, where the PWA reserves Frank Ruhl Libre for its display type.
+ *
+ * Admin-only additions are marked inline. Nothing about the markup changed — every
+ * selector matches a class the views already emit.
+ *
+ * Layout uses logical properties throughout, matching the PWA. The console is
+ * Hebrew/RTL chrome (<html lang="he" dir="rtl">), and every rule keys off
+ * inline-start/inline-end rather than left/right, so the same stylesheet would
+ * lay out correctly under an LTR root. Latin-script data (UUIDs, slugs, URLs,
+ * timestamps) is isolated with `.ltr` / dir="auto" so bidi cannot reorder it.
+ */
+
 :root {
-  --border: #d5d9dd;
-  --muted: #6b7280;
-  --accent: #1d4ed8;
-  --danger: #b91c1c;
-  --bg-detail: #f8fafc;
-  font-family: system-ui, "Segoe UI", Arial, sans-serif;
-  color: #111827;
+  color-scheme: light;
+
+  --bg-ink: #f4f4ef;
+  --bg: radial-gradient(120% 60% at 80% -5%, rgba(190, 220, 120, 0.55) 0%, rgba(190, 220, 120, 0) 55%),
+    radial-gradient(90% 55% at 0% 30%, rgba(160, 215, 190, 0.4) 0%, rgba(160, 215, 190, 0) 60%),
+    radial-gradient(90% 60% at 90% 100%, rgba(245, 200, 150, 0.35) 0%, rgba(245, 200, 150, 0) 55%),
+    #f4f4ef;
+
+  --glass: rgba(255, 255, 255, 0.62);
+  --glass-line: rgba(255, 255, 255, 0.78);
+  /* Fallback for engines without backdrop-filter: opaque enough to stay legible. */
+  --glass-solid: rgba(250, 250, 246, 0.94);
+
+  --tint-neutral: linear-gradient(160deg, rgba(238, 235, 228, 0.92), rgba(220, 214, 202, 0.75));
+  --stripe: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.65),
+    rgba(255, 255, 255, 0.65) 5px,
+    rgba(255, 255, 255, 0.35) 5px,
+    rgba(255, 255, 255, 0.35) 10px
+  );
+
+  --pill: rgba(255, 255, 255, 0.87);
+  --ink: #161616;
+  --sub: #6b6b6b;
+  --on-tint: #4c5c50;
+  --hair: rgba(0, 0, 0, 0.08);
+  --cta: #161616;
+  --cta-ink: #fff;
+  --green: #2f7a4d;
+  --green-soft: rgba(47, 122, 77, 0.12);
+  --amber: #96721c;
+  --amber-soft: rgba(150, 114, 28, 0.12);
+  --red: #a2392c;
+  --red-soft: rgba(162, 57, 44, 0.12);
+
+  /* Admin-only: the row hover the phone has no equivalent for. */
+  --hover: rgba(0, 0, 0, 0.035);
+
+  --radius-card: 22px;
+  --radius-tile: 18px;
+  --radius-field: 12px;
+  --radius-pill: 99px;
+
+  /* Admin-only: the console's answer to the PWA's --shell-max. */
+  --page-max: 1180px;
+
+  font-family: Assistant, "Segoe UI", system-ui, sans-serif;
+  color: var(--ink);
+}
+
+/*
+ * The PWA pins dark mode with a runtime toggle; the console has no settings screen,
+ * so it follows the OS. The `:not([data-theme="light"])` guard keeps the door open
+ * for an explicit choice later without a second palette.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --bg-ink: #121310;
+    --bg: radial-gradient(120% 60% at 80% -5%, rgba(150, 190, 80, 0.22) 0%, rgba(150, 190, 80, 0) 55%),
+      radial-gradient(90% 55% at 0% 30%, rgba(90, 165, 135, 0.18) 0%, rgba(90, 165, 135, 0) 60%),
+      radial-gradient(90% 60% at 90% 100%, rgba(210, 150, 90, 0.16) 0%, rgba(210, 150, 90, 0) 55%),
+      #121310;
+
+    --glass: rgba(255, 255, 255, 0.07);
+    --glass-line: rgba(255, 255, 255, 0.14);
+    --glass-solid: rgba(38, 39, 31, 0.94);
+
+    --tint-neutral: linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.045));
+    --stripe: repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.14),
+      rgba(255, 255, 255, 0.14) 5px,
+      rgba(255, 255, 255, 0.06) 5px,
+      rgba(255, 255, 255, 0.06) 10px
+    );
+
+    --pill: rgba(8, 10, 7, 0.6);
+    --ink: #f2f1ea;
+    --sub: #9d9c93;
+    --on-tint: rgba(240, 240, 228, 0.72);
+    --hair: rgba(255, 255, 255, 0.12);
+    --cta: #f2f1ea;
+    --cta-ink: #161616;
+    --green: #84d5a4;
+    --green-soft: rgba(132, 213, 164, 0.16);
+    --amber: #e6bd5e;
+    --amber-soft: rgba(230, 189, 94, 0.16);
+    --red: #f0a396;
+    --red-soft: rgba(240, 163, 150, 0.16);
+
+    --hover: rgba(255, 255, 255, 0.05);
+  }
 }
 
 * {
   box-sizing: border-box;
 }
 
+html,
+body {
+  min-height: 100%;
+}
+
 body {
   margin: 0;
-  background: #ffffff;
+  background: var(--bg-ink);
+  background-image: var(--bg);
+  background-attachment: fixed;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Headings sit in the same family as everything else. The PWA sets them in Frank
+ * Ruhl Libre, but the console is a dense working tool rather than a reading
+ * surface: mixing a serif display face into tables, legends and inline h4s made
+ * the panel read as two typefaces fighting. One family, weight carries hierarchy.
+ */
+h1,
+h2,
+h3,
+h4 {
+  font-family: inherit;
+  font-weight: 700;
+  color: var(--ink);
 }
 
 h1 {
-  font-size: 1.2rem;
-}
-h2 {
-  font-size: 1.05rem;
+  font-size: 17px;
+  margin: 0;
 }
 
+h2 {
+  font-size: 22px;
+  margin: 0 0 16px;
+}
+
+h3 {
+  font-size: 17px;
+  margin: 0 0 4px;
+}
+
+h4 {
+  font-size: 14px;
+  margin: 0;
+}
+
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ── App chrome ────────────────────────────────────────────────────────── */
+
+/*
+ * The PWA's glass primitive, stretched into a bar. Sticky because the queues are
+ * long and a moderator who has scrolled 40 rows down still needs the queue tabs.
+ */
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid var(--border);
+  gap: 28px;
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--hair);
+  background: var(--glass-solid);
+}
+
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .app-header {
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(14px) saturate(180%);
+    backdrop-filter: blur(14px) saturate(180%);
+  }
 }
 
 .app-header nav {
   display: flex;
-  gap: 1rem;
+  gap: 20px;
 }
 
+/* The PWA's `.chip`: an underline, not a filled tab. */
 .app-header nav a {
+  font-size: 13.5px;
   text-decoration: none;
-  color: var(--muted);
-  padding: 0.25rem 0;
-  border-bottom: 2px solid transparent;
+  color: var(--sub);
+  padding-bottom: 5px;
+  border-bottom: 2.5px solid transparent;
+}
+
+.app-header nav a:hover {
+  color: var(--ink);
 }
 
 .app-header nav a.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+  color: var(--ink);
+  font-weight: 700;
+  border-bottom-color: var(--ink);
 }
 
 .app-header .logout {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .app-main {
-  padding: 1rem;
-  max-width: 1200px;
+  max-width: var(--page-max);
+  margin-inline: auto;
+  padding: 28px 28px 72px;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────── */
+
+/* The PWA's `.cta--ghost`: pill, hairline, no fill. */
+button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--pill);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-pill);
+  padding: 8px 18px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/*
+ * One filled pill per group, and only where the affirmative action is the obvious
+ * one: the first button in an action row, and the login submit. Destructive
+ * buttons opt out — a solid black "reject" would read as the recommended path.
+ */
+.action-row button:first-child:not(.danger),
+.login-card button[type="submit"] {
+  background: var(--cta);
+  color: var(--cta-ink);
+  border-color: transparent;
+}
+
+.action-row button:first-child:not(.danger):hover:not(:disabled),
+.login-card button[type="submit"]:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+button.danger {
+  background: var(--red-soft);
+  color: var(--red);
+  border-color: transparent;
+}
+
+button.danger:hover:not(:disabled) {
+  border-color: var(--red);
+}
+
+.action-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── Fields ────────────────────────────────────────────────────────────── */
+
+input,
+select,
+textarea {
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--pill);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-field);
+  padding: 9px 12px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--sub);
+}
+
+textarea {
+  border-radius: var(--radius-tile);
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+/* Field labels are chrome, not content: small, uppercase, quiet. */
+.control,
+.note-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sub);
+}
+
+.note-label {
+  max-width: 44rem;
 }
 
 .controls {
   display: flex;
-  gap: 1rem;
+  gap: 16px;
   align-items: end;
-  margin-bottom: 0.75rem;
+  margin-bottom: 14px;
 }
 
-.control {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-  color: var(--muted);
+.field-error {
+  color: var(--red);
+  font-size: 12.5px;
+  margin: 0;
 }
 
+/* ── Queue tables ──────────────────────────────────────────────────────── */
+
+/*
+ * The phone shows one restaurant per card; the console shows forty per screen. Same
+ * surface either way — a glass panel with hairline rules — so a row here and a card
+ * there are recognisably the same object.
+ */
 .data-table {
   width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  background: var(--glass-solid);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-card);
 }
 
-.data-table th,
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .data-table {
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(14px) saturate(180%);
+    backdrop-filter: blur(14px) saturate(180%);
+  }
+}
+
+.data-table th {
+  text-align: start;
+  padding: 13px 16px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sub);
+  border-bottom: 1px solid var(--hair);
+  white-space: nowrap;
+}
+
 .data-table td {
-  text-align: left;
-  padding: 0.45rem 0.6rem;
-  border-bottom: 1px solid var(--border);
+  text-align: start;
+  padding: 12px 16px;
   vertical-align: top;
+  border-bottom: 1px solid var(--hair);
+  line-height: 1.45;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Corner cells carry the panel's radius so row backgrounds don't square it off. */
+.data-table tbody tr:last-child td:first-child {
+  border-end-start-radius: var(--radius-card);
+}
+
+.data-table tbody tr:last-child td:last-child {
+  border-end-end-radius: var(--radius-card);
 }
 
 .row-clickable {
   cursor: pointer;
 }
-.row-clickable:hover {
-  background: #f3f4f6;
+
+.row-clickable:hover td {
+  background: var(--hover);
 }
 
+/* The expanded row is the tinted well from the phone's neutral card. */
 .row-detail td {
-  background: var(--bg-detail);
+  background: var(--tint-neutral);
+  padding: 4px 16px 18px;
 }
 
 .detail {
-  padding: 0.5rem 0.25rem;
+  padding: 12px 2px 2px;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 14px;
 }
 
 .detail-grid {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 0.15rem 0.9rem;
+  gap: 4px 18px;
   margin: 0;
+  font-size: 13px;
 }
+
 .detail-grid dt {
-  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sub);
+  align-self: center;
 }
+
 .detail-grid dd {
   margin: 0;
+  color: var(--ink);
+}
+
+/* ── Panels inside a detail row ────────────────────────────────────────── */
+
+/*
+ * `.cert-summary`, the two expiry forms, the decision fieldset and the attribute
+ * editor are all the same object: a bordered tile on the phone's radius scale.
+ */
+.cert-summary,
+.expiry-form,
+.decision-group,
+.tristate-editor {
+  background: var(--pill);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-tile);
+  padding: 12px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .cert-summary {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.5rem 0.7rem;
-  font-size: 0.85rem;
+  font-size: 12.5px;
+  color: var(--sub);
+  line-height: 1.5;
+}
+
+.cert-summary strong {
+  color: var(--ink);
+}
+
+.cert-block {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  background: #fff;
-}
-
-.note-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-  color: var(--muted);
-  max-width: 40rem;
-}
-
-textarea,
-input,
-select {
-  font: inherit;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: #111827;
-}
-
-button {
-  font: inherit;
-  padding: 0.4rem 0.9rem;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: #fff;
-  cursor: pointer;
-}
-button:hover:not(:disabled) {
-  background: #f3f4f6;
-}
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-button.danger {
-  border-color: var(--danger);
-  color: var(--danger);
-}
-button.danger:hover:not(:disabled) {
-  background: #fef2f2;
-}
-
-.action-row {
-  display: flex;
-  gap: 0.6rem;
-}
-
-.field-error {
-  color: var(--danger);
-  font-size: 0.85rem;
-  margin: 0;
-}
-
-.state {
-  padding: 1.2rem 0;
-  color: var(--muted);
-}
-.state-error p {
-  color: var(--danger);
-}
-
-.muted {
-  color: var(--muted);
-}
-.nowrap {
-  white-space: nowrap;
-}
-
-.badge {
-  display: inline-block;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.05rem 0.5rem;
-  font-size: 0.75rem;
-  margin-right: 0.3rem;
-  white-space: nowrap;
-}
-.badge-active {
-  border-color: #059669;
-  color: #059669;
-}
-.badge-expired,
-.badge-revoked {
-  border-color: var(--danger);
-  color: var(--danger);
-}
-.badge-pending {
-  border-color: #b45309;
-  color: #b45309;
-}
-
-.pager {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  margin-top: 0.75rem;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
-.diff-table {
-  border-collapse: collapse;
-  font-size: 0.8rem;
-}
-.diff-table td {
-  border: none;
-  padding: 0.1rem 0.4rem;
-}
-.diff-field {
-  color: var(--muted);
-}
-.diff-before {
-  color: var(--danger);
-}
-.diff-after {
-  color: #059669;
-}
-.diff-arrow {
-  color: var(--muted);
-}
-
-.evidence-list {
-  margin: 0;
-  padding-left: 1rem;
-  font-size: 0.8rem;
+  gap: 8px;
 }
 
 .expiry-forms {
   display: flex;
-  gap: 2rem;
+  gap: 20px;
   flex-wrap: wrap;
 }
+
 .expiry-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.7rem;
-  min-width: 20rem;
-  background: #fff;
+  gap: 10px;
+  min-width: 22rem;
 }
-.expiry-form h4 {
-  margin: 0;
-}
-.expiry-form button {
+
+.expiry-form button,
+.tristate-editor button,
+.login-card button {
   align-self: start;
 }
 
+.decision-group,
+.tristate-editor {
+  gap: 10px;
+  max-width: 44rem;
+}
+
+/* A fieldset's default `min-inline-size: min-content` overrides grid track sizing,
+   so a wide input inside one can push the panel past its container. */
+.decision-group,
+.tristate-editor {
+  min-inline-size: 0;
+}
+
+.decision-group legend,
+.tristate-editor legend {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sub);
+  padding-inline: 4px;
+}
+
+.decision-group label {
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tristate-row input,
+.tristate-row select {
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--ink);
+  min-width: 0;
+}
+
+.tristate-editor p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--sub);
+  line-height: 1.5;
+}
+
+.tristate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 10px 18px;
+}
+
+.tristate-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sub);
+}
+
+code {
+  font: 11.5px ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--pill);
+  border: 1px solid var(--hair);
+  border-radius: 7px;
+  padding: 1px 6px;
+  word-break: break-all;
+}
+
+/* ── Evidence and diffs ────────────────────────────────────────────────── */
+
+/* The phone's evidence list: a quiet glyph, then the fact, in on-tint ink. */
+.evidence-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  color: var(--on-tint);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.evidence-list li::before {
+  content: "·";
+  font-weight: 800;
+  color: var(--sub);
+  margin-inline-end: 7px;
+}
+
+.diff-table {
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.diff-table td {
+  border: 0;
+  padding-block: 2px;
+  /* Was `2px 8px 2px 0`: the gap belongs after the cell, whichever way text runs. */
+  padding-inline: 0 8px;
+  vertical-align: baseline;
+}
+
+.diff-field {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sub);
+}
+
+.diff-before {
+  color: var(--red);
+}
+
+.diff-after {
+  color: var(--green);
+}
+
+.diff-arrow {
+  color: var(--sub);
+}
+
+/* ── Badges ────────────────────────────────────────────────────────────── */
+
+/*
+ * Same construction as the phone's `.badge-soft`: a tinted pill, a word, never a
+ * number, and the three colours are peers rather than a scale.
+ */
+.badge {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  margin-inline-end: 5px;
+  white-space: nowrap;
+  background: var(--pill);
+  border: 1px solid var(--hair);
+  color: var(--sub);
+}
+
+.badge-active {
+  background: var(--green-soft);
+  border-color: transparent;
+  color: var(--green);
+}
+
+.badge-expired,
+.badge-revoked {
+  background: var(--red-soft);
+  border-color: transparent;
+  color: var(--red);
+}
+
+.badge-pending {
+  background: var(--amber-soft);
+  border-color: transparent;
+  color: var(--amber);
+}
+
+/* ── Pager ─────────────────────────────────────────────────────────────── */
+
+.pager {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 14px;
+  font-size: 12.5px;
+  color: var(--sub);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── States ────────────────────────────────────────────────────────────── */
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 10px;
+  padding: 28px 20px;
+  font-size: 13.5px;
+  color: var(--sub);
+  background: var(--glass-solid);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-card);
+}
+
+.state p {
+  margin: 0;
+}
+
+.state-error {
+  color: var(--red);
+}
+
+.state-error p {
+  color: var(--red);
+}
+
+/* Loading reads as a surface being filled, not as a sentence. */
+.state-loading {
+  position: relative;
+  overflow: hidden;
+  color: transparent;
+  min-height: 84px;
+}
+
+.state-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--stripe);
+  opacity: 0.5;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .state-loading::after {
+    animation: none;
+  }
+}
+
+/* ── Photos ────────────────────────────────────────────────────────────── */
+
 .photo-thumb {
-  max-height: 3rem;
-  max-width: 6rem;
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  max-height: 3.2rem;
+  max-width: 6.5rem;
+  border: 1px solid var(--glass-line);
+  border-radius: 10px;
   display: block;
 }
 
 .photo-viewer {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--sub);
 }
+
 .photo-viewer img {
   max-width: 100%;
-  max-height: 20rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  max-height: 22rem;
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-tile);
 }
 
 .photo-upload {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--sub);
 }
+
 .photo-upload button {
   align-self: start;
 }
 
-.cert-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
+/* ── Dialog ────────────────────────────────────────────────────────────── */
 
-.decision-group {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.5rem 0.7rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  max-width: 40rem;
-}
-.decision-group legend {
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
-.tristate-editor {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.7rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  max-width: 40rem;
-  background: #fff;
-}
-.tristate-editor h4,
-.tristate-editor p {
-  margin: 0;
-}
-.tristate-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
-  gap: 0.4rem 1rem;
-}
-.tristate-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
+/* The phone's bottom-sheet scrim, centred: a real dim plus a blur behind it. */
 .dialog-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(17, 24, 39, 0.5);
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 20;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.32);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
 }
+
 .dialog {
-  background: #fff;
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-  max-width: 28rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  background: var(--bg-ink);
+  background-image: var(--bg);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-card);
+  padding: 20px 22px;
+  max-width: 30rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
 }
+
 .dialog h3 {
   margin-top: 0;
 }
+
+.dialog-body {
+  font-size: 13.5px;
+  color: var(--on-tint);
+  line-height: 1.5;
+}
+
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.6rem;
-  margin-top: 1rem;
+  gap: 10px;
+  margin-top: 18px;
 }
 
+/* ── Toasts ────────────────────────────────────────────────────────────── */
+
+/*
+ * Inverted card, phone radius, and a coloured edge rather than a coloured fill —
+ * an error toast must not read as a verdict.
+ */
 .toast-stack {
   position: fixed;
-  bottom: 1rem;
-  right: 1rem;
+  bottom: 20px;
+  inset-inline-end: 20px;
+  z-index: 30;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  z-index: 30;
-}
-.toast {
-  background: #111827;
-  color: #f9fafb;
-  border-radius: 6px;
-  padding: 0.6rem 0.9rem;
-  max-width: 24rem;
-  font-size: 0.85rem;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-}
-.toast-error {
-  background: var(--danger);
+  gap: 8px;
 }
 
+.toast {
+  background: var(--cta);
+  color: var(--cta-ink);
+  border-radius: var(--radius-tile);
+  border-inline-start: 3px solid var(--green);
+  padding: 12px 16px;
+  max-width: 26rem;
+  font-size: 12.5px;
+  line-height: 1.5;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+}
+
+.toast-error {
+  border-inline-start-color: var(--red);
+}
+
+/* ── Login ─────────────────────────────────────────────────────────────── */
+
+/* The onboarding screen's proportions: one card, centred, on the gradient ground. */
 .login-wrap {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f3f4f6;
+  padding: 24px;
 }
+
 .login-card {
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 1.5rem 2rem;
+  width: 27rem;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
-  width: 24rem;
+  gap: 14px;
+  padding: 28px 30px;
+  background: var(--glass-solid);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-card);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
+
 .login-card h1 {
+  font-size: 24px;
   margin: 0;
+  line-height: 1.25;
 }
-.login-card button {
-  align-self: start;
+
+.login-card p.muted {
+  margin: -6px 0 4px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.login-card button[type="submit"] {
+  align-self: stretch;
+  padding: 13px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ── Utilities ─────────────────────────────────────────────────────────── */
+
+.muted {
+  color: var(--sub);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+/*
+ * Latin-script technical values — UUIDs, city slugs, URLs, MIME types, ISO
+ * timestamps — inside Hebrew RTL prose. `unicode-bidi: isolate` stops the bidi
+ * algorithm from dragging neighbouring punctuation into the run, which is what
+ * turns `02-1234567` into `1234567-02` and moves a trailing dot to the front.
+ */
+.ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: start;
+}
+
+code {
+  direction: ltr;
+  unicode-bidi: isolate;
 }

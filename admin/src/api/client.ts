@@ -73,11 +73,11 @@ function normalizeDetail(body: unknown, status: number): string {
       if (parts.length > 0) return parts.join("; ");
     }
   }
-  return `Request failed (HTTP ${status})`;
+  return `הבקשה נכשלה (HTTP ${status})`;
 }
 
 export interface RequestOptions {
-  method?: "GET" | "POST";
+  method?: "GET" | "POST" | "PATCH";
   query?: QueryParams;
   /** JSON-serializable body, or a FormData for multipart uploads. */
   body?: unknown;
@@ -101,13 +101,13 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
       body: body === undefined ? null : isFormData ? body : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError(0, "Network error — is the API server running?");
+    throw new ApiError(0, "שגיאת רשת — האם שרת ה־API פועל?");
   }
 
   if (response.status === 401) {
     clearToken();
     unauthorizedHandler?.();
-    throw new ApiError(401, "Session expired or token invalid. Please sign in again.");
+    throw new ApiError(401, "החיבור פג או שהטוקן אינו תקין. יש להתחבר מחדש.");
   }
 
   if (!response.ok) {

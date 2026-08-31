@@ -119,3 +119,64 @@ state — not an error.
 - The app never ranks certifiers or rules on halacha. 3c presents certifiers as a flat
   selectable list — keep it flat. No "recommended", no ordering by stringency.
 - Doubt → UNKNOWN. A missing attribute renders as UNKNOWN, never as a quiet MATCH.
+
+---
+
+## Motion — the launch animation
+
+Imported 26 Aug 2026 from the same Claude Design project, one file:
+
+| File | What it is | Implement? |
+|---|---|---|
+| `Kashroot Launch Animation.dc.html` | The launch/splash gesture — 5a, 5b, 5c | **Yes — implemented** |
+
+The mark draws itself: the pip drops in, the bowl draws under it to catch it, the wordmark
+settles. **No spinner in the centre, ever — the mark is the loading indicator.** The doc's
+keyframes run on a 4.5–5s canvas loop so all three variants can be watched side by side;
+the on-device timing is the one its prose gives, and that is what shipped:
+
+| | Phase | Timing | When |
+|---|---|---|---|
+| 5a | Draw-on | pip 0.00–0.55s, bowl 0.20–1.20s, wordmark 1.05–1.35s | always |
+| 5b | Slow | from 1.60s — pip breathes, bar sweeps, `launch.loading` | only if not ready yet |
+| — | Exit | 320ms — mark fades, pip lifts 12px | always, last |
+
+Built as `web/src/components/LaunchScreen.tsx`, mounted in `main.tsx` beside the router
+rather than inside `<App>` — it is not a route, and the tests render `<App>` directly. It
+portals to `<body>` so the hand-off can transform `#root` underneath it. Plays **once per
+browsing session**; a reload inside the session goes straight to the app.
+
+### 5c is not built — dropped by decision, not by omission
+
+The doc's third variant shrinks the mark into a Home header logo slot while a stack of
+skeleton restaurant cards rises 26px behind it. **Neither of those exists.** The shipped
+Home (3a) is a 2-up tinted grid under a pin/place/bell header with no logo slot, so 5c
+would have meant animating a layout the next frame contradicts, then inventing a
+permanent header mark to justify the landing. Home is untouched by this import.
+
+The launch screen therefore just ends — but on the doc's own terms. 5a is not only a
+draw-on: its keyframes fade back out at 96–100%, where `kpPip` lifts 12px and scales to
+.9 while `kpBowl` and `kpWord` fade. That tail is the exit. The app is released from its
+hold as the fade starts, so it is already in place and the overlay cross-fades off it.
+Nothing in the app moves.
+
+**If 5c is ever wanted, it needs a design decision first**, not an implementation: either
+Home gains a permanent mark for the shrink to land on, or 5c is redrawn against the header
+that actually shipped.
+
+### What "ready" means
+
+Fonts loaded plus one painted frame — the app shell, **not** the restaurant list. The
+hosted API suspends when idle and can take the better part of a minute; holding a splash
+over that would be a worse lie than the skeleton, which says so in words
+(`states.wakingUp`). A hard 8s cap means a stalled font load can never strand the app.
+
+### Tokens
+
+Every colour the doc's script emits was already a custom property in `web/src/styles.css`
+with an identical value, so nothing was re-picked. The one addition is the logo gradient,
+`--mark-from` / `--mark-to`, deliberately **not** redefined in the dark block: the design
+keeps the same two stops in both themes, because a mark that changes colour is a different
+mark. (`--green`, which the sweep bar uses, does flip.)
+
+`ios-frame.jsx` is the same omelette starter listed above — canvas chrome, not implemented.

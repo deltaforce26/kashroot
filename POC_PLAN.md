@@ -46,6 +46,10 @@ damaging thing that can happen in the demo, and it is one tap from the opening s
 Options: hide the preset until national Rabbanut data exists, or rename it to what it
 actually is (`רבנות בני ברק`). Product call — not changed.
 
+> **Update (Aug 2026):** moot. `rabbanut_bnei_brak` was merged into `landa_bnei_brak`, so
+> the corpus holds no Rabbanut certifier and the preset would expand to an empty
+> whitelist. It stays withdrawn. The numbers in the table above are pre-merge.
+
 Related: **`level` is `"unknown"` on every certificate in the corpus**, so any profile
 requiring `min_level: mehadrin` returns UNKNOWN across the board (99 UNKNOWN / 1 NO_MATCH
 measured). The presets avoid this today by not setting a minimum — don't add one.
@@ -294,9 +298,9 @@ Geocoding everything is still right, and it yields a genuinely national-looking 
 demo Jerusalem/Bnei Brak and name the gap honestly, or acquire TA data — which is an
 acquisition problem, not a 3-day engineering one.
 
-**Risk 2 — only 5 certifiers, all charedi-leaning.** Eda Haredit, Mehadrin Rubin,
-Rabbanut Bnei Brak, Landa. A "Rabbanut" preset covers only Bnei Brak; there is no
-national Rabbanut data. Design the demo profiles around what exists.
+**Risk 2 — only 3 certifiers, all charedi-leaning.** Eda Haredit, Mehadrin Rubin, Landa
+(which absorbed Rabbanut Bnei Brak in the Aug 2026 merge). There is no Rabbanut data of
+any kind, national or local. Design the demo profiles around what exists.
 
 **Risk 3 — no attributes or expiry in seed data.** Every certificate is certifier+status
 only. Any profile requiring an attribute returns UNKNOWN for *everything* until A7 lands.

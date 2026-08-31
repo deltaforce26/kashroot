@@ -131,6 +131,8 @@ never be mistaken for verified fact.
 | Everything says UNKNOWN | Check the API is reachable — the client fails safe |
 | Total failure | Fall back to the recorded walkthrough (task D6) |
 
-**Do not** demo the certifier picker with only Rabbanut Bnei Brak selected — it returns
-2 match / 98 no_match in Jerusalem, because that certifier doesn't operate there. The
-one-tap preset was removed for exactly this reason, but it is still reachable by hand.
+**Superseded (Aug 2026):** `rabbanut_bnei_brak` was merged into `landa_bnei_brak`, so
+it is no longer selectable at all. The hazard it described — picking a single certifier
+that doesn't operate in the demo city and getting a screen of red — still applies to any
+one-certifier selection; Landa now carries the merged Bnei Brak records, so verify its
+Jerusalem numbers before demoing it alone.

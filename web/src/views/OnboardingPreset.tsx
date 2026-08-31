@@ -8,6 +8,7 @@
  */
 
 import { useNavigate } from "react-router-dom";
+import { ROOTLESS, useReturnTo } from "../hooks/useReturnTo";
 import { useI18n } from "../i18n/I18nProvider";
 import { useProfile } from "../profile/ProfileProvider";
 import { PICKER_PRESETS, PRESET_ORDER, profileFromPreset, type PresetId } from "../profile/profile";
@@ -18,6 +19,8 @@ import { useState } from "react";
 export function OnboardingPreset() {
   const { t } = useI18n();
   const navigate = useNavigate();
+  // A shared restaurant link that hit the gate; `/` for everyone else.
+  const returnTo = useReturnTo();
   const { profile, setProfile, certifiers, certifiersLoading, certifiersFailed, reloadCertifiers } =
     useProfile();
   const [selected, setSelected] = useState<PresetId | null>(profile.presetId);
@@ -25,7 +28,7 @@ export function OnboardingPreset() {
   const skip = () => {
     // Skipping still needs a usable profile, so it lands on the widest one.
     setProfile({ ...profileFromPreset("any", certifiers), completedOnboarding: true });
-    navigate("/", { replace: true });
+    navigate(returnTo, { replace: true, state: ROOTLESS });
   };
 
   const advance = () => {
@@ -33,11 +36,11 @@ export function OnboardingPreset() {
     const next = profileFromPreset(selected, certifiers);
     if (PICKER_PRESETS.includes(selected)) {
       setProfile(next);
-      navigate("/onboarding/certifiers");
+      navigate("/onboarding/certifiers", { state: { from: returnTo } });
       return;
     }
     setProfile({ ...next, completedOnboarding: true });
-    navigate("/", { replace: true });
+    navigate(returnTo, { replace: true, state: ROOTLESS });
   };
 
   return (

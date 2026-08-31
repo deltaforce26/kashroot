@@ -1,10 +1,11 @@
 import { useState } from "react";
 
 import type { AuditLogOut } from "../api/types";
-import { ChangesDiff, Data, formatDateTime, shortId } from "../components/data";
+import { ChangesDiff, Data, formatDateTime, Ltr, shortId } from "../components/data";
 import { Pager } from "../components/QueueControls";
 import { EmptyState, ErrorState, LoadingState } from "../components/states";
 import { usePagedQuery } from "../hooks/usePagedQuery";
+import { AUDIT_ACTION_LABELS, AUDIT_ENTITY_LABELS, label } from "../labels";
 
 const ENTITY_TYPES = ["", "restaurant", "certificate", "flag"];
 
@@ -26,58 +27,66 @@ export function AuditLog() {
 
   return (
     <section>
-      <h2>Audit log</h2>
-      <p className="muted">Read-only. Newest first. Every kashrut status change lands here.</p>
+      <h2>יומן ביקורת</h2>
+      <p className="muted">לקריאה בלבד. החדשות ראשונות. כל שינוי בסטטוס כשרות נרשם כאן.</p>
       <div className="controls">
         <label className="control">
-          Entity type
+          סוג ישות
           <select value={entityType} onChange={(e) => setEntityType(e.target.value)}>
             {ENTITY_TYPES.map((t) => (
               <option key={t} value={t}>
-                {t || "all"}
+                {t ? label(AUDIT_ENTITY_LABELS, t) : "הכול"}
               </option>
             ))}
           </select>
         </label>
         <label className="control">
-          Entity ID
+          מזהה ישות
           <input
             type="text"
+            className="ltr"
             value={entityIdInput}
             placeholder="UUID"
             onChange={(e) => setEntityIdInput(e.target.value)}
           />
         </label>
       </div>
-      {!entityIdValid && <p className="field-error">Entity ID must be a full UUID.</p>}
+      {!entityIdValid && <p className="field-error">מזהה הישות חייב להיות UUID מלא.</p>}
       {loading && <LoadingState />}
       {!loading && error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && items.length === 0 && (
-        <EmptyState message="No audit entries match the current filter." />
+        <EmptyState message="אין רשומות ביקורת התואמות לסינון הנוכחי." />
       )}
       {!loading && !error && items.length > 0 && (
         <table className="data-table">
           <thead>
             <tr>
-              <th>When (UTC)</th>
-              <th>Actor</th>
-              <th>Action</th>
-              <th>Entity</th>
-              <th>Changes</th>
-              <th>Evidence</th>
+              <th>מתי (UTC)</th>
+              <th>מבצע</th>
+              <th>פעולה</th>
+              <th>ישות</th>
+              <th>שינויים</th>
+              <th>ראיות</th>
             </tr>
           </thead>
           <tbody>
             {items.map((entry) => (
               <tr key={entry.id}>
-                <td className="nowrap">{formatDateTime(entry.created_at)}</td>
+                <td className="nowrap">
+                  <Ltr value={formatDateTime(entry.created_at)} />
+                </td>
                 <td>
                   <Data value={entry.actor} />
                 </td>
-                <td>{entry.action}</td>
+                <td>{label(AUDIT_ACTION_LABELS, entry.action)}</td>
                 <td className="nowrap">
-                  {entry.entity_type}
-                  {entry.entity_id && <> {shortId(entry.entity_id)}</>}
+                  {label(AUDIT_ENTITY_LABELS, entry.entity_type)}
+                  {entry.entity_id && (
+                    <>
+                      {" "}
+                      <Ltr value={shortId(entry.entity_id)} />
+                    </>
+                  )}
                 </td>
                 <td>
                   <ChangesDiff changes={entry.changes} />
