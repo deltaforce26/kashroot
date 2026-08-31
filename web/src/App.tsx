@@ -49,6 +49,10 @@ export default function App() {
   return (
     <ErrorBoundary>
       <MockRibbon />
+      {/*
+        * Every route sits inside the save-target provider: the save button on a card
+        * can appear on any of them, and the sheet it opens needs one shared target.
+        */}
       <SaveTargetProvider>
         <Routes>
           <Route path="/onboarding/preset" element={<OnboardingPreset />} />

@@ -216,8 +216,41 @@ describe("saved lists", () => {
   });
 
   /**
-   * Two lists make the tap ambiguous, and guessing is the wrong answer: it would
-   * drop every save into "Saved" while the named lists sit unused.
+   * Only *adding* is ambiguous. A filled heart means "this is saved", so clearing it
+   * is not a question and must never open a sheet to ask one — however many lists
+   * the user keeps.
+   */
+  it("un-saves in one tap even with several lists, without asking", async () => {
+    const user = userEvent.setup();
+    renderApp("/");
+    await openSaved(user);
+
+    for (const name of ["טיול צפון", "עם ההורים"]) {
+      const sheet = await createListNamed(user, name);
+      await user.click(within(sheet).getByRole("button", { name: he.saved.create.submit }));
+      await screen.findByRole("heading", { name });
+      await user.click(screen.getByRole("button", { name: he.saved.back }));
+    }
+
+    await user.click(screen.getByRole("link", { name: he.nav.home }));
+    const card = await screen.findAllByRole("link", { name: "נוגטין" });
+    await user.click(card[0] as HTMLElement);
+
+    // Saved through the picker...
+    await user.click(await screen.findByRole("button", { name: he.restaurant.save }));
+    const picker = await screen.findByRole("dialog", { name: he.saved.saveTo.title });
+    await user.click(within(picker).getByRole("checkbox", { name: /טיול צפון/ }));
+    await user.click(within(picker).getByRole("button", { name: he.saved.add.done }));
+
+    // ...and cleared with a single tap on the filled heart, no sheet in the way.
+    await user.click(await screen.findByRole("button", { name: he.restaurant.saved }));
+    expect(screen.queryByRole("dialog", { name: he.saved.saveTo.title })).toBeNull();
+    expect(await screen.findByRole("button", { name: he.restaurant.save })).toBeInTheDocument();
+  });
+
+  /**
+   * Two lists make an *added* tap ambiguous, and guessing is the wrong answer: it
+   * would drop every save into "Saved" while the named lists sit unused.
    */
   it("asks which list once there is more than one, and saves into the one picked", async () => {
     const user = userEvent.setup();

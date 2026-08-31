@@ -1,15 +1,18 @@
 /**
  * One place that turns "the user tapped the heart" into a saved snapshot.
  *
- * With at most one list there is nothing to decide: the tap saves into the default
- * list (creating it on first use) and a second tap takes the place back out of
- * every list, because the heart states a fact about the restaurant, not about a
- * list. That one-tap path is the whole point of a heart and is left alone.
+ * The heart is a toggle and has to keep behaving like one. Tapping a filled heart
+ * always un-saves, in one tap, whatever the user's lists look like: filled means
+ * "this is saved", so clearing it is not a question and must never open a sheet to
+ * ask one. Un-saving drops the place from every list, because the heart states a
+ * fact about the restaurant rather than about any one list.
  *
- * Once the user keeps more than one list the tap is ambiguous, and guessing is the
- * wrong answer: it would drop every save into "Saved" while three named lists sit
- * unused. So the heart hands over to the "save to..." sheet, which shows membership
- * across all lists and commits per row.
+ * Only *adding* can be ambiguous, and only once there is more than one list. With
+ * none or one there is nothing to choose and the tap saves straight into the default
+ * list, creating it on first use. With several, guessing would drop every save into
+ * a list called "Saved" while the named ones sit empty — so the heart hands over to
+ * the "save to..." sheet, which shows membership across all lists and commits per
+ * row. Per-list removal lives there too, for a place kept in more than one.
  */
 
 import { useCallback } from "react";
@@ -27,12 +30,12 @@ export function useSaveToggle() {
 
   const toggle = useCallback(
     (item: ResultView) => {
-      if (listCount > 1) {
-        ask(item);
-        return;
-      }
       if (saved.isSaved(item.id)) {
         saved.unsave(item.id);
+        return;
+      }
+      if (listCount > 1) {
+        ask(item);
         return;
       }
       saved.save(toSavedPlace(item, lang), t.saved.defaultList);
