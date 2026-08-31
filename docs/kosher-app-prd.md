@@ -237,8 +237,9 @@ Restaurant(id, names{he,en}, geo point, address, city, phone, website,
            hours[] (with erev_shabbat/chag rules), photos[], menu_url,
            status[open|closed_temp|closed_perm], owner_claim_id?)
 
-Certifier(id, name, type[rabbanut_local|badatz|private], parent?, logo)
-  // Rabbanut modeled per local religious council + level
+Certifier(id, name, type[rabbanut_local|rabbanut_national|badatz|private], logo)
+  // Rabbanut modeled per local religious council + level; flat set, no parent —
+  // the national Rabbanut is its own certifier row, not a parent of the councils
 
 Certificate(id, restaurant_id, certifier_id, level[regular|mehadrin|...],
             attributes{glatt, chalav_yisrael, pas_yisrael, bishul_yisrael,

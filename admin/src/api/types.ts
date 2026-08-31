@@ -16,6 +16,9 @@ export type DietType =
 
 export type RestaurantStatus = "open" | "closed_temp" | "closed_perm";
 
+/** Keys allowed in Restaurant.amenities (AmenityKey in enums.py). Layer 2 only. */
+export type AmenityKey = "family" | "parking" | "accessibility" | "delivery" | "groups";
+
 export type RecordState =
   | "list_verified"
   | "moderator_verified"
@@ -58,6 +61,30 @@ export type CertificateAttribute =
   | "yashan"
   | "kitniyot_pesach"
   | "sheruya";
+
+/** Enum order from app/models/enums.py — drives the restaurant details editor. */
+export const DIET_TYPES: readonly DietType[] = [
+  "meat",
+  "dairy",
+  "pareve",
+  "fish",
+  "mixed",
+  "dairy_pareve",
+];
+
+export const RESTAURANT_STATUSES: readonly RestaurantStatus[] = [
+  "open",
+  "closed_temp",
+  "closed_perm",
+];
+
+export const AMENITY_KEYS: readonly AmenityKey[] = [
+  "family",
+  "parking",
+  "accessibility",
+  "delivery",
+  "groups",
+];
 
 /** Enum order from app/models/enums.py — drives the tri-state attribute editor. */
 export const CERTIFICATE_ATTRIBUTES: readonly CertificateAttribute[] = [
@@ -137,6 +164,25 @@ export interface RestaurantBrief {
 }
 
 export interface ReviewQueueItem extends RestaurantBrief {
+  certificates: CertificateOut[];
+}
+
+/**
+ * RestaurantDetail (schemas_restaurants.py) — every field the directory shows or
+ * writes, plus read-only context. `certificates` is context only: no kashrut fact is
+ * editable from the directory, and `UpdateRestaurantRequest` cannot express one.
+ */
+export interface RestaurantDetail extends RestaurantBrief {
+  address_en: string | null;
+  city_en: string | null;
+  neighborhood_he: string | null;
+  website: string | null;
+  menu_url: string | null;
+  business_type_he: string | null;
+  price_level: number | null;
+  amenities: Record<string, boolean>;
+  /** Derived from name/city/address by ingestion — never entered by hand. */
+  dedupe_key: string;
   certificates: CertificateOut[];
 }
 
@@ -231,6 +277,42 @@ export interface VerifyRenewalRequest {
   evidence_note?: string | null;
   evidence_url?: string | null;
   evidence_photo_key?: string | null;
+}
+
+/**
+ * UpdateRestaurantRequest (schemas_restaurants.py). PATCH semantics, mirrored
+ * client-side: send ONLY the fields the moderator actually changed — an absent field
+ * is untouched, an explicit `null` clears an optional one. `name_he`, `status` and
+ * `amenities` refuse an explicit null (their columns are NOT NULL).
+ *
+ * There is deliberately no way to express a kashrut fact here: certificates, their
+ * attributes and their states are not fields of this request, and record_state /
+ * needs_review / corroboration_count belong to the review queue and to ingestion.
+ * diet_type, price_level and amenities are Fit Score (Layer 2) inputs only.
+ */
+export interface UpdateRestaurantRequest {
+  name_he?: string;
+  name_en?: string | null;
+  branch_label?: string | null;
+  address_he?: string | null;
+  address_en?: string | null;
+  city_he?: string | null;
+  city_en?: string | null;
+  /** Lowercase ASCII slug, e.g. "tel-aviv" — the key city filters run on. */
+  city_slug?: string | null;
+  neighborhood_he?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  menu_url?: string | null;
+  business_type_he?: string | null;
+  diet_type?: DietType | null;
+  /** 1–4. */
+  price_level?: number | null;
+  amenities?: Partial<Record<AmenityKey, boolean>>;
+  status?: RestaurantStatus;
+  notes?: string | null;
+  /** Audited with the change; never stored on the restaurant row. */
+  note?: string | null;
 }
 
 export type PhotoReviewDecision = "accept" | "reject";

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700&amp;display=swap">
+<style>body{margin:0;background:#f0eee9;font-family:Assistant,system-ui,sans-serif}a{color:#2a2a2a}a:hover{color:#000}
+@keyframes kpPip{0%{opacity:0;transform:translateY(-46px) scale(.55)}5%{opacity:1;transform:translateY(-22px) scale(.8)}12%{transform:translateY(0) scale(1.12)}16%{transform:translateY(0) scale(.9)}20%,88%{opacity:1;transform:translateY(0) scale(1)}96%,100%{opacity:0;transform:translateY(-12px) scale(.9)}}
+@keyframes kpBowl{0%,5%{stroke-dashoffset:150;opacity:1}27%,88%{stroke-dashoffset:0;opacity:1}96%,100%{stroke-dashoffset:0;opacity:0}}
+@keyframes kpWord{0%,24%{opacity:0;transform:translateY(10px)}34%,90%{opacity:1;transform:translateY(0)}98%,100%{opacity:0;transform:translateY(0)}}
+@keyframes kpPipBob{0%{opacity:0;transform:translateY(-46px) scale(.55)}5%{opacity:1;transform:translateY(-22px) scale(.8)}12%{transform:translateY(0) scale(1.12)}16%{transform:translateY(0) scale(.9)}22%{transform:translateY(0) scale(1)}45%{transform:translateY(-7px) scale(1)}68%{transform:translateY(0) scale(1)}88%{transform:translateY(-7px) scale(1)}100%{transform:translateY(0) scale(1)}}
+@keyframes kpBowlHold{0%,5%{stroke-dashoffset:150}27%,100%{stroke-dashoffset:0}}
+@keyframes kpStatus{0%,30%{opacity:0;transform:translateY(8px)}42%,100%{opacity:1;transform:translateY(0)}}
+@keyframes kpSweep{0%{transform:translateX(-100%)}100%{transform:translateX(240%)}}
+@keyframes kpMarkGo{0%{opacity:0;transform:translate(0,0) scale(.55)}6%{opacity:1;transform:translate(0,0) scale(.86)}14%{transform:translate(0,0) scale(1.06)}20%,54%{transform:translate(0,0) scale(1)}72%,100%{transform:translate(-160px,-354px) scale(.3)}}
+@keyframes kpWordGo{0%,24%{opacity:0;transform:translateY(10px)}34%,52%{opacity:1;transform:translateY(0)}64%,100%{opacity:0;transform:translateY(6px)}}
+@keyframes kpSkel{0%,72%{opacity:0;transform:translateY(26px)}86%,100%{opacity:1;transform:translateY(0)}}
+@keyframes kpChrome{0%,74%{opacity:0}88%,100%{opacity:1}}
+@keyframes kpPipIn{0%{opacity:0;transform:translateY(-46px) scale(.55)}5%{opacity:1;transform:translateY(-22px) scale(.8)}12%{transform:translateY(0) scale(1.12)}16%{transform:translateY(0) scale(.9)}20%,100%{opacity:1;transform:translateY(0) scale(1)}}</style>
+</helmet>
+<div ref="{{ rootRef }}" style="padding:40px 44px 44px">
+<div style="display:flex;align-items:baseline;gap:10px;margin:0 0 8px">
+<span style="font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px">MOTION</span>
+<span style="font:600 13px/1.2 Assistant,sans-serif;color:#1a1a1a">Kashroot launch animation — the Kaf Bowl drawing itself</span>
+</div>
+<p style="margin:0 0 20px;font:12px/1.6 Assistant,sans-serif;color:rgba(0,0,0,.55);max-width:760px">One gesture, taken straight from how the mark is built: the pip drops in, the bowl draws under it to catch it, the wordmark settles. 1.35s to full logo, then it either holds (<a href="#5a">5a</a>), keeps a live pulse for a slow network (<a href="#5b">5b</a>), or shrinks into the Home header as the list slides up (<a href="#5c">5c</a>). All three loop here so you can watch them; on device each runs once. No spinner in the centre, ever — the mark is the loading indicator.</p>
+<div style="display:flex;align-items:center;gap:10px;margin:0 0 26px">
+<button onClick="{{ replay }}" style="font:600 11.5px Assistant,sans-serif;color:#fff;background:#161616;border:0;border-radius:99px;padding:8px 16px;cursor:pointer" style-hover="background:#000">Replay all</button>
+<button onClick="{{ togglePause }}" style="font:600 11.5px Assistant,sans-serif;color:#161616;background:rgba(0,0,0,.07);border:0;border-radius:99px;padding:8px 16px;cursor:pointer" style-hover="background:rgba(0,0,0,.12)">{{ pauseLabel }}</button>
+<button onClick="{{ toggleDark }}" style="font:600 11.5px Assistant,sans-serif;color:#161616;background:rgba(0,0,0,.07);border:0;border-radius:99px;padding:8px 16px;cursor:pointer" style-hover="background:rgba(0,0,0,.12)">{{ themeLabel }}</button>
+<span style="font:11px ui-monospace,Menlo,monospace;color:rgba(0,0,0,.4)">{{ speedLabel }}</span>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+
+<div id="5a" style="flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:8px;font:400 11.5px/1.3 Assistant,sans-serif;color:rgba(0,0,0,.6);max-width:390px"><a href="#5a" style="font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none">5a</a>Draw-on — pip drops, bowl catches it, wordmark settles</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="390px,844px"><div dir="rtl" style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:{{ bg }};color:{{ ink }};font-family:Assistant,sans-serif;position:relative;overflow:hidden">
+<svg viewBox="0 0 120 120" width="96" height="96" fill="none"><defs><linearGradient id="la1" x1="20" y1="20" x2="100" y2="100" gradientUnits="userSpaceOnUse"><stop stop-color="#9ccb56"/><stop offset="1" stop-color="#2f7a4d"/></linearGradient></defs><path d="M24 46v12c0 20 16 36 36 36s36-16 36-36V46" stroke="url(#la1)" stroke-width="15" stroke-linecap="round" style="stroke-dasharray:150;animation:kpBowl 4.5s cubic-bezier(.32,.72,.28,1) infinite"/><circle cx="60" cy="20" r="9" fill="url(#la1)" style="transform-box:fill-box;transform-origin:center;animation:kpPip 4.5s cubic-bezier(.3,1.2,.4,1) infinite"/></svg>
+<div style="position:absolute;bottom:54px;display:flex;flex-direction:column;align-items:center;gap:5px;animation:kpWord 4.5s ease-out infinite">
+<span style="font:800 20px/1 Assistant,sans-serif;color:{{ ink }};letter-spacing:-.02em">כשרות</span>
+<span style="font:600 9.5px/1 Assistant,sans-serif;color:{{ sub }};letter-spacing:.22em">KASHROOT</span>
+</div>
+</div></x-import>
+</div>
+
+<div id="5b" style="flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:8px;font:400 11.5px/1.3 Assistant,sans-serif;color:rgba(0,0,0,.6);max-width:390px"><a href="#5b" style="font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none">5b</a>Slow network — pip keeps breathing, bar sweeps</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="390px,844px"><div dir="rtl" style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:{{ bg }};color:{{ ink }};font-family:Assistant,sans-serif;position:relative;overflow:hidden">
+<svg viewBox="0 0 120 120" width="96" height="96" fill="none"><defs><linearGradient id="la2" x1="20" y1="20" x2="100" y2="100" gradientUnits="userSpaceOnUse"><stop stop-color="#9ccb56"/><stop offset="1" stop-color="#2f7a4d"/></linearGradient></defs><path d="M24 46v12c0 20 16 36 36 36s36-16 36-36V46" stroke="url(#la2)" stroke-width="15" stroke-linecap="round" style="stroke-dasharray:150;animation:kpBowlHold 5s cubic-bezier(.32,.72,.28,1) infinite"/><circle cx="60" cy="20" r="9" fill="url(#la2)" style="transform-box:fill-box;transform-origin:center;animation:kpPipBob 5s cubic-bezier(.4,.6,.4,1) infinite"/></svg>
+<div style="position:absolute;bottom:132px;display:flex;flex-direction:column;align-items:center;gap:11px;width:180px;animation:kpStatus 5s ease-out infinite">
+<span style="font-size:12.5px;color:{{ sub }}">טוען את הרשימה שלך…</span>
+<span style="width:100%;height:2.5px;border-radius:99px;background:{{ glassLine }};overflow:hidden;display:block"><span style="display:block;width:42%;height:100%;border-radius:99px;background:{{ green }};animation:kpSweep 1.5s cubic-bezier(.55,.1,.45,.9) infinite"></span></span>
+</div>
+<div style="position:absolute;bottom:54px;display:flex;flex-direction:column;align-items:center;gap:5px">
+<span style="font:800 20px/1 Assistant,sans-serif;color:{{ ink }};letter-spacing:-.02em">כשרות</span>
+<span style="font:600 9.5px/1 Assistant,sans-serif;color:{{ sub }};letter-spacing:.22em">KASHROOT</span>
+</div>
+</div></x-import>
+</div>
+
+<div id="5c" style="flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:8px;font:400 11.5px/1.3 Assistant,sans-serif;color:rgba(0,0,0,.6);max-width:390px"><a href="#5c" style="font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none">5c</a>Hand-off — mark shrinks into the header, list slides up</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="390px,844px"><div dir="rtl" style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:{{ bg }};color:{{ ink }};font-family:Assistant,sans-serif;position:relative;overflow:hidden">
+<div style="position:absolute;top:62px;right:20px;left:20px;display:flex;flex-direction:column;gap:12px;animation:kpChrome 5s ease-out infinite">
+<div style="display:flex;align-items:center;justify-content:space-between"><span style="font:700 19px/1.2 Assistant,sans-serif;color:{{ ink }}">מה אוכלים?</span><span style="width:42px;height:42px"></span></div>
+<span style="height:42px;border-radius:99px;background:{{ glass }};backdrop-filter:blur(14px);border:1px solid {{ glassLine }};display:flex;align-items:center;padding:0 16px;font-size:13px;color:{{ sub }}">חיפוש מסעדה או מוצר</span>
+</div>
+<div style="position:absolute;top:180px;right:20px;left:20px;display:flex;flex-direction:column;gap:12px">
+<span style="height:86px;border-radius:22px;background:{{ tintDairy }};border:1px solid {{ glassLine }};display:block;animation:kpSkel 5s cubic-bezier(.2,.8,.3,1) infinite"></span>
+<span style="height:86px;border-radius:22px;background:{{ tintMeat }};border:1px solid {{ glassLine }};display:block;animation:kpSkel 5s cubic-bezier(.2,.8,.3,1) infinite;animation-delay:.09s"></span>
+<span style="height:86px;border-radius:22px;background:{{ tintSweet }};border:1px solid {{ glassLine }};display:block;animation:kpSkel 5s cubic-bezier(.2,.8,.3,1) infinite;animation-delay:.18s"></span>
+<span style="height:86px;border-radius:22px;background:{{ tintNeutral }};border:1px solid {{ glassLine }};display:block;animation:kpSkel 5s cubic-bezier(.2,.8,.3,1) infinite;animation-delay:.27s"></span>
+</div>
+<svg viewBox="0 0 120 120" width="96" height="96" fill="none" style="position:relative;animation:kpMarkGo 5s cubic-bezier(.3,.9,.25,1) infinite"><defs><linearGradient id="la3" x1="20" y1="20" x2="100" y2="100" gradientUnits="userSpaceOnUse"><stop stop-color="#9ccb56"/><stop offset="1" stop-color="#2f7a4d"/></linearGradient></defs><path d="M24 46v12c0 20 16 36 36 36s36-16 36-36V46" stroke="url(#la3)" stroke-width="15" stroke-linecap="round" style="stroke-dasharray:150;animation:kpBowlHold 5s cubic-bezier(.32,.72,.28,1) infinite"/><circle cx="60" cy="20" r="9" fill="url(#la3)" style="transform-box:fill-box;transform-origin:center;animation:kpPipIn 5s cubic-bezier(.3,1.2,.4,1) infinite"/></svg>
+<div style="position:absolute;bottom:54px;display:flex;flex-direction:column;align-items:center;gap:5px;animation:kpWordGo 5s ease-out infinite">
+<span style="font:800 20px/1 Assistant,sans-serif;color:{{ ink }};letter-spacing:-.02em">כשרות</span>
+<span style="font:600 9.5px/1 Assistant,sans-serif;color:{{ sub }};letter-spacing:.22em">KASHROOT</span>
+</div>
+</div></x-import>
+</div>
+
+</div>
+
+<p style="margin:26px 0 0;font:12px/1.6 Assistant,sans-serif;color:rgba(0,0,0,.5);max-width:760px">Timing reference — pip lands 0.00–0.55s, bowl draws 0.20–1.20s, wordmark settles 1.05–1.35s. 5c hands off at 2.6s: mark scales to 0.3 into the header slot while the card stack rises 26px behind it.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;dark&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Theme&quot;},&quot;speed&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0.25,&quot;max&quot;:2,&quot;step&quot;:0.05,&quot;unit&quot;:&quot;×&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Motion&quot;}}">
+class Component extends DCLogic {
+  state = { dark: null, paused: false };
+  rootRef = React.createRef();
+  get isDark() { return this.state.dark ?? (this.props.dark ?? false); }
+  get speed() { return this.props.speed ?? 1; }
+  anims() {
+    const r = this.rootRef.current;
+    return r && r.getAnimations ? r.getAnimations({ subtree: true }) : [];
+  }
+  apply() {
+    this.anims().forEach(a => {
+      a.playbackRate = this.speed;
+      if (this.state.paused) a.pause(); else a.play();
+    });
+  }
+  componentDidMount() { setTimeout(() => this.apply(), 400); }
+  componentDidUpdate() { this.apply(); }
+  renderVals() {
+    const d = this.isDark;
+    return {
+      rootRef: this.rootRef,
+      replay: () => this.anims().forEach(a => { a.currentTime = 0; a.playbackRate = this.speed; a.play(); }),
+      togglePause: () => this.setState(s => ({ paused: !s.paused })),
+      toggleDark: () => this.setState({ dark: !this.isDark }),
+      pauseLabel: this.state.paused ? 'Play' : 'Pause',
+      themeLabel: d ? 'Light' : 'Dark',
+      speedLabel: this.speed.toFixed(2) + '×',
+      bg: d
+        ? 'radial-gradient(120% 60% at 80% -5%,rgba(150,190,80,.22) 0%,rgba(150,190,80,0) 55%),radial-gradient(90% 55% at 0% 30%,rgba(90,165,135,.18) 0%,rgba(90,165,135,0) 60%),radial-gradient(90% 60% at 90% 100%,rgba(210,150,90,.16) 0%,rgba(210,150,90,0) 55%),#121310'
+        : 'radial-gradient(120% 60% at 80% -5%,rgba(190,220,120,.55) 0%,rgba(190,220,120,0) 55%),radial-gradient(90% 55% at 0% 30%,rgba(160,215,190,.4) 0%,rgba(160,215,190,0) 60%),radial-gradient(90% 60% at 90% 100%,rgba(245,200,150,.35) 0%,rgba(245,200,150,0) 55%),#f4f4ef',
+      glass: d ? 'rgba(255,255,255,.07)' : 'rgba(255,255,255,.62)',
+      glassLine: d ? 'rgba(255,255,255,.14)' : 'rgba(255,255,255,.78)',
+      tintDairy: d ? 'linear-gradient(160deg,rgba(74,124,90,.5),rgba(40,74,54,.55))' : 'linear-gradient(160deg,rgba(215,240,215,.9),rgba(165,210,175,.75))',
+      tintMeat: d ? 'linear-gradient(160deg,rgba(134,86,54,.5),rgba(86,50,30,.55))' : 'linear-gradient(160deg,rgba(250,225,205,.9),rgba(240,185,150,.7))',
+      tintSweet: d ? 'linear-gradient(160deg,rgba(132,116,46,.48),rgba(84,70,24,.55))' : 'linear-gradient(160deg,rgba(250,242,200,.9),rgba(240,220,145,.7))',
+      tintNeutral: d ? 'linear-gradient(160deg,rgba(255,255,255,.1),rgba(255,255,255,.045))' : 'linear-gradient(160deg,rgba(238,235,228,.92),rgba(220,214,202,.75))',
+      ink: d ? '#f2f1ea' : '#161616',
+      sub: d ? '#9d9c93' : '#6b6b6b',
+      green: d ? '#84d5a4' : '#2f7a4d'
+    };
+  }
+}
+</script>
+</body>
+</html>

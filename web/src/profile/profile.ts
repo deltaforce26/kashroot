@@ -26,16 +26,17 @@ export const PICKER_PRESETS: readonly PresetId[] = ["badatz", "custom"];
  * WITHDRAWN: `"rabbanut"` — the one-tap "Local Rabbanut" / "רבנות מקומית" preset.
  *
  * This is a data-coverage decision, not a product opinion, and not a statement about
- * Rabbanut certification. The corpus holds exactly one Rabbanut — Rabbanut Bnei Brak
- * — and it does not certify Jerusalem. Tapping the preset in the lead city therefore
- * returned 2 MATCH / 98 NO_MATCH. Every one of those verdicts was correct, and every
- * one of them was unreadable: a screen of red says "Jerusalem is not kosher" when the
- * truth is "we hold no Jerusalem Rabbanut data". That misreading sat one tap from the
- * opening screen, which made it the most damaging thing the app could do.
+ * Rabbanut certification. The corpus originally held exactly one Rabbanut — Rabbanut
+ * Bnei Brak — and it did not certify Jerusalem. Tapping the preset in the lead city
+ * therefore returned 2 MATCH / 98 NO_MATCH. Every one of those verdicts was correct,
+ * and every one of them was unreadable: a screen of red says "Jerusalem is not kosher"
+ * when the truth is "we hold no Jerusalem Rabbanut data". That misreading sat one tap
+ * from the opening screen, which made it the most damaging thing the app could do.
  *
- * The capability is untouched — a user can still select Rabbanut Bnei Brak by hand
- * through the certifier picker, which is honest because they chose it knowingly.
- * Only the one-tap shortcut is gone.
+ * Since the Aug 2026 merge of `rabbanut_bnei_brak` into `landa_bnei_brak` the corpus
+ * holds *no* Rabbanut certifier at all, so the preset would now return an empty
+ * whitelist — the reason to keep it withdrawn is only stronger. `expandPreset` still
+ * handles Rabbanut generically and needs no change; it simply matches nothing today.
  *
  * RESTORE IT when national Rabbanut data lands: put `"rabbanut"` back on `PresetId`,
  * in the list below, in `expandPreset`, in `storage.ts`'s `PRESETS`, and re-add

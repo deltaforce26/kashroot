@@ -64,15 +64,10 @@ SOURCES_DIR = Path("data/sources")
 
 
 #: Certifiers referenced by the seed corpus. Rabbanut entries are *local religious
-#: councils*, never a single national body (PRD §16).
+#: councils*, never a single national body (PRD §16) — the corpus currently holds
+#: none, since ``rabbanut_bnei_brak`` was merged into ``landa_bnei_brak`` (see the
+#: note on that entry below).
 CERTIFIER_SEED: dict[str, dict[str, Any]] = {
-    "rabbanut_bnei_brak": {
-        "name_he": "רבנות בני ברק",
-        "name_en": "Rabbanut Bnei Brak",
-        "type": CertifierType.RABBANUT_LOCAL,
-        "council_city_he": "בני ברק",
-        "council_city_en": "Bnei Brak",
-    },
     "badatz_mehadrin_rubin": {
         "name_he": 'בד"ץ מהדרין - הרב רובין',
         "name_en": "Badatz Mehadrin (Rubin)",
@@ -83,34 +78,47 @@ CERTIFIER_SEED: dict[str, dict[str, Any]] = {
         "name_en": "Badatz Eda Haredit",
         "type": CertifierType.BADATZ,
     },
+    # MERGED (Aug 2026, product decision): the former ``rabbanut_bnei_brak`` slug was
+    # folded into this entry — 122 corpus records reassigned, 9 of which had held both
+    # slugs. Both source documents survive the merge, so provenance and
+    # ``corroboration_count`` (which counts source documents, not certifiers) are
+    # unchanged; only the certifier attribution moved.
     "landa_bnei_brak": {
         "name_he": 'בד"ץ שארית ישראל - הרב לנדא',
         "name_en": "Badatz Rav Landa (Bnei Brak)",
         "type": CertifierType.BADATZ,
-        "council_city_he": "בני ברק",
-        "council_city_en": "Bnei Brak",
     },
 }
 
-#: The six source documents behind the corpus.
+#: The seven source documents behind the corpus. ``date_label`` is the document's own
+#: published (or, where the source carries none, received) list date — a property of the
+#: document, never inferred from whichever corpus row happens to cite it first. A row may
+#: cite documents of different dates, so deriving the label from row order mislabels the
+#: older document with the newer one's date and silently inflates its freshness.
 SOURCE_DOCUMENT_SEED: dict[str, dict[str, Any]] = {
+    # Published as the Bnei Brak rabbanut kitchens list; attributed to landa_bnei_brak
+    # since the merge. The document itself is untouched — this is the provenance of
+    # where the records came from, which the merge deliberately preserves.
     "rabbanut_bb_kitchens_pdf": {
         "title": "Rabbanut Bnei Brak — certified kitchens list",
         "kind": SourceDocumentKind.PDF,
-        "certifier_slug": "rabbanut_bnei_brak",
+        "certifier_slug": "landa_bnei_brak",
         "file": "rabbanut_bb_kitchens.pdf",
+        "date_label": "Tamuz 5786 (Jun-Jul 2026)",
     },
     "rubin_restaurants_pdf": {
         "title": "Badatz Mehadrin (Rubin) — certified restaurants list",
         "kind": SourceDocumentKind.PDF,
         "certifier_slug": "badatz_mehadrin_rubin",
         "file": "rubin_restaurants.pdf",
+        "date_label": "5786 (2026)",
     },
     "eda_haredit_jerusalem_poster": {
         "title": "Badatz Eda Haredit — Jerusalem poster",
         "kind": SourceDocumentKind.IMAGE,
         "certifier_slug": "badatz_eda_haredit",
         "file": "eda_haredit_jerusalem_poster.jpg",
+        "date_label": "Summer 5786 (2026)",
         "notes": "Poster layout; phone-to-row alignment imperfect in the meat section.",
     },
     "eda_haredit_south_poster": {
@@ -118,12 +126,14 @@ SOURCE_DOCUMENT_SEED: dict[str, dict[str, Any]] = {
         "kind": SourceDocumentKind.IMAGE,
         "certifier_slug": "badatz_eda_haredit",
         "file": "eda_haredit_south_poster.jpg",
+        "date_label": "Summer 5786 (2026)",
     },
     "eda_haredit_north_pdf": {
         "title": "Badatz Eda Haredit — north list",
         "kind": SourceDocumentKind.PDF,
         "certifier_slug": "badatz_eda_haredit",
         "file": "eda_haredit_north.pdf",
+        "date_label": "Summer 5786 (2026)",
         "notes": "Heavy OCR noise; most needs_review rows originate here.",
     },
     "landa_vacation_cities_poster": {
@@ -131,6 +141,21 @@ SOURCE_DOCUMENT_SEED: dict[str, dict[str, Any]] = {
         "kind": SourceDocumentKind.IMAGE,
         "certifier_slug": "landa_bnei_brak",
         "file": "landa_vacation_cities_poster.jpg",
+        "date_label": "Av 5786 (Jul-Aug 2026)",
+    },
+    "landa_restaurants_elul_5786": {
+        "title": "Badatz Rav Landa — certified restaurants list",
+        "kind": SourceDocumentKind.MANUAL,
+        "certifier_slug": "landa_bnei_brak",
+        "file": "landa_restaurants_elul_5786.csv",
+        "date_label": "Elul 5786 (Aug-Sep 2026)",
+        "notes": (
+            "Restaurant categories only (מסעדה חלבית / מסעדות ומזנונים / מעדניות). "
+            "Supersedes the restaurant rows of rabbanut_bb_kitchens_pdf and "
+            "landa_vacation_cities_poster; halls, hotels, institutions and pure "
+            "catering are outside its scope. No publication date on the source — the "
+            "label records receipt (2026-08-29), not publication."
+        ),
     },
 }
 
@@ -140,6 +165,7 @@ SOURCE_DOCUMENT_SEED: dict[str, dict[str, Any]] = {
 SOURCE_DATE_EARLIEST: dict[str, dt.date] = {
     "Tamuz 5786 (Jun-Jul 2026)": dt.date(2026, 6, 16),
     "Av 5786 (Jul-Aug 2026)": dt.date(2026, 7, 15),
+    "Elul 5786 (Aug-Sep 2026)": dt.date(2026, 8, 14),
     "Summer 5786 (2026)": dt.date(2026, 6, 1),
     "5786 (2026)": dt.date(2025, 9, 23),  # 1 Tishrei 5786
 }
@@ -238,12 +264,11 @@ def _ensure_certifiers(session: Session, stats: SeedImportStats) -> dict[str, Ce
 def _ensure_source_documents(
     session: Session,
     certifiers: dict[str, Certifier],
-    date_labels: dict[str, str],
     stats: SeedImportStats,
 ) -> dict[str, SourceDocument]:
     existing = {d.slug: d for d in session.scalars(select(SourceDocument))}
     for slug, spec in SOURCE_DOCUMENT_SEED.items():
-        label = date_labels.get(slug)
+        label = spec.get("date_label")
         doc = existing.get(slug)
         if doc is None:
             doc = SourceDocument(slug=slug)
@@ -369,15 +394,8 @@ def _run_import(
     rows = list(read_rows(csv_path))
     stats.rows_read = len(rows)
 
-    # Each source document's list date, taken from the rows that cite it.
-    date_labels: dict[str, str] = {}
-    for row in rows:
-        label = (row.get("source_date") or "").strip()
-        for slug in _row_source_slugs(row):
-            date_labels.setdefault(slug, label)
-
     certifiers = _ensure_certifiers(session, stats)
-    documents = _ensure_source_documents(session, certifiers, date_labels, stats)
+    documents = _ensure_source_documents(session, certifiers, stats)
 
     restaurants = {r.dedupe_key: r for r in session.scalars(select(Restaurant))}
     certificates = {
@@ -389,6 +407,32 @@ def _run_import(
         _import_row(session, row, certifiers, documents, restaurants, certificates, run_id, stats)
 
     session.flush()
+
+
+def _primary_document(
+    source_slugs: list[str], documents: dict[str, SourceDocument]
+) -> SourceDocument | None:
+    """
+    Pick the document that dates a row's certificate: the most recent one it cites.
+
+    A row corroborated by several lists is only as fresh as its freshest evidence, and
+    that evidence is what ``valid_from`` / ``verified_at`` must record. Choosing by
+    corpus column order instead would let a refresh land without moving the date it
+    exists to move. Documents with no known date lose to any dated one, so an undated
+    source can never make a record look fresher than its dated evidence supports.
+
+    Parameters:
+        source_slugs (list[str]): Source-document slugs cited by the row, in corpus order.
+        documents (dict[str, SourceDocument]): Every seeded document, keyed by slug.
+
+    Return:
+        SourceDocument | None: The freshest cited document, or None when the row cites none.
+    """
+    cited = [documents[slug] for slug in source_slugs]
+    if not cited:
+        return None
+
+    return max(cited, key=lambda doc: doc.source_date or dt.date.min)
 
 
 def _import_row(
@@ -403,7 +447,7 @@ def _import_row(
 ) -> None:
     certifier_slugs = _row_certifier_slugs(row)
     source_slugs = _row_source_slugs(row)
-    primary_doc = documents[source_slugs[0]] if source_slugs else None
+    primary_doc = _primary_document(source_slugs, documents)
 
     needs_review = parse_csv_bool(row.get("needs_review"))
     record_state = _parse_record_state(row)

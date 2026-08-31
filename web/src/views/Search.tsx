@@ -26,6 +26,7 @@ import {
   NoVerifiedMatchesBanner,
   OfflineBanner,
 } from "../components/states";
+import { SaveToListHost } from "../components/SaveToListSheet";
 import { TabBar } from "../components/TabBar";
 import { CITIES } from "../config";
 import { useFilters } from "../filters/useFilters";
@@ -197,6 +198,7 @@ export function Search() {
         )}
       </div>
 
+      <SaveToListHost />
       <TabBar />
     </div>
   );

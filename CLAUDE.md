@@ -20,7 +20,7 @@ An app that answers "Can I eat here according to MY standards?" — user defines
 - **Backend scaffolded:** `app/` (FastAPI modular monolith) with PRD §16 models, Alembic
   initial migration `0001_initial_schema`, and `kashroot seed-import` (dry-run by
   default). No match engine, no API beyond `/health` yet — that's next.
-- **Seed data corpus exists:** `data/seed/kashroot_seed_corpus.csv` — 517 unique records from 6 certifier source documents (see `data/README.md` for schema, sources, and known gaps). Built by `scripts/build_seed.py`.
+- **Seed data corpus exists:** `data/seed/kashroot_seed_corpus.csv` — 375 unique records from 7 certifier source documents (see `data/README.md` for schema, sources, and known gaps). Built by `scripts/build_seed.py`.
 - Seed data has certifier + status only — **no certificate-level attributes, no expiry dates**. Records are `LIST_VERIFIED` at best; treat as source-hierarchy level 1 (official published lists).
 - Launch gate: don't launch a city below 80% coverage.
 
@@ -36,6 +36,7 @@ An app that answers "Can I eat here according to MY standards?" — user defines
 - Hebrew text: UTF-8 everywhere; CSV outputs use utf-8-sig for Excel compatibility.
 - Never hardcode kashrut logic conclusions; everything derives from Certificate records + Profile.
 - Migrations via Alembic only; never edit schema manually.
+- Every migration that creates a table must enable Row-Level Security on it — `op.execute(enable_rls_sql("<table>"))` from `app.db.rls`. Supabase serves the `public` schema to the publishable key, so an unprotected table is world-writable; `kashroot db-check` fails when one exists (see `docs/supabase-runbook.md`).
 
 ## Orchestration protocol (main session = orchestrator)
 You, the main conversation, are the orchestrator. Your job is coordination, not implementation.

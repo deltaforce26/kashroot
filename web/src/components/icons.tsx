@@ -94,9 +94,9 @@ export function MapIcon({ size = 18 }: IconProps) {
   );
 }
 
-export function BookmarkIcon({ size = 18 }: IconProps) {
+export function BookmarkIcon({ size = 18, filled = false }: IconProps & { filled?: boolean }) {
   return (
-    <svg {...base(size)}>
+    <svg {...base(size)} fill={filled ? "currentColor" : "none"}>
       <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
     </svg>
   );

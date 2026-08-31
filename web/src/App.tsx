@@ -13,6 +13,7 @@ import { API_MODE } from "./api";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useI18n } from "./i18n/I18nProvider";
 import { isProfileUsable } from "./profile/profile";
+import { SaveTargetProvider } from "./saved/SaveTargetProvider";
 import { useProfile } from "./profile/ProfileProvider";
 import { Filters } from "./views/Filters";
 import { Home } from "./views/Home";
@@ -24,13 +25,15 @@ import { OnboardingPreset } from "./views/OnboardingPreset";
 import { Profile } from "./views/Profile";
 import { Restaurant } from "./views/Restaurant";
 import { Saved } from "./views/Saved";
+import { SavedList } from "./views/SavedList";
 import { Search } from "./views/Search";
 
 function RequireProfile({ children }: { children: ReactNode }) {
   const { profile } = useProfile();
   const location = useLocation();
   if (!profile.completedOnboarding || !isProfileUsable(profile)) {
-    return <Navigate to="/onboarding/preset" replace state={{ from: location.pathname }} />;
+    const from = `${location.pathname}${location.search}`;
+    return <Navigate to="/onboarding/preset" replace state={{ from }} />;
   }
   return <>{children}</>;
 }
@@ -121,6 +124,82 @@ export default function App() {
           */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+
+      <SaveTargetProvider>
+        <Routes>
+          <Route path="/onboarding/preset" element={<OnboardingPreset />} />
+          <Route path="/onboarding/certifiers" element={<OnboardingCertifiers />} />
+          <Route
+            path="/"
+            element={
+              <RequireProfile>
+                <Home />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/filters"
+            element={
+              <RequireProfile>
+                <Filters />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/search"
+            element={
+              <RequireProfile>
+                <Search />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/r/:id"
+            element={
+              <RequireProfile>
+                <Restaurant />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/saved"
+            element={
+              <RequireProfile>
+                <Saved />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/saved/:listId"
+            element={
+              <RequireProfile>
+                <SavedList />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/map"
+            element={
+              <RequireProfile>
+                <MapView />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <RequireProfile>
+                <Profile />
+              </RequireProfile>
+            }
+          />
+          {/*
+            * A bad address gets a page that says so, not a silent bounce home. The
+            * redirect it replaces made every broken link look like a working one.
+            */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </SaveTargetProvider>
     </ErrorBoundary>
   );
 }

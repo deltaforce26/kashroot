@@ -11,7 +11,7 @@
  * what the sheet does with an answer, with no answer, and with a failure.
  */
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -21,7 +21,7 @@ import { ProfileProvider } from "../profile/ProfileProvider";
 import { SavedProvider } from "../saved/SavedProvider";
 import { STRINGS } from "../i18n/strings";
 import { ThemeProvider } from "../theme/ThemeProvider";
-import { clearOrigin } from "../location/useOrigin";
+import { clearOrigin, resetOriginState } from "../location/useOrigin";
 
 type Candidates = Array<{ label: string; point: { lat: number; lon: number } }>;
 
@@ -53,6 +53,11 @@ type User = ReturnType<typeof userEvent.setup>;
 
 function renderApp() {
   localStorage.setItem("kashroot.city", "jerusalem");
+  return mount();
+}
+
+/** A render that seeds nothing, so a reload sees exactly what the last one left. */
+function mount() {
   return render(
     <ThemeProvider>
       <I18nProvider>
@@ -88,26 +93,54 @@ async function pickAddress(user: User, typed: string) {
   await user.click(await screen.findByRole("button", { name: new RegExp(CANDIDATE.label) }));
 }
 
+/** How many times the device position was actually asked for. */
+let positionRequests = 0;
+
 /** A geolocation that answers however the test wants it to. */
 function stubGeolocation(behaviour: "grant" | "deny") {
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
     value: {
-      getCurrentPosition: (ok: PositionCallback, fail: PositionErrorCallback) =>
-        behaviour === "grant"
+      getCurrentPosition: (ok: PositionCallback, fail: PositionErrorCallback) => {
+        positionRequests += 1;
+        return behaviour === "grant"
           ? ok({ coords: { latitude: 31.78, longitude: 35.21 } } as GeolocationPosition)
-          : fail({ code: 1, message: "denied" } as GeolocationPositionError),
+          : fail({ code: 1, message: "denied" } as GeolocationPositionError);
+      },
     },
   });
+}
+
+/** The standing permission answer, which the reload path reads instead of asking. */
+function stubPermissions(state: PermissionState) {
+  Object.defineProperty(navigator, "permissions", {
+    configurable: true,
+    value: { query: async () => ({ state }) as PermissionStatus },
+  });
+}
+
+/**
+ * A refresh. Unmounts, then forgets the module-level origin the way a real reload
+ * would — storage is left alone, since that is the thing under test.
+ */
+async function reload() {
+  cleanup();
+  resetOriginState();
+  mount();
+  await screen.findByText(he.home.nearYou);
 }
 
 describe("home location sheet", () => {
   afterEach(() => {
     geocodeCalls.length = 0;
     geocodeImpl = async () => [];
-    // The origin is process-wide by design, so it has to be put back between tests.
+    positionRequests = 0;
+    // The origin is process-wide by design, so it has to be put back between tests,
+    // in storage as well as in memory.
     clearOrigin();
+    resetOriginState();
     Reflect.deleteProperty(navigator, "geolocation");
+    Reflect.deleteProperty(navigator, "permissions");
   });
 
   it("opens from the pin and offers both origins a person names themselves", async () => {
@@ -219,5 +252,88 @@ describe("home location sheet", () => {
 
     expect(await screen.findByText("חיפה · הדר")).toBeInTheDocument();
     expect(screen.queryByText(CANDIDATE.label)).toBeNull();
+  });
+
+  /**
+   * A refresh that silently returns to the city centre reports distances from a
+   * place the user did not pick, which is the same lie as a wrong distance.
+   */
+  it("still measures from the pinned address after a reload", async () => {
+    const user = userEvent.setup();
+    geocodeImpl = async () => [CANDIDATE];
+    await reachHome(user);
+    await openSheet(user);
+    await pickAddress(user, "ביאליק 1");
+    expect(await screen.findByText(CANDIDATE.label)).toBeInTheDocument();
+
+    await reload();
+
+    expect(screen.getByText(CANDIDATE.label)).toBeInTheDocument();
+    expect(screen.queryByText("ירושלים · בית וגן")).toBeNull();
+  });
+
+  it("drops the pinned address for good once the city takes over", async () => {
+    const user = userEvent.setup();
+    geocodeImpl = async () => [CANDIDATE];
+    await reachHome(user);
+    await openSheet(user);
+    await pickAddress(user, "ביאליק 1");
+    expect(await screen.findByText(CANDIDATE.label)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: he.home.openFilters }));
+    await user.click(await screen.findByRole("button", { name: "חיפה" }));
+    await reload();
+
+    expect(screen.getByText("חיפה · הדר")).toBeInTheDocument();
+    expect(screen.queryByText(CANDIDATE.label)).toBeNull();
+  });
+
+  /**
+   * The device is remembered as a *choice*, never as a position: coordinates are
+   * not written to storage, and the reload re-acquires them from a permission that
+   * is already standing — so the header comes back right without a prompt.
+   */
+  it("restores the device origin without storing coordinates", async () => {
+    const user = userEvent.setup();
+    stubGeolocation("grant");
+    stubPermissions("granted");
+    await reachHome(user);
+    await openSheet(user);
+    await user.click(screen.getByRole("button", { name: he.origin.useMyLocation }));
+    await screen.findByText(he.map.youAreHere);
+
+    const stored = localStorage.getItem("kashroot.origin.v1") ?? "";
+    expect(stored).toContain("device");
+    expect(stored).not.toContain("31.78");
+    expect(stored).not.toContain("35.21");
+
+    await reload();
+
+    expect(await screen.findByText(he.map.youAreHere)).toBeInTheDocument();
+  });
+
+  /**
+   * Permission withdrawn between visits: the marker is worthless, and asking again
+   * unprompted is exactly the nagging the sheet exists to avoid.
+   */
+  it("falls back to the city, silently, when the permission no longer stands", async () => {
+    const user = userEvent.setup();
+    stubGeolocation("grant");
+    stubPermissions("granted");
+    await reachHome(user);
+    await openSheet(user);
+    await user.click(screen.getByRole("button", { name: he.origin.useMyLocation }));
+    await screen.findByText(he.map.youAreHere);
+
+    stubPermissions("prompt");
+    positionRequests = 0;
+    await reload();
+
+    expect(await screen.findByText("ירושלים · בית וגן")).toBeInTheDocument();
+    expect(positionRequests).toBe(0);
+    // Nobody asked, so nobody is told it failed.
+    expect(screen.queryByText(he.origin.denied)).toBeNull();
+    // The marker is dropped rather than left to fail the same way every load.
+    await waitFor(() => expect(localStorage.getItem("kashroot.origin.v1")).toBeNull());
   });
 });

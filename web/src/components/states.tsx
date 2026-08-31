@@ -7,12 +7,28 @@
  * *correct* result, and the screen must not apologise for being right.
  */
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useI18n } from "../i18n/I18nProvider";
 import { AlertIcon, CloudOffIcon, PinIcon, SearchIcon } from "./icons";
 
+/**
+ * How long a request may run before the wait gets an explanation rather than a bare
+ * skeleton. The API is hosted on a plan that suspends the instance when idle, so the
+ * first request after a quiet spell pays a cold start of roughly a minute. A first-time
+ * visitor has no way to tell that apart from a broken app, and silence reads as broken.
+ * Short enough to pre-empt the doubt, long enough that a warm request never trips it.
+ */
+const SLOW_REQUEST_MS = 6000;
+
 export function LoadingList({ rows = 4 }: { rows?: number }) {
   const { t } = useI18n();
+  const [slow, setSlow] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSlow(true), SLOW_REQUEST_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }} aria-busy="true">
       <span className="sr-only" role="status">
@@ -21,6 +37,11 @@ export function LoadingList({ rows = 4 }: { rows?: number }) {
       {Array.from({ length: rows }, (_, index) => (
         <div className="skeleton" key={index} aria-hidden="true" />
       ))}
+      {slow && (
+        <p className="hint" role="status">
+          {t.states.wakingUp}
+        </p>
+      )}
     </div>
   );
 }

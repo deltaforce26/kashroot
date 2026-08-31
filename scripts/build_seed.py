@@ -6,7 +6,9 @@ import unicodedata
 R = []  # (name, address, city, phone, business_type, diet, certifier_id, source, source_date, needs_review, notes)
 
 # ---------------- SOURCE 1: Rabbanut Bnei Brak (מטבחים PDF, תמוז תשפ"ו) ----------------
-SRC1 = ("rabbanut_bnei_brak", "rabbanut_bb_kitchens_pdf", "Tamuz 5786 (Jun-Jul 2026)")
+# Certifier is landa_bnei_brak, not a rabbanut slug: the Bnei Brak rabbanut list was
+# merged into Badatz Rav Landa (Aug 2026). The source document is unchanged.
+SRC1 = ("landa_bnei_brak", "rabbanut_bb_kitchens_pdf", "Tamuz 5786 (Jun-Jul 2026)")
 S1 = """אברמיטו|יגאל אלון 6|בית שמש|*5113|מסעדות ומזנונים
 אולמי דונולו|דונולו 11|בני ברק|035792552|קייטרינג בשרי
 אולמי השמחות|מלצר 15|בני ברק|035743599|קייטרינג בשרי
@@ -581,6 +583,111 @@ for line in S6.strip().split("\n"):
         continue
     R.append([n, a, c, p, t, d, SRC6[0], SRC6[1], SRC6[2], nr, note])
 
+# ---------------- SOURCE 7: Landa (Bnei Brak) restaurants refresh, אלול תשפ"ו ----------------
+# Supersedes the restaurant-category rows of SOURCE 1 / SOURCE 3: same certifier, newer
+# list, restaurant categories only (מסעדה חלבית / מסעדות ומזנונים / מעדניות and the
+# catering lines that carry one of them). Halls, hotels, institutions, old-age homes,
+# pure catering and fruit-design businesses are outside its scope and keep their
+# SOURCE 1 provenance untouched.
+# The publication date is not stated on the source; the label records when it was
+# received (see data/README.md).
+SRC7 = ("landa_bnei_brak", "landa_restaurants_elul_5786", "Elul 5786 (Aug-Sep 2026)")
+# name|address|city|phone|type
+S7 = """איטליוני|ירושלים 36|בני ברק|1700501222|מסעדה חלבית
+הטאבון של מאיה|ז'בוטינסקי 88|בני ברק||מסעדה חלבית
+מאמה מיה|מדרחוב הבנים|טבריה||מסעדה חלבית
+משולשים אקספרס|שדרות האמוראים 26|בית שמש||מסעדה חלבית
+משולשים אקספרס|הר"ן 7|ביתר עילית||מסעדה חלבית
+משולשים אקספרס|יגאל אלון 6|בית שמש||מסעדה חלבית
+משולשים אקספרס|נחל שורק 48|בית שמש||מסעדה חלבית
+פינת הגלידה|כהנמן 107|בני ברק||מסעדה חלבית
+פינת הגלידה|אהרונוביץ 10|בני ברק|035796515|מסעדה חלבית
+פינת הגלידה|רבי יהודה הנשיא 94|אלעד|039329555|מסעדה חלבית
+פינת הגלידה|שדרות האמוראים 2|בית שמש||מסעדה חלבית
+פיצה ועוד בטאבון|זבוטינסקי 134|בני ברק|036484827|מסעדה חלבית
+אברמיטו|יגאל אלון 6|בית שמש|*5113|מסעדות ומזנונים
+ג'סט מיט|מצדה 7|בני ברק|*6867|מסעדות ומזנונים
+גריל בשרים (הכל בפיתה)|שדרות האמוראים 59|בית שמש||מסעדות ומזנונים
+הבגט|הר הצופים 22|חולון|037237555|מסעדות ומזנונים
+המסעדה היהודית|כנרת 4|בני ברק|035789999|מסעדות ומזנונים
+חברים מהדרין|קניון רמות|ירושלים|0779386151|מסעדות ומזנונים
+מוכן ומזומן|חזון איש 17|בני ברק|036188526|מסעדות ומזנונים
+מורדי'ס|בר יוחאי 1|צפת|0534520530|מסעדות ומזנונים
+מסובין|שדרות יגאל אלון 2|בית שמש|029911778|מסעדות ומזנונים
+סול - מסעדת דגים ובשרים|מדרחוב הבנים|טבריה|0747978770|מסעדות ומזנונים
+פלאפל רבי עקיבא - גריל בשרים|רבי עקיבא 31|בני ברק|036428540|מסעדות ומזנונים
+צלילי האש|זבוטינסקי 100|בני ברק||מסעדות ומזנונים
+שווארמה פלאפל רבי עקיבא|שמעון בן שטח 8|אלעד|036586777|מסעדות ומזנונים
+שטיסל|הרב שך 14|בני ברק|035706005|מסעדות ומזנונים
+שניצל וולנו|מצדה 6|בני ברק|039027778|מסעדות ומזנונים
+שניצלשף|ירושלים 8|בני ברק|035084881|מסעדות ומזנונים
+מעדני ש"פ|ראב"ד 26|בני ברק||מסעדות ומזנונים,מעדניות
+שאבעס ביג - מחלקת אוכל מוכן פתוח|בן יעקב 26|בני ברק|0527153753|מסעדות ומזנונים,מעדניות
+המעדניה של בני ברק|רבי עקיבא 150|בני ברק|036163468|מעדניות
+הקדרה|בר אילן 24|בני ברק|0556789772|מעדניות
+השוויגער|שדרות האמוראים 69|בית שמש|025859997|מעדניות
+טשולנטזיץ|קק"ל 24|עפולה|0522025655|מעדניות
+מעדני פרידמן|ראב"ד 32|בני ברק|035796826|מעדניות
+שפסל בשטייטל|הלפרין 10|בני ברק||מעדניות
+טעים בבית|שאול המלך 21|בני ברק|0548406437|קייטרינג בשרי,מסעדות ומזנונים
+שטיסל|בר יוחאי 4|בני ברק|036777990|קייטרינג בשרי,מסעדות ומזנונים
+מטעמים|מיכאל 7|חיפה|0774604684|קייטרינג בשרי,מסעדות ומזנונים,מעדניות
+מנטה בייגל|ירושלים 23|בני ברק|036164990|קייטרינג חלבי,מסעדה חלבית
+פקורינו - מסעדה חלבית וקייטרינג|יצחק בן צבי 1|טבריה|046735111|קייטרינג חלבי,מסעדה חלבית"""
+for line in S7.strip().split("\n"):
+    n, a, c, p, t = line.split("|")
+    R.append([n, a, c, p, t, "", SRC7[0], SRC7[1], SRC7[2], "FALSE", ""])
+
+# Sources whose rows supersede an earlier list for the records they cover: the newer
+# name, address, phone and business type win. Which source supplies a record's date is
+# not decided here but by SOURCE_RECENCY below — being newer is what makes a source
+# primary, not being flagged.
+REFRESH_SOURCES = {SRC7[1]}
+
+# Each source document's list label, and the earliest Gregorian date each label can mean.
+# Mirrors SOURCE_DATE_EARLIEST in app/ingestion/seed_import.py, which is the authority
+# both are contract-tested against; used here only to order a record's sources, so the
+# freshest list that carries a record supplies its date and is recorded first. The
+# importer picks the same document independently, from the same dates.
+SRC_LABEL = {src[1]: src[2] for src in (SRC1, SRC2, SRC3, SRC4, SRC5, SRC6, SRC7)}
+SOURCE_RECENCY = {
+    "Tamuz 5786 (Jun-Jul 2026)": (2026, 6, 16),
+    "Av 5786 (Jul-Aug 2026)": (2026, 7, 15),
+    "Elul 5786 (Aug-Sep 2026)": (2026, 8, 14),
+    "Summer 5786 (2026)": (2026, 6, 1),
+    "5786 (2026)": (2025, 9, 23),
+}
+
+# Businesses the refresh republishes under a changed name. Keyed on the earlier
+# published name so both rows collapse onto one record instead of forking into a
+# duplicate; the refresh source then supplies the name that survives, and both source
+# documents stay on the record.
+# name|city|address -> name on the newer list
+RENAMED = {
+    ("שאבעס ביג - מחלקת אוכל מוכן", "בני ברק", "בן יעקב 26"):
+        "שאבעס ביג - מחלקת אוכל מוכן פתוח",
+}
+
+# Sources treated as the complete current record for their certifier: anything that
+# certifier previously carried and this source does not is dropped from the corpus.
+# Product decision (Aug 2026, explicit instruction): the Elul restaurants list is the
+# whole of Landa, not one category slice of it.
+#
+# This is a deliberate departure from the fail-safe default, which degrades an
+# unconfirmed record to UNKNOWN rather than removing it, so that provenance survives and
+# a moderator can still see what the earlier list said. Dropping the record instead means
+# the corpus can no longer answer why a business it used to carry went away. The source
+# transcriptions above are left intact precisely so the drop stays reversible here — the
+# database has no such backstop, which is why scripts/apply_landa_elul_refresh.py logs a
+# full before-snapshot for every row it removes.
+AUTHORITATIVE_SOURCES = {SRC7[1]: SRC7[0]}
+
+ERROR_SHARED_RECORD = (
+    "{name} ({city}) is carried by {certifier!r} and also by {others}. Dropping it would "
+    "remove another certifier's record, which this pass has no mandate to do. Split the "
+    "record or exclude it by hand before re-running."
+)
+
 # ---------------- Normalization, diet inference, dedup ----------------
 def norm_phone(p):
     p = p.strip()
@@ -623,6 +730,26 @@ CITY_EN = {"בני ברק":"Bnei Brak","ירושלים":"Jerusalem","בית שמ
 "בית שאן":"Beit She'an","אור הגנוז":"Or HaGanuz","קריות":"Krayot","קרית שמואל":"Kiryat Shmuel",
 "חפץ חיים":"Hafetz Haim","יצהר":"Yitzhar"}
 
+def record_key(name: str, city: str, addr: str) -> tuple[str, str, str]:
+    """
+    Natural key a record merges on, after resolving any published rename.
+
+    Rows naming the same business under an old and a new published name must key
+    identically, or a rename forks the record into a duplicate that both keep serving.
+
+    Parameters:
+        name (str): Business name exactly as the source published it.
+        city (str): City as published.
+        addr (str): Address as published.
+
+    Return:
+        tuple[str, str, str]: The merge key.
+    """
+    name = RENAMED.get((name, city, addr), name)
+
+    return (norm_name(name).split(" -")[0].strip(), city, addr.split("/")[0].strip()[:12])
+
+
 # Build merged records keyed by (normalized name, city)
 merged = {}
 order = []
@@ -630,24 +757,63 @@ for rec in R:
     name, addr, city, phone, btype, diet, cert, src, sdate, nr, note = rec
     phone = norm_phone(phone)
     diet = infer_diet(diet.strip(), btype)
-    key = (norm_name(name).split(" -")[0].strip(), city, addr.split("/")[0].strip()[:12])
+    key = record_key(name, city, addr)
     if key in merged:
         m = merged[key]
-        if cert not in m["certs"]: m["certs"].append(cert)
-        if src not in m["srcs"]: m["srcs"].append(src)
-        if not m["phone"] and phone: m["phone"] = phone
-        if not m["diet"] and diet: m["diet"] = diet
-        if not m["addr"] and addr: m["addr"] = addr
-        if nr == "FALSE": m["nr"] = m["nr"]  # keep TRUE if any source flagged? keep FALSE if any clean source
-        if m["nr"] == "TRUE" and nr == "FALSE": m["nr"] = "FALSE"
+        if cert not in m["certs"]:
+            m["certs"].append(cert)
+        if src not in m["srcs"]:
+            m["srcs"].append(src)
+        if src in REFRESH_SOURCES:
+            m["name"], m["btype"] = name, btype
+            if addr:
+                m["addr"] = addr
+            if phone:
+                m["phone"] = phone
+            if diet:
+                m["diet"] = diet
+        else:
+            if not m["phone"] and phone:
+                m["phone"] = phone
+            if not m["diet"] and diet:
+                m["diet"] = diet
+            if not m["addr"] and addr:
+                m["addr"] = addr
+        if m["nr"] == "TRUE" and nr == "FALSE":
+            m["nr"] = "FALSE"
     else:
         merged[key] = {"name":name,"addr":addr,"city":city,"phone":phone,"btype":btype,"diet":diet,
                        "certs":[cert],"srcs":[src],"sdate":sdate,"nr":nr,"note":note}
         order.append(key)
 
-OUT = "/mnt/user-data/outputs/kashroot_seed_corpus.csv"
+for m in merged.values():
+    m["srcs"].sort(key=lambda slug: SOURCE_RECENCY[SRC_LABEL[slug]], reverse=True)
+    m["sdate"] = SRC_LABEL[m["srcs"][0]]
+
+for rname, rcity, raddr in RENAMED:
+    if record_key(rname, rcity, raddr) not in merged:
+        raise SystemExit(f"RENAMED entry matches no record: {rname} / {rcity} / {raddr}")
+
+superseded = []
+for src_slug, cert_slug in AUTHORITATIVE_SOURCES.items():
+    for k in list(order):
+        m = merged[k]
+        if cert_slug not in m["certs"] or src_slug in m["srcs"]:
+            continue
+        others = [c for c in m["certs"] if c != cert_slug]
+        if others:
+            raise SystemExit(
+                ERROR_SHARED_RECORD.format(
+                    name=m["name"], city=m["city"], certifier=cert_slug, others=others
+                )
+            )
+        superseded.append((m["name"], m["city"], m["btype"]))
+        order.remove(k)
+        del merged[k]
+
+OUT = "data/seed/kashroot_seed_corpus.csv"
 with open(OUT,"w",newline="",encoding="utf-8-sig") as f:
-    w = csv.writer(f)
+    w = csv.writer(f, lineterminator="\n")
     w.writerow(["restaurant_name_he","address_he","city_he","city_en","phone","business_type_he",
                 "diet_type","certifier_ids","corroboration_count","source_documents","source_date",
                 "record_state","needs_review","notes"])
@@ -665,6 +831,7 @@ certs = collections.Counter(c for m in merged.values() for c in m["certs"])
 multi = sum(1 for m in merged.values() if len(m["srcs"])>1)
 nrv = sum(1 for m in merged.values() if m["nr"]=="TRUE")
 print(f"Total raw rows: {len(R)}")
+print(f"Superseded (dropped): {len(superseded)}")
 print(f"Unique records: {len(merged)}")
 print(f"Cross-source corroborated: {multi}")
 print(f"Needs review: {nrv}")

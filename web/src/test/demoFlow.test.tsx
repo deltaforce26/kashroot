@@ -115,6 +115,32 @@ describe("demo flow", () => {
   });
 
   /**
+   * A shared link is the only way most people meet this app, and it lands on a
+   * device with no whitelist — so the gate sends it to onboarding. The link is only
+   * worth sharing if onboarding then continues to the restaurant that was sent,
+   * rather than dropping the visitor on home with the destination lost.
+   */
+  it("carries a shared restaurant link through onboarding instead of losing it", async () => {
+    const user = userEvent.setup();
+    renderApp("/r/r-hapisga");
+
+    await screen.findByText(he.presets.any.title);
+    await user.click(screen.getByText(he.presets.any.title));
+    await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
+
+    expect(await screen.findByText("מזנון הפסגה")).toBeInTheDocument();
+    expect(await screen.findByLabelText(he.verdict.whyMatch)).toBeInTheDocument();
+
+    // Back from a shared link goes to the list. What is behind it in history is
+    // the onboarding it just completed, which is not a screen to return to.
+    await user.click(screen.getByRole("button", { name: he.states.back }));
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/\d/),
+    );
+    expect(screen.queryByText(he.onboarding.presetTitle)).toBeNull();
+  });
+
+  /**
    * UNKNOWN has to arrive as considered as MATCH, not as a greyed-out version of it.
    * On the live corpus it comes from expiry, missing attributes, revocation and
    * unpublished levels rather than staleness; this walks the stale case because it
@@ -199,21 +225,6 @@ describe("demo flow", () => {
     expect(screen.getByRole("button", { name: he.map.toList })).toBeInTheDocument();
   });
 
-  it("says which origin a distance was measured from", async () => {
-    const user = userEvent.setup();
-    renderApp("/");
-    await screen.findByText(he.presets.any.title);
-    await user.click(screen.getByText(he.presets.any.title));
-    await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
-    await user.click(await screen.findByRole("link", { name: he.nav.map }));
-
-    // No geolocation permission has been asked for, so it is the city centre — and
-    // the screen says so rather than showing a bare "400 m".
-    expect(
-      await screen.findByText(new RegExp(he.origin.fromCity("ירושלים"))),
-    ).toBeInTheDocument();
-  });
-
   it("tells the user the list is partial rather than implying it is everything", async () => {
     const user = userEvent.setup();
     renderApp("/");
@@ -282,6 +293,33 @@ describe("demo flow", () => {
     // …and home says so without being asked, so a narrowed list is never read as an
     // empty corpus.
     expect(screen.getByRole("button", { name: he.home.filtersActive })).toBeInTheDocument();
+  });
+
+  /**
+   * The sliders circle in the filters header is the same control that opened the
+   * screen, so it has to close it. Hebrew puts it in the top left and English in the
+   * top right — one `dir` flip, one control — and in both it must leave with the
+   * filters kept, not discarded: nothing here is staged, so closing *is* applying.
+   */
+  it("closes the filters from the header sliders button, keeping what was picked", async () => {
+    const user = userEvent.setup();
+    renderApp("/");
+
+    await screen.findByText(he.presets.any.title);
+    await user.click(screen.getByText(he.presets.any.title));
+    await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
+
+    await user.click(await screen.findByRole("button", { name: he.home.openFilters }));
+    await screen.findByText(he.filters.title);
+
+    await user.click(screen.getByRole("button", { name: he.diet.dairy, pressed: false }));
+    await user.click(screen.getByRole("button", { name: he.filters.close }));
+
+    expect(await screen.findByRole("button", { name: he.home.tabs.dairy })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.queryByText(he.filters.title)).toBeNull();
   });
 
   /**
@@ -413,5 +451,26 @@ describe("the stylesheet declarations the separation leans on", () => {
   it("gives the fit row a whole line inside any card", () => {
     expect(block(".fit-row")).toMatch(/width:\s*100%/);
     expect(block(".card .fit-row")).toMatch(/flex:\s*0 0 100%/);
+  });
+
+  /**
+   * The app shell is the viewport and the tab bar floats inside it, so the document
+   * must never become a scroller of its own. It did: an over-reported viewport — iOS
+   * standalone on reload — pushed the shell past the screen, dropped the tab bar
+   * below the fold and left the page scrollable to go find it. jsdom lays nothing
+   * out, so the guarantee only exists as these declarations.
+   */
+  it("locks the document so the tab bar can never be scrolled off screen", () => {
+    const rule = block("html,\nbody");
+    expect(rule).toMatch(/overflow:\s*hidden/);
+    // Only the root element's overscroll-behavior reaches the viewport; the copy
+    // this replaced sat on `body` alone and never suppressed the rubber-band.
+    expect(rule).toMatch(/overscroll-behavior-y:\s*none/);
+  });
+
+  it("sizes the shell by whichever viewport measure is the smaller", () => {
+    const rule = block("#root");
+    expect(rule).toMatch(/height:\s*100%/);
+    expect(rule).toMatch(/max-height:\s*100dvh/);
   });
 });

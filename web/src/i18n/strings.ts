@@ -74,6 +74,10 @@ const he = {
       "טווח מחירים, ״פתוח עכשיו״ ונגישות עדיין לא נאספו ברוב הרשומות, ולכן אינם מוצעים כאן.",
     reset: "איפוס",
     apply: "הצגת התוצאות",
+    // The header sliders circle is the same control that opened this screen, so it
+    // has to close it too. Named separately from `apply` — the same accessible name
+    // on two buttons gives a screen-reader user no way to tell them apart.
+    close: "סגירת הסינון",
   },
 
   search: {
@@ -149,7 +153,13 @@ const he = {
     noExpiry: "לא פורסם תאריך תפוגה",
     verifiedBy: (who: string) => `אומת ע״י ${who}`,
     verifiedAgo: (days: number) =>
-      days === 0 ? "אומת היום" : days === 1 ? "אומת אתמול" : `אומת לפני ${days} ימים`,
+      days === 0
+        ? "אומת היום"
+        : days === 1
+          ? "אומת אתמול"
+          : days > 365
+            ? "אומת לפני יותר משנה"
+            : `אומת לפני ${days} ימים`,
     neverVerified: "לא אומת מעולם על ידינו",
     source: "מקור",
     sources: {
@@ -162,6 +172,8 @@ const he = {
     otherCertificates: "תעודות נוספות ברשומה",
     navigate: "ניווט",
     call: "התקשרות",
+    share: "שיתוף",
+    linkCopied: "הקישור הועתק",
     save: "שמירה",
     saved: "נשמר",
     report: "משהו לא מדויק? דיווח על עסק ›",
@@ -172,23 +184,79 @@ const he = {
 
   saved: {
     title: "שמורים",
+    // The list the heart on a card drops a place into. Named lists are built on the
+    // saved screen; this one exists so a single tap never has to ask a question.
+    defaultList: "שמורים",
     footer:
       "רשימות נשמרות למכשיר וזמינות ללא קליטה.\nשיתוף רשימה יוצר קישור לצפייה בלבד.",
     offline: "זמין אופליין",
-    placesCount: (n: number) => `${n} מקומות`,
+    placesCount: (n: number) => (n === 1 ? "מקום אחד" : `${n} מקומות`),
     matchCount: (n: number) => `${n} מתאימים`,
     unknownCount: (n: number) => `${n} לא מאומת`,
     noMatchCount: (n: number) => `${n} לא מתאימים`,
     listPhoto: "תמונת רשימה",
     newList: "רשימה חדשה",
+    openList: (name: string) => `פתיחת הרשימה ״${name}״`,
+    back: "חזרה לשמורים",
+    share: "שיתוף הרשימה",
+    listCopied: "הרשימה הועתקה",
+    // The text that leaves the app when a list is shared. It names places and links
+    // only — never a verdict, because the recipient's own profile decides that.
+    shareHeading: (name: string, n: number) =>
+      n === 1
+        ? `${name} — מקום ששמרתי ב־Kashroot:`
+        : `${name} — ${n} מקומות ששמרתי ב־Kashroot:`,
+    shareNote: "פותחים קישור ורואים את מצב הכשרות לפי הפרופיל שלכם — לא לפי שלי.",
     degradeTitle: (list: string) => `עדכון כשרות ברשימה ״${list}״`,
     degradeBody: (name: string, why: string, verdict: string) =>
       `״${name}״ — ${why}. הסטטוס ירד ל״${verdict}״ עד לעדכון ראיה חדשה.`,
     empty: {
       title: "עוד אין רשימות שמורות",
-      body: "כל מקום שתשמרו מופיע כאן, נשאר על המכשיר וזמין גם ללא קליטה.",
+      body: "פותחים רשימה חדשה, או שומרים מקום בלחיצה על הלב — הכול נשאר על המכשיר וזמין גם ללא קליטה.",
+    },
+    listEmpty: {
+      title: "הרשימה עוד ריקה",
+      body: "כל מקום שתשמרו לרשימה הזאת יופיע כאן.",
+    },
+    notFound: {
+      title: "הרשימה הזאת לא קיימת",
+      body: "אולי היא נמחקה מהמכשיר. הרשימות שלכם נמצאות במסך השמורים.",
     },
     removeFromList: "הסרה מהרשימה",
+    deleteList: "מחיקת הרשימה",
+    deleteListConfirm: "למחוק את הרשימה? המקומות עצמם לא נמחקים מהמאגר.",
+    delete: "מחיקה",
+    cancel: "ביטול",
+    // The search-and-tick shared by every sheet that puts places into a list.
+    picker: {
+      searchPlaceholder: "חיפוש מקום להוספה",
+      noResults: "לא נמצא מקום בשם הזה.",
+    },
+    // The new-list sheet.
+    create: {
+      title: "רשימה חדשה",
+      close: "סגירת החלון",
+      nameLabel: "שם הרשימה",
+      namePlaceholder: "למשל: ארוחות עם ההורים",
+      nameTaken: "כבר קיימת רשימה בשם הזה.",
+      addPlaces: "הוספת מקומות",
+      addPlacesLead: "אפשר לבחור כמה מקומות עכשיו, ואפשר להוסיף בהמשך.",
+      selected: (n: number) => (n === 1 ? "מקום אחד נבחר" : `${n} מקומות נבחרו`),
+      submit: "יצירת הרשימה",
+    },
+    // Adding to a list that already exists. Every tap here commits immediately.
+    add: {
+      title: (list: string) => `הוספת מקומות ל״${list}״`,
+      action: "הוספת מקומות",
+      lead: "כל סימון נשמר מיד. סימון חוזר מוציא את המקום מהרשימה.",
+      done: "סיום",
+    },
+    // The sheet the heart opens once there is more than one list.
+    saveTo: {
+      title: "שמירה לרשימה",
+      close: "סגירת החלון",
+      createWith: "יצירה ושמירה",
+    },
   },
 
   profile: {
@@ -217,7 +285,7 @@ const he = {
     // The map has a real design for having no map — see useGoogleMaps.
     unavailableTitle: "המפה לא זמינה כרגע",
     unavailableNoKey: "לא הוגדר מפתח מפות לאפליקציה הזו. הרשימה עובדת כרגיל.",
-    unavailableError: "לא הצלחנו לטעון את המפה — ייתכן שאין חיבור לרשת. הרשימה עובדת כרגיל.",
+    unavailableError: "לא הצלחנו לטעון את המפה - ייתכן שאין חיבור לרשת. הרשימה עובדת כרגיל.",
     toList: "מעבר לרשימה",
     youAreHere: "המיקום שלך",
     pinsShown: (n: number) => `${n} מקומות על המפה`,
@@ -243,8 +311,15 @@ const he = {
     denied: "לא קיבלנו את המיקום שלכם. אפשר להקליד כתובת במקום.",
   },
 
+  // Shown on the launch screen only once the wait is long enough to need words —
+  // the mark alone carries the first 1.6s. Copy is the design's, verbatim.
+  launch: {
+    loading: "טוען את הרשימה שלך…",
+  },
+
   states: {
     loading: "בודקים מול הפרופיל שלך…",
+    wakingUp: "השרת מתעורר - הטעינה הראשונה עשויה לקחת עד כדקה.",
     loadingShort: "טוען…",
     errorTitle: "לא הצלחנו להביא תשובה",
     errorNetwork: "אין חיבור לשרת. בדקו את החיבור ונסו שוב.",
@@ -298,7 +373,7 @@ const he = {
   // profile and the saved lists live in localStorage and survive the crash.
   errorPage: {
     title: "המסך הזה נפל",
-    body: "התקלה אצלנו. שום דבר שהגדרתם לא אבד — הפרופיל והרשימות השמורות נשמרים במכשיר.",
+    body: "התקלה אצלנו. שום דבר שהגדרתם לא אבד - הפרופיל והרשימות השמורות נשמרים במכשיר.",
     retry: "טעינה מחדש של המסך",
     home: "מעבר למסך הבית",
     devDetails: "פרטים טכניים (בנייה מקומית בלבד)",
@@ -399,6 +474,7 @@ const en: Strings = {
       "Price range, open-now and accessibility are not recorded for most entries yet, so they are not offered here.",
     reset: "Reset",
     apply: "Show results",
+    close: "Close filters",
   },
 
   search: {
@@ -472,7 +548,13 @@ const en: Strings = {
     noExpiry: "No expiry date published",
     verifiedBy: (who: string) => `Verified by ${who}`,
     verifiedAgo: (days: number) =>
-      days === 0 ? "Verified today" : days === 1 ? "Verified yesterday" : `Verified ${days} days ago`,
+      days === 0
+        ? "Verified today"
+        : days === 1
+          ? "Verified yesterday"
+          : days > 365
+            ? "Verified over a year ago"
+            : `Verified ${days} days ago`,
     neverVerified: "Never verified by us",
     source: "Source",
     sources: {
@@ -485,6 +567,8 @@ const en: Strings = {
     otherCertificates: "Other certificates on this record",
     navigate: "Directions",
     call: "Call",
+    share: "Share",
+    linkCopied: "Link copied",
     save: "Save",
     saved: "Saved",
     report: "Something inaccurate? Report this business ›",
@@ -495,23 +579,72 @@ const en: Strings = {
 
   saved: {
     title: "Saved",
+    defaultList: "Saved",
     footer:
-      "Lists are stored on your device and work without a connection.\nSharing a list creates a view-only link.",
+      "Lists are stored on this device and work offline.\nSharing a list creates a view-only link.",
     offline: "Available offline",
-    placesCount: (n: number) => `${n} places`,
+    placesCount: (n: number) => (n === 1 ? "1 place" : `${n} places`),
     matchCount: (n: number) => `${n} match`,
-    unknownCount: (n: number) => `${n} not verified`,
+    unknownCount: (n: number) => `${n} unverified`,
     noMatchCount: (n: number) => `${n} don't match`,
-    listPhoto: "list photo",
+    listPhoto: "List photo",
     newList: "New list",
+    openList: (name: string) => `Open the list “${name}”`,
+    back: "Back to saved",
+    share: "Share list",
+    listCopied: "List copied",
+    shareHeading: (name: string, n: number) =>
+      n === 1
+        ? `${name} — a place I saved on Kashroot:`
+        : `${name} — ${n} places I saved on Kashroot:`,
+    shareNote:
+      "Open a link and you see its kashrut status against your own profile — not mine.",
     degradeTitle: (list: string) => `Kashrut update in “${list}”`,
     degradeBody: (name: string, why: string, verdict: string) =>
       `“${name}” — ${why}. The status dropped to “${verdict}” until new evidence arrives.`,
     empty: {
       title: "No saved lists yet",
-      body: "Every place you save appears here, stays on your device and works offline.",
+      body: "Start a new list, or save a place with the heart — everything stays on this device and works offline.",
+    },
+    listEmpty: {
+      title: "This list is still empty",
+      body: "Every place you save to this list will appear here.",
+    },
+    notFound: {
+      title: "That list doesn't exist",
+      body: "It may have been deleted from this device. Your lists are on the saved screen.",
     },
     removeFromList: "Remove from list",
+    deleteList: "Delete list",
+    deleteListConfirm: "Delete this list? The places themselves stay in our records.",
+    delete: "Delete",
+    cancel: "Cancel",
+    picker: {
+      searchPlaceholder: "Search for a place to add",
+      noResults: "No place by that name.",
+    },
+    create: {
+      title: "New list",
+      close: "Close",
+      nameLabel: "List name",
+      namePlaceholder: "e.g. Dinners with the parents",
+      nameTaken: "You already have a list with that name.",
+      addPlaces: "Add places",
+      addPlacesLead: "Pick a few now, or add them later.",
+      selected: (n: number) => (n === 1 ? "1 selected" : `${n} selected`),
+      submit: "Create list",
+    },
+    add: {
+      title: (list: string) => `Add places to “${list}”`,
+      action: "Add places",
+      lead: "Every tick is saved right away. Tick again to take a place back out.",
+      done: "Done",
+    },
+    saveTo: {
+      title: "Save to list",
+      close: "Close",
+      createWith: "Create and save",
+    },
   },
 
   profile: {
@@ -566,8 +699,13 @@ const en: Strings = {
     denied: "We didn't get your location. You can type an address instead.",
   },
 
+  launch: {
+    loading: "Loading your list…",
+  },
+
   states: {
     loading: "Checking against your profile…",
+    wakingUp: "The server is waking up — the first load can take up to a minute.",
     loadingShort: "Loading…",
     errorTitle: "We couldn't get an answer",
     errorNetwork: "No connection to the server. Check your connection and try again.",

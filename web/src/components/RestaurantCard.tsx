@@ -18,7 +18,7 @@ import type { DietType } from "../api/types";
 import { certifierLabel, type ResultView } from "../api/viewmodel";
 import { formatDate, formatDistance, pickName, useI18n } from "../i18n/I18nProvider";
 import { primaryReason, reasonText } from "../i18n/reasons";
-import { ArrowIcon, HeartIcon } from "./icons";
+import { ArrowIcon, BookmarkIcon } from "./icons";
 import { FitScoreBar } from "./FitScoreBar";
 import { VerdictPill } from "./VerdictPill";
 
@@ -88,7 +88,7 @@ export function RestaurantRowCard({ item, saved, onToggleSave }: CardProps) {
           aria-pressed={saved}
           onClick={() => onToggleSave(item)}
         >
-          <HeartIcon filled={saved} />
+          <BookmarkIcon size={17} filled={saved} />
         </button>
       </div>
       <div className="card__meta on-tint">{meta}</div>
@@ -158,7 +158,7 @@ export function RestaurantTileCard({ item, saved, onToggleSave }: CardProps) {
           aria-pressed={saved}
           onClick={() => onToggleSave(item)}
         >
-          <HeartIcon filled={saved} />
+          <BookmarkIcon size={17} filled={saved} />
         </button>
       </div>
       {/* The tile has the same two-row structure as the row card, for the same
@@ -225,7 +225,7 @@ export function RestaurantGridCard({ item, saved, onToggleSave }: CardProps) {
           aria-pressed={saved}
           onClick={() => onToggleSave(item)}
         >
-          <HeartIcon filled={saved} />
+          <BookmarkIcon size={17} filled={saved} />
         </button>
       </div>
       <div className="card__foot">

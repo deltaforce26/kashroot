@@ -58,6 +58,10 @@ def _blank_to_none(value: Any) -> Any:
 #: HttpUrl that accepts ""/whitespace as None instead of failing URL validation.
 BlankableHttpUrl = Annotated[HttpUrl | None, BeforeValidator(_blank_to_none)]
 
+#: Optional free text where ""/whitespace means "clear this field" rather than
+#: "set it to an empty string" — the DB records absence as NULL, never as "".
+OptionalText = Annotated[str | None, BeforeValidator(_blank_to_none)]
+
 ItemT = TypeVar("ItemT")
 
 

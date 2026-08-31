@@ -70,9 +70,74 @@ export function removePlace(state: SavedState, restaurantId: string): SavedState
   };
 }
 
-export function createList(state: SavedState, name: string): [SavedState, SavedList] {
-  const list: SavedList = { id: newListId(), name, places: [] };
+export function createList(
+  state: SavedState,
+  name: string,
+  places: SavedPlace[] = [],
+): [SavedState, SavedList] {
+  // De-duplicated on the way in: the picker builds this array from taps, and a
+  // double tap must not put the same restaurant in the list twice.
+  const unique: SavedPlace[] = [];
+  for (const place of places) {
+    if (!unique.some((kept) => kept.restaurantId === place.restaurantId)) unique.push(place);
+  }
+  const list: SavedList = { id: newListId(), name, places: unique };
   return [{ lists: [...state.lists, list] }, list];
+}
+
+export function listById(state: SavedState, listId: string): SavedList | null {
+  return state.lists.find((list) => list.id === listId) ?? null;
+}
+
+/**
+ * Names are how a person tells two lists apart, so the picker refuses a name already
+ * in use. Compared case-insensitively and trimmed, because "Shabbat" and "shabbat "
+ * are the same name to everyone but a string comparison.
+ */
+export function hasListNamed(state: SavedState, name: string): boolean {
+  const wanted = name.trim().toLocaleLowerCase();
+  return state.lists.some((list) => list.name.trim().toLocaleLowerCase() === wanted);
+}
+
+/**
+ * Removes a place from one list only. `removePlace` drops it everywhere, which is
+ * what the heart on a restaurant means; removing it from a list someone built is a
+ * narrower action and must not quietly empty their other lists.
+ */
+export function removePlaceFromList(
+  state: SavedState,
+  listId: string,
+  restaurantId: string,
+): SavedState {
+  return {
+    lists: state.lists.map((list) =>
+      list.id === listId
+        ? { ...list, places: list.places.filter((place) => place.restaurantId !== restaurantId) }
+        : list,
+    ),
+  };
+}
+
+/**
+ * Did the answer get worse since this place was saved?
+ *
+ * Two API answers are compared — the one recorded in the snapshot and the one the
+ * API gives now. Nothing here evaluates a kashrut rule; that is why the verdict
+ * values may be named in this file at all.
+ */
+export function hasDegraded(place: SavedPlace, current: Verdict): boolean {
+  return place.verdictAtSave === "match" && current !== "match";
+}
+
+export type VerdictCounts = Record<Verdict, number>;
+
+/** Tallies verdicts the API returned. A place still loading counts to nothing. */
+export function countVerdicts(verdicts: (Verdict | undefined)[]): VerdictCounts {
+  const counts: VerdictCounts = { match: 0, no_match: 0, unknown: 0 };
+  for (const verdict of verdicts) {
+    if (verdict) counts[verdict] += 1;
+  }
+  return counts;
 }
 
 export function removeList(state: SavedState, listId: string): SavedState {
