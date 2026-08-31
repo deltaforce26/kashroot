@@ -21,7 +21,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { SearchRequest, Verdict } from "../api/types";
 import { certifierLabel, type ResultView } from "../api/viewmodel";
-import { ChevronIcon, PinIcon, SlidersIcon } from "../components/icons";
+import { ChevronIcon, PinIcon } from "../components/icons";
 import { tintClass } from "../components/RestaurantCard";
 import { VerdictPill } from "../components/VerdictPill";
 import { ErrorState, LoadingList } from "../components/states";
@@ -270,7 +270,7 @@ export function MapView() {
           aria-pressed={source === "device"}
           onClick={requestDeviceLocation}
         >
-          {source === "device" ? <PinIcon size={16} /> : <SlidersIcon size={16} />}
+          <PinIcon size={16} />
         </button>
       </div>
 
