@@ -221,7 +221,7 @@ export function MapView() {
                   </div>
                 </div>
               </div>
-              <button type="button" className="cta" onClick={() => navigate("/")}>
+              <button type="button" className="cta" onClick={() => navigate("/map/list")}>
                 {t.map.toList}
               </button>
             </div>
@@ -242,7 +242,7 @@ export function MapView() {
           <button type="button" aria-pressed={true}>
             {t.map.map}
           </button>
-          <button type="button" aria-pressed={false} onClick={() => navigate("/")}>
+          <button type="button" aria-pressed={false} onClick={() => navigate("/map/list")}>
             {t.map.list}
           </button>
         </span>
