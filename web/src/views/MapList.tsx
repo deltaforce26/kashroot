@@ -68,7 +68,9 @@ export function MapList() {
           type="button"
           className="circle glass"
           aria-label={t.states.back}
-          onClick={() => navigate(-1)}
+          // Home, not history — same as the map's: the two screens toggle between
+          // each other, so history can walk back and forth rather than out.
+          onClick={() => navigate("/")}
         >
           <ChevronIcon />
         </button>

@@ -97,6 +97,25 @@ describe("map list", () => {
     expect(screen.getAllByText(new RegExp(name)).length).toBeGreaterThan(0);
   });
 
+  /**
+   * The map and its list toggle between each other, so a history-based back button
+   * walks between the two rather than out of them. Both go straight home instead.
+   */
+  it("leaves for home from the back button on either screen", async () => {
+    const user = userEvent.setup();
+    await reachMap(user);
+
+    await user.click(screen.getByRole("button", { name: he.states.back }));
+    expect(await screen.findByText(he.home.nearYou)).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("link", { name: he.nav.map }));
+    await user.click(await screen.findByRole("button", { name: he.map.list }));
+    await screen.findByRole("button", { name: he.map.list, pressed: true });
+
+    await user.click(screen.getByRole("button", { name: he.states.back }));
+    expect(await screen.findByText(he.home.nearYou)).toBeInTheDocument();
+  });
+
   it("lists the same places the map plots", async () => {
     const user = userEvent.setup();
     const { container } = await reachMap(user);
