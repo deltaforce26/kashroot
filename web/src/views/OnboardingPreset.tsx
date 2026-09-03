@@ -1,5 +1,8 @@
 /**
- * Onboarding step 2 — presets on glass (design 3b). The demo's opening move.
+ * Onboarding step 1 of 2 — presets on glass (design 3b). The demo's opening move.
+ *
+ * The mock's dots read 2 / 4 because it was drawn against a longer flow that was
+ * never built; the shipped flow is preset → certifiers, so the indicator counts two.
  *
  * A preset is a shortcut for filling the whitelist, expanded over the certifiers the
  * API returned. It is not a recommendation and not a ranking: the copy under each
@@ -47,10 +50,8 @@ export function OnboardingPreset() {
     <div className="shell">
       <div className="shell__pad" style={{ paddingBottom: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div className="steps" aria-label="2 / 4">
+          <div className="steps" aria-label="1 / 2">
             <span data-on="true" />
-            <span data-on="true" />
-            <span />
             <span />
           </div>
           <button type="button" className="sub" style={{ fontSize: 13 }} onClick={skip}>

@@ -1,5 +1,5 @@
 /**
- * Onboarding step 3 — whitelist + required attributes (design 3c).
+ * Onboarding step 2 of 2 — whitelist + required attributes (design 3c).
  *
  * The certifier list is flat and alphabetical. No grouping by type, no "recommended",
  * no ordering by stringency, no badge that implies one body is stricter than another.
@@ -46,11 +46,9 @@ export function OnboardingCertifiers({ standalone = false }: { standalone?: bool
     <div className="shell">
       <div className="shell__pad" style={{ paddingBottom: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div className="steps" aria-label="3 / 4">
+          <div className="steps" aria-label="2 / 2">
             <span data-on="true" />
             <span data-on="true" />
-            <span data-on="true" />
-            <span />
           </div>
           {!standalone && (
             <button
