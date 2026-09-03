@@ -225,11 +225,18 @@ a {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  /* The app is a phone surface; a desktop scrollbar gutter is not part of it.
+     Scrolling stays, the bar does not — same treatment as .chips and .map__track. */
+  scrollbar-width: none;
   padding-inline: 20px;
   padding-bottom: 8px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.shell__scroll::-webkit-scrollbar {
+  display: none;
 }
 
 /*
@@ -1480,12 +1487,17 @@ a {
   gap: 10px;
   max-height: 88%;
   overflow-y: auto;
+  scrollbar-width: none;
   padding: 16px 20px calc(18px + env(safe-area-inset-bottom));
   border-radius: var(--radius-card) var(--radius-card) 0 0;
   border-top: 1px solid var(--glass-line);
   background: var(--bg);
   background-attachment: fixed;
   box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.18);
+}
+
+.sheet::-webkit-scrollbar {
+  display: none;
 }
 
 .sheet__head {
