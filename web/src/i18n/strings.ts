@@ -289,6 +289,7 @@ const he = {
     toList: "מעבר לרשימה",
     youAreHere: "המיקום שלך",
     pinsShown: (n: number) => `${n} מקומות על המפה`,
+    closeCard: "סגירת הכרטיס",
   },
 
   origin: {
@@ -677,6 +678,7 @@ const en: Strings = {
     toList: "Go to the list",
     youAreHere: "Your location",
     pinsShown: (n: number) => `${n} places on the map`,
+    closeCard: "Close card",
   },
 
   origin: {

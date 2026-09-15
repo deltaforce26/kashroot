@@ -1,10 +1,20 @@
 /**
- * Map — glass toggle, tinted carousel card (design 3g), now over a real Google map.
+ * Map — verdict-coloured pins with a popup card over the one you tapped.
  *
  * Marker colour is the API's verdict, drawn from the same CSS custom properties as
  * the pills, so the map introduces no new colour language and follows the light/dark
- * theme without a second palette. Selecting a marker selects its carousel card and
- * the reverse; the map never re-ranks or filters anything.
+ * theme without a second palette. The map never re-ranks or filters anything.
+ *
+ * The card belongs to a pin, so it is anchored to that pin rather than parked at the
+ * bottom of the screen: tapping a pin floats its card just above it, tapping the same
+ * pin again — or the map, or Escape — puts it away. That frees the bottom of the
+ * screen for the tab bar every other full screen has. Nothing is selected on arrival,
+ * so the map opens as a map.
+ *
+ * The popup is a real React card portalled into an `AdvancedMarkerElement`'s content
+ * node, which is what buys the anchoring for free: Google keeps the node glued to its
+ * coordinate through every pan and zoom, where a hand-positioned overlay would have to
+ * re-derive pixels on every `bounds_changed` and still drift mid-gesture.
  *
  * Pins are `AdvancedMarkerElement`, which takes a DOM node rather than the deprecated
  * `Marker`'s symbol path — so the dot is a styled div and the colour comes straight
@@ -18,13 +28,14 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import type { SearchRequest, Verdict } from "../api/types";
 import { certifierLabel, type ResultView } from "../api/viewmodel";
-import { ChevronIcon, PinIcon } from "../components/icons";
+import { ChevronIcon, CloseIcon, PinIcon } from "../components/icons";
 import { tintClass } from "../components/RestaurantCard";
-import { VerdictPill } from "../components/VerdictPill";
-import { ErrorState, LoadingList } from "../components/states";
+import { ErrorState } from "../components/states";
+import { TabBar } from "../components/TabBar";
 import { MAX_RADIUS_KM } from "../config";
 import { isNetworkError, useSearch } from "../hooks/useApi";
 import { formatDistance, pickName, useI18n } from "../i18n/I18nProvider";
@@ -34,6 +45,16 @@ import { MAP_ID, useGoogleMaps } from "../map/useGoogleMaps";
 import { toPayload } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
 
+/** Above the pins and above "you are here", so a card is never half-hidden by a dot. */
+const POPUP_Z = 30;
+
+/**
+ * How far the camera moves up when a card opens, in pixels. `panTo` would centre the
+ * pin and let the card run into the top controls, so the pin is left sitting below
+ * centre with the card in the clear space above it.
+ */
+const POPUP_PAN_UP = 80;
+
 /** Reads a verdict colour from the live theme so map and pills cannot drift apart. */
 function verdictColour(verdict: Verdict): string {
   const token = verdict === "match" ? "--green" : verdict === "no_match" ? "--red" : "--amber";
@@ -41,13 +62,8 @@ function verdictColour(verdict: Verdict): string {
   return value || "#6b6b6b";
 }
 
-/**
- * A pin's visual as a DOM node, which is what an advanced marker takes in place of
- * the old symbol path: the same filled circle in a white ring, grown a little while
- * its card is the one on screen.
- */
-function markerDot(colour: string, selected: boolean): HTMLElement {
-  const dot = document.createElement("div");
+/** The filled circle in a white ring, grown a little while its card is open. */
+function styleDot(dot: HTMLElement, colour: string, selected: boolean): void {
   const diameter = selected ? 22 : 16;
   dot.style.cssText = [
     `width:${diameter}px`,
@@ -57,7 +73,73 @@ function markerDot(colour: string, selected: boolean): HTMLElement {
     `background:${colour}`,
     `border:${selected ? 3 : 2.5}px solid #fff`,
   ].join(";");
+}
+
+/** A pin's visual as a DOM node, which is what an advanced marker takes. */
+function markerDot(colour: string, selected: boolean): HTMLElement {
+  const dot = document.createElement("div");
+  styleDot(dot, colour, selected);
   return dot;
+}
+
+/** What a tap on a pin does: open that card, or close the one already open. */
+export function nextOpenId(current: string | null, tapped: string): string | null {
+  return current === tapped ? null : tapped;
+}
+
+/**
+ * The card that floats over a pin: the name, who certifies it and how far it is, and
+ * the one action worth taking from a map. The verdict is not repeated here — the pin
+ * under the card is already coloured by it, and the restaurant screen spells it out.
+ */
+function MapPopupCard({ item, onClose }: { item: ResultView; onClose: () => void }) {
+  const { t, lang } = useI18n();
+  const name = pickName(lang, item.nameHe, item.nameEn);
+  const tint = tintClass(item.dietType);
+
+  return (
+    // The map closes the card on its own click event, which a DOM click inside the
+    // marker's content never reaches — this only guards against that changing.
+    <div className="map__popup" onClick={(event) => event.stopPropagation()}>
+      {/* The tail is a sibling of the card, not a child: `.card` clips to its radius,
+          which would swallow anything hanging off the bottom edge. */}
+      <article className={`card map__popup__card ${tint}`}>
+        {/* The whole card is the link to the restaurant, with the close button and the
+            navigate link raised above it — the same shape as the search tile. */}
+        <Link to={`/r/${item.id}`} className="card__link" aria-label={name} />
+        <button
+          type="button"
+          className="map__popup__close card__above"
+          aria-label={t.map.closeCard}
+          onClick={onClose}
+        >
+          <CloseIcon size={13} />
+        </button>
+        <span className="card__title">{name}</span>
+        <div className="card__meta on-tint">
+          {[certifierLabel(item, lang), formatDistance(item.distanceKm, t)]
+            .filter(Boolean)
+            .join(" · ")}
+        </div>
+        <div className="card__foot">
+          <a
+            className="cta card__above"
+            style={{ flex: 1, padding: 9, fontSize: 13 }}
+            href={
+              item.geo
+                ? `https://www.google.com/maps/dir/?api=1&destination=${item.geo.lat},${item.geo.lon}`
+                : "#"
+            }
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t.restaurant.navigate}
+          </a>
+        </div>
+      </article>
+      <span className={`map__popup__tail ${tint}`} aria-hidden="true" />
+    </div>
+  );
 }
 
 export function MapView() {
@@ -68,16 +150,20 @@ export function MapView() {
   const { origin, source, requestDeviceLocation } = useOrigin(city);
   const { status: mapsStatus, libs } = useGoogleMaps(lang);
 
-  const [activeIndex, setActiveIndex] = useState(0);
+  // The open card, by restaurant id. Nothing is open on arrival.
+  const [openId, setOpenId] = useState<string | null>(null);
+  // The marker content node the card is portalled into, once there is one.
+  const [popupHost, setPopupHost] = useState<HTMLElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  // True while the track is being scrolled by us (marker tap), so the scroll
-  // handler does not fight the user's finger or echo the selection back.
-  const syncingRef = useRef(false);
-  const settleRef = useRef<number | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const markersRef = useRef<
+    { id: string; verdict: Verdict; marker: google.maps.marker.AdvancedMarkerElement }[]
+  >([]);
   const meMarkerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+  // Read by the marker-building effect, which must not rebuild every pin just because
+  // the selection moved — the restyle effect below handles that.
+  const openIdRef = useRef<string | null>(null);
+  openIdRef.current = openId;
 
   const request = useMemo<SearchRequest>(
     () => ({
@@ -92,66 +178,23 @@ export function MapView() {
 
   // Only geocoded records can be plotted; the rest still exist in the list.
   const plotted = useMemo(() => (data?.items ?? []).filter((item) => item.geo !== null), [data]);
-  const active: ResultView | undefined = plotted[Math.min(activeIndex, plotted.length - 1)];
-
-  useEffect(() => setActiveIndex(0), [city.slug, source]);
-
-  /**
-   * Distance between two consecutive cards, measured rather than assumed so the
-   * gap and side padding cannot drift out of sync with the CSS. It is negative
-   * under RTL, which is exactly the sign scrollLeft uses there, so the same
-   * arithmetic works in both directions.
-   */
-  function strideOf(track: HTMLDivElement): number {
-    const [first, second] = [track.children[0], track.children[1]] as HTMLElement[];
-    if (!first || !second) return 0;
-    return second.offsetLeft - first.offsetLeft;
-  }
-
-  /** Index of the card currently filling the track, from its scroll offset. */
-  function indexFromScroll(track: HTMLDivElement): number {
-    const stride = strideOf(track);
-    return stride === 0 ? 0 : Math.round(track.scrollLeft / stride);
-  }
-
-  // Finger swipe -> selection. Debounced so the marker only moves once the
-  // swipe settles on a card, not on every intermediate frame.
-  function onTrackScroll() {
-    const track = trackRef.current;
-    if (!track || syncingRef.current) return;
-    if (settleRef.current !== null) window.clearTimeout(settleRef.current);
-    settleRef.current = window.setTimeout(() => {
-      settleRef.current = null;
-      const next = Math.min(indexFromScroll(track), Math.max(plotted.length - 1, 0));
-      setActiveIndex((current) => (current === next ? current : next));
-    }, 90);
-  }
-
-  // Selection -> track, for the other direction: tapping a marker brings its
-  // card into view. Skipped when the track is already there.
-  useEffect(() => {
-    const track = trackRef.current;
-    if (!track || plotted.length === 0) return;
-    if (indexFromScroll(track) === activeIndex) return;
-    syncingRef.current = true;
-    track.scrollTo({ left: strideOf(track) * activeIndex, behavior: "smooth" });
-    const done = window.setTimeout(() => {
-      syncingRef.current = false;
-    }, 400);
-    return () => window.clearTimeout(done);
-  }, [activeIndex, plotted.length]);
-
-  useEffect(
-    () => () => {
-      if (settleRef.current !== null) window.clearTimeout(settleRef.current);
-    },
-    [],
+  const open = useMemo(
+    () => (openId === null ? null : (plotted.find((item) => item.id === openId) ?? null)),
+    [plotted, openId],
   );
+
+  useEffect(() => setOpenId(null), [city.slug, source]);
+
+  // A reload can drop the place whose card is open — a different profile, a different
+  // origin — and a card for something no longer on the map would be a lie.
+  useEffect(() => {
+    if (openId !== null && !plotted.some((item) => item.id === openId)) setOpenId(null);
+  }, [plotted, openId]);
 
   // Create the map once the script is ready and the container is mounted.
   useEffect(() => {
     if (mapsStatus !== "ready" || !libs || !containerRef.current || mapRef.current) return;
-    mapRef.current = new libs.maps.Map(containerRef.current, {
+    const map = new libs.maps.Map(containerRef.current, {
       center: { lat: origin.lat, lng: origin.lon },
       zoom: 14,
       mapId: MAP_ID,
@@ -159,37 +202,84 @@ export function MapView() {
       gestureHandling: "greedy",
       clickableIcons: false,
     });
+    // Tapping the map itself puts the card away. Taps inside the card are DOM events
+    // on the marker's content node and never reach this listener.
+    map.addListener("click", () => setOpenId(null));
+    mapRef.current = map;
   }, [mapsStatus, libs, origin]);
 
-  // Redraw markers whenever results, selection or theme change.
+  // Redraw markers whenever results or theme change — not on selection.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !libs) return;
 
-    for (const marker of markersRef.current) marker.map = null;
-    markersRef.current = plotted.map((item, index) => {
-      const selected = index === activeIndex;
+    for (const entry of markersRef.current) entry.marker.map = null;
+    markersRef.current = plotted.map((item) => {
       const marker = new libs.marker.AdvancedMarkerElement({
         map,
         position: { lat: item.geo!.lat, lng: item.geo!.lon },
         title: pickName(lang, item.nameHe, item.nameEn),
-        zIndex: selected ? 10 : 1,
+        zIndex: item.id === openIdRef.current ? 10 : 1,
         // A dot marks a point, so it sits centred on it rather than standing on it
         // the way a teardrop pin would — which is the anchor an advanced marker
         // uses by default.
         anchorTop: "-50%",
         gmpClickable: true,
-        content: markerDot(verdictColour(item.kashrut.verdict), selected),
+        content: markerDot(verdictColour(item.kashrut.verdict), item.id === openIdRef.current),
       });
-      marker.addListener("gmp-click", () => setActiveIndex(index));
-      return marker;
+      marker.addListener("gmp-click", () => setOpenId((current) => nextOpenId(current, item.id)));
+      return { id: item.id, verdict: item.kashrut.verdict, marker };
     });
 
     return () => {
-      for (const marker of markersRef.current) marker.map = null;
+      for (const entry of markersRef.current) entry.marker.map = null;
       markersRef.current = [];
     };
-  }, [plotted, activeIndex, libs, lang]);
+  }, [plotted, libs, lang]);
+
+  // Selection only changes how a pin looks, so it restyles the existing nodes rather
+  // than tearing the whole layer down and building it again.
+  useEffect(() => {
+    for (const entry of markersRef.current) {
+      const selected = entry.id === openId;
+      const dot = entry.marker.content;
+      if (dot instanceof HTMLElement) styleDot(dot, verdictColour(entry.verdict), selected);
+      entry.marker.zIndex = selected ? 10 : 1;
+    }
+  }, [openId, plotted, lang]);
+
+  // The open card, as one more marker whose content React owns.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !libs || !open?.geo) return;
+    const host = document.createElement("div");
+    // The API can mark a non-clickable marker's wrapper `pointer-events: none`; a
+    // descendant is allowed to turn them back on, and this card is all taps.
+    host.style.pointerEvents = "auto";
+    const marker = new libs.marker.AdvancedMarkerElement({
+      map,
+      position: { lat: open.geo.lat, lng: open.geo.lon },
+      // The card stands entirely above its point, the way a speech bubble does.
+      anchorTop: "-100%",
+      zIndex: POPUP_Z,
+      content: host,
+    });
+    setPopupHost(host);
+    return () => {
+      marker.map = null;
+      setPopupHost(null);
+    };
+  }, [open, libs]);
+
+  // Keyboard users cannot tap the map to dismiss, so Escape does it — same as the sheets.
+  useEffect(() => {
+    if (openId === null) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpenId(null);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [openId]);
 
   // "You are here", only when a real device position is in use.
   useEffect(() => {
@@ -208,11 +298,13 @@ export function MapView() {
     });
   }, [source, origin, libs, t.map.youAreHere]);
 
-  // Keep the selected card centred.
+  // Bring the open card into view: its pin below centre, the card in the space above.
   useEffect(() => {
-    if (!mapRef.current || !active?.geo) return;
-    mapRef.current.panTo({ lat: active.geo.lat, lng: active.geo.lon });
-  }, [active]);
+    const map = mapRef.current;
+    if (!map || !open?.geo) return;
+    map.panTo({ lat: open.geo.lat, lng: open.geo.lon });
+    map.panBy(0, -POPUP_PAN_UP);
+  }, [open]);
 
   const mapUnavailable = mapsStatus === "absent" || mapsStatus === "error";
 
@@ -276,73 +368,26 @@ export function MapView() {
         </button>
       </div>
 
-      <div className="map__carousel">
-        {loading ? (
-          <LoadingList rows={1} />
-        ) : error ? (
+      {/* A map is a picture, so how many places are on it is the one thing a screen
+          reader cannot get from it. Announced, not drawn: the map itself is the view. */}
+      <p className="sr-only" role="status">
+        {loading ? t.states.loadingShort : t.map.pinsShown(plotted.length)}
+      </p>
+
+      {/* A search that failed leaves an empty map, which reads as "nothing here"
+          rather than "we could not ask" — so the failure is said out loud, over the
+          map, and the retry is right there. */}
+      {error && mapsStatus === "ready" && (
+        <div className="map__notice">
           <ErrorState isNetwork={isNetworkError(error)} onRetry={reload} />
-        ) : active ? (
-          <>
-            <div
-              className="map__track"
-              ref={trackRef}
-              onScroll={onTrackScroll}
-              aria-label={t.map.list}
-            >
-              {plotted.map((item, index) => (
-                <article
-                  key={item.id}
-                  className={`card card--row map__slide ${tintClass(item.dietType)}`}
-                  style={{ boxShadow: "0 6px 24px rgba(0,0,0,.14)" }}
-                >
-                  {/* The carousel card is itself the link to the restaurant. One
-                      stretched anchor over the card, with the navigate button raised
-                      above it — same shape as the search tile. */}
-                  <Link
-                    to={`/r/${item.id}`}
-                    className="card__link"
-                    aria-label={pickName(lang, item.nameHe, item.nameEn)}
-                    tabIndex={index === activeIndex ? undefined : -1}
-                  />
-                  <span className="card__photo stripe" aria-hidden="true">
-                    {t.photoPlaceholder}
-                  </span>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                    <span className="card__title">{pickName(lang, item.nameHe, item.nameEn)}</span>
-                    <VerdictPill verdict={item.kashrut.verdict} />
-                  </div>
-                  <div className="card__meta on-tint">
-                    {[certifierLabel(item, lang), formatDistance(item.distanceKm, t)]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </div>
-                  <div className="card__foot">
-                    <a
-                      className="cta card__above"
-                      style={{ flex: 1, padding: 9, fontSize: 13 }}
-                      href={
-                        item.geo
-                          ? `https://www.google.com/maps/dir/?api=1&destination=${item.geo.lat},${item.geo.lon}`
-                          : "#"
-                      }
-                      target="_blank"
-                      rel="noreferrer"
-                      tabIndex={index === activeIndex ? undefined : -1}
-                    >
-                      {t.restaurant.navigate}
-                    </a>
-                  </div>
-                </article>
-              ))}
-            </div>
-            <div className="dots" aria-hidden="true">
-              {plotted.slice(0, 6).map((item, index) => (
-                <span key={item.id} data-on={index === activeIndex} />
-              ))}
-            </div>
-          </>
-        ) : null}
-      </div>
+        </div>
+      )}
+
+      {popupHost && open
+        ? createPortal(<MapPopupCard item={open} onClose={() => setOpenId(null)} />, popupHost)
+        : null}
+
+      <TabBar />
     </div>
   );
 }

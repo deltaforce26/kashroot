@@ -1361,70 +1361,72 @@ a {
   z-index: 3;
 }
 
-.map__carousel {
+/*
+ * The card that floats over the pin you tapped.
+ *
+ * It is the content of an advanced marker, so Google owns where it sits and this only
+ * says how big it is and how it looks. The lift is a transform rather than a margin
+ * because the marker's anchor maths measures the box, not what the box was shifted by:
+ * a margin would move the anchor with it and the card would never clear the dot.
+ */
+.map__popup {
+  position: relative;
+  /* Narrow enough to leave map either side of it inside the phone shell. */
+  width: min(280px, 72vw);
+  transform: translateY(-14px);
+  /* The marker wrapper can disable pointer events on a non-clickable marker; the card
+     is nothing but taps, so it turns them back on for itself. */
+  pointer-events: auto;
+}
+
+.map__popup__card {
+  padding: 12px 14px;
+  /* Lifted further off the map than a card in a list is off the page, because here
+     there is a moving picture directly behind it. */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+}
+
+.map__popup .card__title {
+  display: block;
+  /* Clear of the close button, which is inset from the same edge. */
+  padding-inline-end: 24px;
+}
+
+/* A square stood on its corner: only the two lower sides carry the card's hairline,
+   so it reads as the card's own point rather than a diamond under it. */
+.map__popup__tail {
   position: absolute;
-  bottom: calc(16px + env(safe-area-inset-bottom));
-  inset-inline: 0;
-  padding: 0 20px;
-  z-index: 3;
+  bottom: -5px;
+  inset-inline-start: 50%;
+  width: 12px;
+  height: 12px;
+  margin-inline-start: -6px;
+  transform: rotate(45deg);
+  border-inline-end: 1px solid var(--glass-line);
+  border-bottom: 1px solid var(--glass-line);
+  border-end-end-radius: 2px;
 }
 
-/* One card per viewport, swiped horizontally. Snap points make a flick land on
-   a card rather than anywhere; the vertical padding is there so the card's drop
-   shadow is not clipped by the scroll container, and is cancelled by the
-   matching negative margin so nothing moves. */
-.map__track {
-  display: flex;
-  /* 40px = twice the side inset, so the next card starts exactly where the
-     current card's photo stops overhanging. Nothing peeks past the edge and the
-     stride is one full screen. */
-  gap: 40px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
-  padding: 10px 20px 14px;
-  margin: -10px -20px -14px;
-  scrollbar-width: none;
-}
-
-.map__track::-webkit-scrollbar {
-  display: none;
-}
-
-.map__slide {
-  flex: 0 0 100%;
-  scroll-snap-align: center;
-  scroll-snap-stop: always;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .map__track {
-    scroll-behavior: auto;
-  }
-}
-
-.dots {
-  display: flex;
-  justify-content: center;
-  gap: 5px;
-  margin-top: 10px;
-}
-
-.dots span {
-  width: 5px;
-  height: 5px;
+.map__popup__close {
+  position: absolute;
+  top: 8px;
+  inset-inline-end: 8px;
+  width: 24px;
+  height: 24px;
   border-radius: var(--radius-pill);
-  background: var(--hair);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sub);
 }
 
-.dots span[data-on="true"] {
-  width: 16px;
-  height: 5px;
-  border-radius: 3px;
-  background: var(--ink);
+/* A search that failed, said over the map rather than under it. */
+.map__notice {
+  position: absolute;
+  top: 50%;
+  inset-inline: 24px;
+  transform: translateY(-50%);
+  z-index: 4;
 }
 
 /* ── Install prompt ────────────────────────────────────────────────────── */
