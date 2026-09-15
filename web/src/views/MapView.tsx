@@ -19,7 +19,9 @@
  * Pins are `AdvancedMarkerElement`, which takes a DOM node rather than the deprecated
  * `Marker`'s symbol path — so the dot is a styled div and the colour comes straight
  * from the same custom property. Advanced markers only render on a map created with a
- * map ID, which is why the map is constructed with one; see `useGoogleMaps`.
+ * map ID, which is why the map is constructed with one; see `useGoogleMaps`. A
+ * browser that cannot build one gets classic pins and a plainer card instead of a
+ * crash — every marker on this screen goes through `map/pins.ts`, which never throws.
  *
  * When there is no maps key, or the script fails to load — a blocked CDN, an
  * exhausted quota, or simply being offline — the screen falls back to the design's
@@ -41,12 +43,21 @@ import { isNetworkError, useSearch } from "../hooks/useApi";
 import { formatDistance, pickName, useI18n } from "../i18n/I18nProvider";
 import { useCity } from "../location/useCity";
 import { useOrigin } from "../location/useOrigin";
+import { createPin, createPopupAnchor, type Pin } from "../map/pins";
 import { MAP_ID, useGoogleMaps } from "../map/useGoogleMaps";
 import { toPayload } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
 
 /** Above the pins and above "you are here", so a card is never half-hidden by a dot. */
 const POPUP_Z = 30;
+
+/** "You are here" sits above every result pin, and the open card's pin above the rest. */
+const ME_Z = 20;
+const SELECTED_Z = 10;
+const PLAIN_Z = 1;
+
+/** Google's own blue for a device position — a location, not a verdict. */
+const ME_COLOUR = "#1a73e8";
 
 /**
  * How far the camera moves up when a card opens, in pixels. `panTo` would centre the
@@ -60,26 +71,6 @@ function verdictColour(verdict: Verdict): string {
   const token = verdict === "match" ? "--green" : verdict === "no_match" ? "--red" : "--amber";
   const value = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
   return value || "#6b6b6b";
-}
-
-/** The filled circle in a white ring, grown a little while its card is open. */
-function styleDot(dot: HTMLElement, colour: string, selected: boolean): void {
-  const diameter = selected ? 22 : 16;
-  dot.style.cssText = [
-    `width:${diameter}px`,
-    `height:${diameter}px`,
-    "box-sizing:border-box",
-    "border-radius:50%",
-    `background:${colour}`,
-    `border:${selected ? 3 : 2.5}px solid #fff`,
-  ].join(";");
-}
-
-/** A pin's visual as a DOM node, which is what an advanced marker takes. */
-function markerDot(colour: string, selected: boolean): HTMLElement {
-  const dot = document.createElement("div");
-  styleDot(dot, colour, selected);
-  return dot;
 }
 
 /** What a tap on a pin does: open that card, or close the one already open. */
@@ -156,10 +147,8 @@ export function MapView() {
   const [popupHost, setPopupHost] = useState<HTMLElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<
-    { id: string; verdict: Verdict; marker: google.maps.marker.AdvancedMarkerElement }[]
-  >([]);
-  const meMarkerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+  const markersRef = useRef<{ id: string; verdict: Verdict; pin: Pin }[]>([]);
+  const meMarkerRef = useRef<Pin | null>(null);
   // Read by the marker-building effect, which must not rebuild every pin just because
   // the selection moved — the restyle effect below handles that.
   const openIdRef = useRef<string | null>(null);
@@ -213,26 +202,23 @@ export function MapView() {
     const map = mapRef.current;
     if (!map || !libs) return;
 
-    for (const entry of markersRef.current) entry.marker.map = null;
-    markersRef.current = plotted.map((item) => {
-      const marker = new libs.marker.AdvancedMarkerElement({
+    for (const entry of markersRef.current) entry.pin.remove();
+    markersRef.current = plotted.flatMap((item) => {
+      const selected = item.id === openIdRef.current;
+      const pin = createPin(libs.marker, {
         map,
         position: { lat: item.geo!.lat, lng: item.geo!.lon },
         title: pickName(lang, item.nameHe, item.nameEn),
-        zIndex: item.id === openIdRef.current ? 10 : 1,
-        // A dot marks a point, so it sits centred on it rather than standing on it
-        // the way a teardrop pin would — which is the anchor an advanced marker
-        // uses by default.
-        anchorTop: "-50%",
-        gmpClickable: true,
-        content: markerDot(verdictColour(item.kashrut.verdict), item.id === openIdRef.current),
+        colour: verdictColour(item.kashrut.verdict),
+        selected,
+        zIndex: selected ? SELECTED_Z : PLAIN_Z,
+        onClick: () => setOpenId((current) => nextOpenId(current, item.id)),
       });
-      marker.addListener("gmp-click", () => setOpenId((current) => nextOpenId(current, item.id)));
-      return { id: item.id, verdict: item.kashrut.verdict, marker };
+      return pin ? [{ id: item.id, verdict: item.kashrut.verdict, pin }] : [];
     });
 
     return () => {
-      for (const entry of markersRef.current) entry.marker.map = null;
+      for (const entry of markersRef.current) entry.pin.remove();
       markersRef.current = [];
     };
   }, [plotted, libs, lang]);
@@ -242,9 +228,11 @@ export function MapView() {
   useEffect(() => {
     for (const entry of markersRef.current) {
       const selected = entry.id === openId;
-      const dot = entry.marker.content;
-      if (dot instanceof HTMLElement) styleDot(dot, verdictColour(entry.verdict), selected);
-      entry.marker.zIndex = selected ? 10 : 1;
+      entry.pin.update({
+        colour: verdictColour(entry.verdict),
+        selected,
+        zIndex: selected ? SELECTED_Z : PLAIN_Z,
+      });
     }
   }, [openId, plotted, lang]);
 
@@ -256,17 +244,16 @@ export function MapView() {
     // The API can mark a non-clickable marker's wrapper `pointer-events: none`; a
     // descendant is allowed to turn them back on, and this card is all taps.
     host.style.pointerEvents = "auto";
-    const marker = new libs.marker.AdvancedMarkerElement({
+    const anchor = createPopupAnchor(libs.maps, libs.marker, {
       map,
       position: { lat: open.geo.lat, lng: open.geo.lon },
-      // The card stands entirely above its point, the way a speech bubble does.
-      anchorTop: "-100%",
+      host,
       zIndex: POPUP_Z,
-      content: host,
     });
+    if (!anchor) return;
     setPopupHost(host);
     return () => {
-      marker.map = null;
+      anchor.remove();
       setPopupHost(null);
     };
   }, [open, libs]);
@@ -285,16 +272,16 @@ export function MapView() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !libs) return;
-    if (meMarkerRef.current) meMarkerRef.current.map = null;
+    if (meMarkerRef.current) meMarkerRef.current.remove();
     meMarkerRef.current = null;
     if (source !== "device") return;
-    meMarkerRef.current = new libs.marker.AdvancedMarkerElement({
+    meMarkerRef.current = createPin(libs.marker, {
       map,
       position: { lat: origin.lat, lng: origin.lon },
       title: t.map.youAreHere,
-      zIndex: 20,
-      anchorTop: "-50%",
-      content: markerDot("#1a73e8", false),
+      colour: ME_COLOUR,
+      selected: false,
+      zIndex: ME_Z,
     });
   }, [source, origin, libs, t.map.youAreHere]);
 
