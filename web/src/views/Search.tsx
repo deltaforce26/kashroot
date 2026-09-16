@@ -1,21 +1,27 @@
 /**
- * Search — filter chips, result tiles (design 3e).
+ * Search — city chips, the filter bar, result tiles (design 3e).
  *
- * Filtering is Layer 2 territory only: city, diet type, and a name filter. Nothing
- * here filters or reorders by verdict. A NO_MATCH result stays in the list with its
- * own pill; hiding it would answer a question the user did not ask.
+ * Nothing here filters or reorders by verdict. The bar's facets decide which
+ * restaurants get asked about, and the server answers each one that survives with
+ * its own verdict: a NO_MATCH result stays in the list with its own pill. The
+ * certifier facet is the nearest thing to a kashrut control on this screen, and it
+ * narrows on who issued a certificate, never on what the certificate concludes.
  *
  * The search box sends `query` to the server, which does an exact case-insensitive
  * substring match over name and address — no fuzzy matching, no Hebrew
  * normalization. The UI is careful not to imply otherwise: there is no "did you
  * mean", and a miss is explained as a spelling difference rather than an absence.
+ *
+ * This is a city search with no centre, so the bar's radius has nothing to measure
+ * from and is left out of its sheet here.
  */
 
 import { useDeferredValue, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { MAX_QUERY_LENGTH, type DietType, type SearchRequest } from "../api/types";
+import { MAX_QUERY_LENGTH, type SearchRequest } from "../api/types";
 import { hasVerifiedMatch } from "../api/viewmodel";
-import { PinIcon, SearchIcon, SlidersIcon } from "../components/icons";
+import { FilterBar } from "../components/filters/FilterBar";
+import { PinIcon, SearchIcon } from "../components/icons";
 import { RestaurantTileCard } from "../components/RestaurantCard";
 import {
   EmptyCity,
@@ -29,6 +35,8 @@ import {
 import { SaveToListHost } from "../components/SaveToListSheet";
 import { TabBar } from "../components/TabBar";
 import { CITIES } from "../config";
+import { toSearchFilters } from "../filters/model";
+import type { FilterId } from "../filters/registry";
 import { useFilters } from "../filters/useFilters";
 import { useCity } from "../location/useCity";
 import { isNetworkError, useSearch } from "../hooks/useApi";
@@ -37,7 +45,7 @@ import { toPayload } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
 import { useSaveToggle } from "../saved/useSaveToggle";
 
-const DIET_FILTERS: DietType[] = ["meat", "dairy", "pareve", "fish"];
+const NOT_ON_SEARCH: readonly FilterId[] = ["radius"];
 
 export function Search() {
   const { t, lang } = useI18n();
@@ -49,24 +57,22 @@ export function Search() {
   const [params] = useSearchParams();
   const [query, setQuery] = useState(() => params.get("q") ?? "");
   const { slug: city, setSlug: setCity } = useCity();
-  // Shared with home and /filters, so the kitchen picked here is the one picked there.
-  const { filters, setFilters } = useFilters();
-  const diet = filters.diet;
-  const setDiet = (next: DietType | null) => setFilters({ diet: next });
+  // Shared with home, so a filter picked here is the one picked there.
+  const { filters, reset: resetFilters } = useFilters();
   const deferredQuery = useDeferredValue(query);
 
   const trimmedQuery = deferredQuery.trim();
 
-  const request = useMemo<SearchRequest>(
-    () => ({
+  const request = useMemo<SearchRequest>(() => {
+    const facets = toSearchFilters(filters);
+    return {
       profile: toPayload(profile),
       city,
       page_size: 100,
       ...(trimmedQuery ? { query: trimmedQuery.slice(0, MAX_QUERY_LENGTH) } : {}),
-      ...(diet ? { filters: { diet_type: diet } } : {}),
-    }),
-    [profile, city, diet, trimmedQuery],
-  );
+      ...(facets ? { filters: facets } : {}),
+    };
+  }, [profile, city, filters, trimmedQuery]);
 
   const { data, loading, error, reload } = useSearch(request);
   const results = data?.items ?? [];
@@ -86,14 +92,6 @@ export function Search() {
           <div style={{ fontSize: 11.5, color: "var(--sub)" }}>{t.search.searchingNear}</div>
           <div style={{ fontWeight: 700, fontSize: 15.5 }}>{cityLabel(city)}</div>
         </div>
-        <button
-          type="button"
-          className="circle glass"
-          aria-label={t.home.openFilters}
-          onClick={() => navigate("/filters")}
-        >
-          <SlidersIcon />
-        </button>
       </header>
 
       <label className="searchbar glass" style={{ margin: "14px 20px 0" }}>
@@ -125,27 +123,7 @@ export function Search() {
         ))}
       </div>
 
-      <div className="chips" role="tablist" style={{ paddingTop: 0 }}>
-        <button
-          type="button"
-          className="chip"
-          aria-pressed={diet === null}
-          onClick={() => setDiet(null)}
-        >
-          {t.search.allFilter}
-        </button>
-        {DIET_FILTERS.map((value) => (
-          <button
-            key={value}
-            type="button"
-            className="chip"
-            aria-pressed={diet === value}
-            onClick={() => setDiet(value)}
-          >
-            {t.diet[value]}
-          </button>
-        ))}
-      </div>
+      <FilterBar exclude={NOT_ON_SEARCH} />
 
       <div className="shell__scroll" style={{ paddingTop: 10 }}>
         {error && isNetworkError(error) && <OfflineBanner />}
@@ -170,7 +148,7 @@ export function Search() {
             onWidenProfile={() => navigate("/profile")}
             onShowAll={() => {
               setQuery("");
-              setDiet(null);
+              resetFilters();
             }}
           />
         ) : (

@@ -92,6 +92,14 @@ def test_refreshed_rows_are_dated_by_their_freshest_source(session, imported):
     assert certificate.verified_at.date() == dt.date(2026, 8, 14)
 
 
+@pytest.mark.xfail(
+    reason=(
+        "3 Landa records (קברנה, רויאל, שביט - לכבוד שבת ויו\"ט) are in the corpus but "
+        "absent from landa_restaurants_elul_5786.csv, so this sees 44, not 41. Deferred "
+        "by explicit product decision pending research — see docs/data-review-todo.md."
+    ),
+    strict=False,
+)
 def test_the_refresh_is_the_whole_of_its_certifier(session, imported):
     """The Elul list is treated as the complete record for Landa, not a category slice.
 

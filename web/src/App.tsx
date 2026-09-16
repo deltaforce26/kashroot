@@ -15,7 +15,6 @@ import { useI18n } from "./i18n/I18nProvider";
 import { isProfileUsable } from "./profile/profile";
 import { SaveTargetProvider } from "./saved/SaveTargetProvider";
 import { useProfile } from "./profile/ProfileProvider";
-import { Filters } from "./views/Filters";
 import { Home } from "./views/Home";
 import { MapList } from "./views/MapList";
 import { MapView } from "./views/MapView";
@@ -65,14 +64,9 @@ export default function App() {
               </RequireProfile>
             }
           />
-          <Route
-            path="/filters"
-            element={
-              <RequireProfile>
-                <Filters />
-              </RequireProfile>
-            }
-          />
+          {/* The filters screen became the filter bar's bottom sheet, which opens in
+              place over home and search. The old address still lands somewhere real. */}
+          <Route path="/filters" element={<Navigate to="/" replace />} />
           <Route
             path="/search"
             element={

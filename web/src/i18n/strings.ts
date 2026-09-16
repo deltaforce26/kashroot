@@ -52,41 +52,35 @@ const he = {
     filtersActive: "סינון פעיל",
     resultsTitle: (n: number) => `${n} מסעדות נבדקו עבורך`,
     resultsSub: "לפי הפרופיל שלך · במרחק הליכה ונסיעה קצרה",
-    tabs: { all: "הכל", meat: "בשרי", dairy: "חלבי", pareve: "פרווה" },
   },
 
-  // The soft-filter screen. Only facets the corpus can actually answer appear here:
-  // price level, opening hours and amenities are unpopulated for nearly every seed
-  // record, so offering them would ship controls that can only empty the list.
+  // The filter bar and its sheet (components/filters/). A chip shows its label at
+  // the default and its value once picked, so every value has to read on its own in
+  // a pill. `rating` scores a restaurant as a place to eat — never a certifier, never
+  // kashrut — and is the one key the neutrality guard exempts, by path.
   filters: {
     title: "סינון",
-    lead: "מצמצם את התוצאות. לא קובע כשרות.",
-    city: "עיר",
-    diet: "סוג מטבח",
-    anyDiet: "הכל",
-    radius: "מרחק ממרכז העיר",
+    kashrut: "כשרות",
+    openNow: "פתוח עכשיו",
+    radius: "רדיוס",
+    diet: "סוג אוכל",
+    rating: "דירוג",
     radiusValue: (km: number) => `${km} ק״מ`,
-    kashrutTitle: "כשרות אינה מסנן",
-    kashrutBody:
-      "ההתאמה נקבעת מהפרופיל שלכם, ותוצאה שאינה מתאימה לא נעלמת מהרשימה — היא מוצגת עם התווית שלה.",
-    kashrutLink: "עריכת הפרופיל הכשרותי ›",
-    unavailable:
-      "טווח מחירים, ״פתוח עכשיו״ ונגישות עדיין לא נאספו ברוב הרשומות, ולכן אינם מוצעים כאן.",
-    reset: "איפוס",
-    apply: "הצגת התוצאות",
-    // The header sliders circle is the same control that opened this screen, so it
-    // has to close it too. Named separately from `apply` — the same accessible name
-    // on two buttons gives a screen-reader user no way to tell them apart.
+    // Isolated left-to-right: in a Hebrew line a bare "4+" is laid out as "+4".
+    ratingValue: (min: number) => `⁦${min}+⁩`,
+    summary: (label: string, n: number) => `${label} · ${n}`,
+    certifiersUnavailable: "רשימת גופי הכשרות עדיין לא נטענה.",
+    clear: "נקה",
+    clearAll: "נקה הכל",
+    apply: "החל",
+    // Named separately from `apply` — the same accessible name on two buttons gives
+    // a screen-reader user no way to tell them apart.
     close: "סגירת הסינון",
   },
 
   search: {
     searchingNear: "מחפשים ליד",
     placeholder: "חיפוש לפי שם או רחוב…",
-    // The design draws category chips (bakeries, ice cream, cafés). The corpus has
-    // no category field — only the published diet type — so the chips filter by that
-    // rather than pretending to a category we cannot back with data.
-    allFilter: "הכל",
     resultCount: (n: number) => `${n} תוצאות`,
   },
 
@@ -289,6 +283,7 @@ const he = {
     toList: "מעבר לרשימה",
     youAreHere: "המיקום שלך",
     pinsShown: (n: number) => `${n} מקומות על המפה`,
+    closeCard: "סגירת הכרטיס",
   },
 
   origin: {
@@ -455,32 +450,28 @@ const en: Strings = {
     filtersActive: "Filters on",
     resultsTitle: (n: number) => `${n} restaurants checked for you`,
     resultsSub: "Against your profile · within a short walk or drive",
-    tabs: { all: "All", meat: "Meat", dairy: "Dairy", pareve: "Pareve" },
   },
 
   filters: {
     title: "Filters",
-    lead: "Narrows the results. Never decides kashrut.",
-    city: "City",
-    diet: "Kitchen",
-    anyDiet: "All",
-    radius: "Distance from the city centre",
+    kashrut: "Kashrut",
+    openNow: "Open now",
+    radius: "Radius",
+    diet: "Food type",
+    rating: "Rating",
     radiusValue: (km: number) => `${km} km`,
-    kashrutTitle: "Kashrut is not a filter",
-    kashrutBody:
-      "Your profile decides the verdict, and a result that does not match is never hidden — it stays in the list with its own label.",
-    kashrutLink: "Edit your kashrut profile ›",
-    unavailable:
-      "Price range, open-now and accessibility are not recorded for most entries yet, so they are not offered here.",
-    reset: "Reset",
-    apply: "Show results",
+    ratingValue: (min: number) => `${min}+`,
+    summary: (label: string, n: number) => `${label} · ${n}`,
+    certifiersUnavailable: "The certifier list has not loaded yet.",
+    clear: "Clear",
+    clearAll: "Clear all",
+    apply: "Apply",
     close: "Close filters",
   },
 
   search: {
     searchingNear: "Searching near",
     placeholder: "Search by name or street…",
-    allFilter: "All",
     resultCount: (n: number) => `${n} results`,
   },
 
@@ -677,6 +668,7 @@ const en: Strings = {
     toList: "Go to the list",
     youAreHere: "Your location",
     pinsShown: (n: number) => `${n} places on the map`,
+    closeCard: "Close card",
   },
 
   origin: {

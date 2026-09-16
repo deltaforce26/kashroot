@@ -38,6 +38,22 @@ MAX_QUERY_ROWS = 1000
 MAX_SEARCH_QUERY_LENGTH = 200
 LIKE_ESCAPE_CHAR = "\\"
 
+#: ``SearchFilters.diet_types`` (multi-select kitchen filter). Bounded to the number
+#: of ``DietType`` members — a longer list can only contain duplicates.
+MAX_DIET_TYPES = 6
+
+#: ``SearchFilters.certifier_ids`` (filter on certificate identity, not verdict).
+#: Generous headroom over the certifier corpus so a legitimate "select most of them"
+#: whitelist-style filter never hits the cap, while still rejecting a pathological
+#: payload.
+MAX_CERTIFIER_IDS = 200
+
+#: ``SearchFilters.min_rating``. Bounds only — there is no restaurant rating data
+#: anywhere in the corpus or schema, so the field is accepted and ignored (see the
+#: field's own docstring and ``app.api.public.build_search_statement``).
+MIN_RATING = 0.0
+MAX_RATING = 5.0
+
 ERROR_CENTER_OR_CITY_REQUIRED = "at least one of 'center' or 'city' must be provided"
 ERROR_DUPLICATE_WHITELIST_CERTIFIER = "duplicate whitelist entry for certifier_id {certifier_id}"
 ERROR_RESTAURANT_NOT_FOUND = "restaurant not found"

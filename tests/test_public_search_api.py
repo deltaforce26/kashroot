@@ -631,6 +631,288 @@ def test_search_query_does_not_change_ordering(client, session) -> None:
     assert [item["kashrut"]["verdict"] for item in items] == ["match", "no_match"]
 
 
+# --------------------------------------------------------------- filters.diet_types
+
+
+def test_search_diet_types_filter_single_value(client, session) -> None:
+    certifier = make_certifier(session)
+    dairy = make_restaurant(session, name_he="חלבי", diet_type=DietType.DAIRY)
+    meat = make_restaurant(session, name_he="בשרי", diet_type=DietType.MEAT)
+    make_certificate(session, dairy, certifier)
+    make_certificate(session, meat, certifier)
+    session.commit()
+
+    response = client.post(
+        "/v1/search",
+        json={
+            "profile": {"whitelist": [{"certifier_id": str(certifier.id)}]},
+            "city": "jerusalem",
+            "filters": {"diet_types": ["dairy"]},
+        },
+    )
+
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["restaurant_id"] == str(dairy.id)
+
+
+def test_search_diet_types_filter_multiple_values(client, session) -> None:
+    certifier = make_certifier(session)
+    dairy = make_restaurant(session, name_he="חלבי", diet_type=DietType.DAIRY)
+    meat = make_restaurant(session, name_he="בשרי", diet_type=DietType.MEAT)
+    pareve = make_restaurant(session, name_he="פרווה", diet_type=DietType.PAREVE)
+    make_certificate(session, dairy, certifier)
+    make_certificate(session, meat, certifier)
+    make_certificate(session, pareve, certifier)
+    session.commit()
+
+    response = client.post(
+        "/v1/search",
+        json={
+            "profile": {"whitelist": [{"certifier_id": str(certifier.id)}]},
+            "city": "jerusalem",
+            "filters": {"diet_types": ["dairy", "meat"]},
+        },
+    )
+
+    body = response.json()
+    ids = {item["restaurant_id"] for item in body["items"]}
+    assert ids == {str(dairy.id), str(meat.id)}
+
+
+def test_search_diet_types_empty_is_no_op(client, session) -> None:
+    certifier = make_certifier(session)
+    restaurant = make_restaurant(session, diet_type=DietType.MEAT)
+    make_certificate(session, restaurant, certifier)
+    session.commit()
+
+    response = client.post(
+        "/v1/search",
+        json={
+            "profile": {"whitelist": [{"certifier_id": str(certifier.id)}]},
+            "city": "jerusalem",
+            "filters": {"diet_types": []},
+        },
+    )
+
+    assert response.json()["total"] == 1
+
+
+def test_search_diet_types_combined_with_diet_type_is_and(client, session) -> None:
+    """Both fields apply together (AND): a restaurant must satisfy the single
+    ``diet_type`` AND be in the ``diet_types`` list.
+    """
+    certifier = make_certifier(session)
+    meat = make_restaurant(session, name_he="בשרי", diet_type=DietType.MEAT)
+    dairy = make_restaurant(session, name_he="חלבי", diet_type=DietType.DAIRY)
+    make_certificate(session, meat, certifier)
+    make_certificate(session, dairy, certifier)
+    session.commit()
+
+    response = client.post(
+        "/v1/search",
+        json={
+            "profile": {"whitelist": [{"certifier_id": str(certifier.id)}]},
+            "city": "jerusalem",
+            "filters": {"diet_type": "meat", "diet_types": ["meat", "dairy"]},
+        },
+    )
+
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["restaurant_id"] == str(meat.id)
+
+
+def test_search_diet_types_rejects_too_many_entries(client) -> None:
+    response = client.post(
+        "/v1/search",
+        json={
+            "profile": {"whitelist": []},
+            "city": "jerusalem",
+            "filters": {
+                "diet_types": ["meat", "dairy", "pareve", "fish", "mixed", "dairy_pareve", "meat"]
+            },
+        },
+    )
+
+    assert response.status_code == 422
+
+
+# ------------------------------------------------------------ filters.certifier_ids
+
+
+def test_search_certifier_ids_filter_includes_matching_certifier(client, session) -> None:
+    certifier = make_certifier(session)
+    other_certifier = make_certifier(session)
+    restaurant = make_restaurant(session)
+    make_certificate(session, restaurant, certifier)
+    session.commit()
+
+    response = client.post(
+        "/v1/search",
+        json={
+            "profile": {"whitelist": []},
+            "city": "jerusalem",
+            "filters": {"certifier_ids": [str(certifier.id), str(other_certifier.id)]},
+        },
+    )
+
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["restaurant_id"] == str(restaurant.id)
+
+
+def test_search_certifier_ids_filter_excludes_restaurant_with_no_cert_from_listed_certifier(
+    client, session
+) -> None:
+    certifier = make_certifier(session)
+    unrelated_certifier = make_certifier(session)
+    restaurant = make_restaurant(session)
+    make_certificate(session, restaurant, unrelated_certifier)
+    session.commit()
+
+    response = client.post(
+        "/v1/search",
+        json={
+            "profile": {"whitelist": []},
+            "city": "jerusalem",
+            "filters": {"certifier_ids": [str(certifier.id)]},
+        },
+    )
+
+    assert response.json()["total"] == 0
+
+
+def test_search_certifier_ids_filter_includes_restaurant_whose_only_cert_from_it_is_expired(
+    client, session
+) -> None:
+    """The certifier_ids facet filters on certificate *identity* only, regardless of
+    state — an expired/revoked certificate from a listed certifier still qualifies
+    the restaurant for the candidate set, and its verdict pill (computed separately,
+    untouched by this filter) truthfully reports NO_MATCH/UNKNOWN as it already did.
+    """
+    certifier = make_certifier(session)
+    restaurant = make_restaurant(session)
+    make_certificate(session, restaurant, certifier, state=CertificateState.EXPIRED)
+    session.commit()
+
+    response = client.post(
+        "/v1/search",
+        json={
+            "profile": {"whitelist": []},
+            "city": "jerusalem",
+            "filters": {"certifier_ids": [str(certifier.id)]},
+        },
+    )
+
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["restaurant_id"] == str(restaurant.id)
+
+
+def test_search_certifier_ids_filter_includes_restaurant_with_revoked_cert(client, session) -> None:
+    certifier = make_certifier(session)
+    restaurant = make_restaurant(session)
+    make_certificate(session, restaurant, certifier, state=CertificateState.REVOKED)
+    session.commit()
+
+    response = client.post(
+        "/v1/search",
+        json={
+            "profile": {"whitelist": []},
+            "city": "jerusalem",
+            "filters": {"certifier_ids": [str(certifier.id)]},
+        },
+    )
+
+    assert response.json()["total"] == 1
+
+
+def test_search_certifier_ids_empty_is_no_op(client, session) -> None:
+    certifier = make_certifier(session)
+    restaurant = make_restaurant(session)
+    make_certificate(session, restaurant, certifier)
+    session.commit()
+
+    response = client.post(
+        "/v1/search",
+        json={
+            "profile": {"whitelist": []},
+            "city": "jerusalem",
+            "filters": {"certifier_ids": []},
+        },
+    )
+
+    assert response.json()["total"] == 1
+
+
+def test_search_certifier_ids_rejects_too_many_entries(client) -> None:
+    too_many = [str(uuid.uuid4()) for _ in range(201)]
+    response = client.post(
+        "/v1/search",
+        json={
+            "profile": {"whitelist": []},
+            "city": "jerusalem",
+            "filters": {"certifier_ids": too_many},
+        },
+    )
+
+    assert response.status_code == 422
+
+
+# ----------------------------------------------------------------- filters.min_rating
+
+
+def test_search_min_rating_is_accepted_and_ignored(client, session) -> None:
+    """There is no rating data anywhere in the corpus or schema — ``min_rating`` is
+    validated (bounds only) and then has no effect on which restaurants are returned,
+    the same treatment ``open_now`` already gets.
+    """
+    certifier = make_certifier(session)
+    restaurant = make_restaurant(session)
+    make_certificate(session, restaurant, certifier)
+    session.commit()
+
+    response = client.post(
+        "/v1/search",
+        json={
+            "profile": {"whitelist": [{"certifier_id": str(certifier.id)}]},
+            "city": "jerusalem",
+            "filters": {"min_rating": 4.5},
+        },
+    )
+
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["restaurant_id"] == str(restaurant.id)
+
+
+def test_search_min_rating_rejects_out_of_range_value(client) -> None:
+    response = client.post(
+        "/v1/search",
+        json={
+            "profile": {"whitelist": []},
+            "city": "jerusalem",
+            "filters": {"min_rating": 5.5},
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_search_min_rating_rejects_negative_value(client) -> None:
+    response = client.post(
+        "/v1/search",
+        json={
+            "profile": {"whitelist": []},
+            "city": "jerusalem",
+            "filters": {"min_rating": -1},
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_search_pagination(client, session) -> None:
     certifier = make_certifier(session)
     for i in range(3):

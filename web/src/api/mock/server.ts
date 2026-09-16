@@ -361,6 +361,8 @@ export function mockCertifiers(): Promise<CertifierListItem[]> {
 export function mockSearch(request: SearchRequest, now = new Date()): Promise<SearchResponseOut> {
   const center = request.center ?? DEFAULT_CENTER;
   const radiusKm = request.radius_km ?? 25;
+  const dietTypes = request.filters?.diet_types ?? [];
+  const certifierIds = request.filters?.certifier_ids ?? [];
 
   const items: SearchResultItemOut[] = [];
   for (const restaurant of RESTAURANTS) {
@@ -368,6 +370,16 @@ export function mockSearch(request: SearchRequest, now = new Date()): Promise<Se
     if (request.center && distanceKm > radiusKm) continue;
     if (request.city && restaurant.city_slug !== request.city) continue;
     if (request.filters?.diet_type && restaurant.diet_type !== request.filters.diet_type) continue;
+    if (dietTypes.length > 0 && !(restaurant.diet_type && dietTypes.includes(restaurant.diet_type)))
+      continue;
+    // Identity, not outcome: a certificate in any state counts, as on the API. The
+    // API also accepts `open_now` and `min_rating` and applies neither — there is no
+    // hours or rating data to apply them to — so neither does this.
+    if (
+      certifierIds.length > 0 &&
+      !restaurant.certificates.some((cert) => certifierIds.includes(cert.certifier_id))
+    )
+      continue;
     if (
       request.filters?.price_level &&
       restaurant.price_level !== request.filters.price_level
