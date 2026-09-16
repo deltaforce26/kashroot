@@ -121,8 +121,10 @@ describe("no client-side kashrut logic", () => {
   });
 
   /**
-   * Two owners of the technical detail, both of them logging it rather than showing
-   * it: the data layer for a failed request, the boundary for a failed render.
+   * The owners of the technical detail, all of them logging it rather than showing
+   * it: the data layer for a failed request, the boundary for a failed render, and
+   * the map's pins for a marker the browser could not build — which the user sees
+   * as a plainer pin, or none, and never as an error.
    */
   it("keeps the technical detail to a console.error in the files that own it", () => {
     const logging = files
@@ -133,6 +135,7 @@ describe("no client-side kashrut logic", () => {
     expect(logging).toEqual([
       "components/ErrorBoundary.tsx",
       "hooks/useApi.ts",
+      "map/pins.ts",
       "profile/ProfileProvider.tsx",
     ]);
   });

@@ -116,13 +116,21 @@ describe("map list", () => {
     expect(await screen.findByText(he.home.nearYou)).toBeInTheDocument();
   });
 
+  /**
+   * The map plots pins, which jsdom never draws — there is no maps key in a test, so
+   * the script never loads. The count the map announces to a screen reader is the same
+   * number, taken from the same `plotted` list the pins come from, so it stands in for
+   * counting pins and keeps the two screens pinned to one another.
+   */
   it("lists the same places the map plots", async () => {
     const user = userEvent.setup();
     const { container } = await reachMap(user);
 
-    // The map's carousel holds one card per plotted place.
-    await waitFor(() => expect(container.querySelectorAll(".map__slide").length).toBeGreaterThan(0));
-    const plotted = container.querySelectorAll(".map__slide").length;
+    // "<n> places on the map", matched on the words so the number stays free.
+    const words = he.map.pinsShown(0).replace(/^\d+\s*/, "");
+    const announced = await screen.findByText(new RegExp(`\\d+\\s*${words}`));
+    const plotted = Number(announced.textContent!.match(/\d+/)![0]);
+    expect(plotted).toBeGreaterThan(0);
 
     await user.click(screen.getByRole("button", { name: he.map.list }));
     await waitFor(() => expect(container.querySelectorAll(".card--row").length).toBe(plotted));

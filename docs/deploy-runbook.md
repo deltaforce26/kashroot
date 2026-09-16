@@ -113,8 +113,16 @@ A wrong host here fails as a 404 on every API call, with no CORS error to hint a
 |---|---|
 | `VITE_API_MODE` | `live` |
 | `VITE_GOOGLE_MAPS_BROWSER_KEY` | The referrer-restricted **browser** key |
+| `VITE_GOOGLE_MAPS_MAP_ID` | A map ID from the Cloud console (optional, recommended) |
 
-Both are baked in at build time, so changing either needs a redeploy, not a restart.
+All three are baked in at build time, so changing any of them needs a redeploy, not
+a restart.
+
+Without a map ID the app falls back to Google's development ID, `DEMO_MAP_ID`. The
+map still draws, but the ID is documented as development-only, cannot be styled, and
+is not something to demo on. The pins are advanced markers, which need *some* map ID
+either way; if the browser cannot build one the app now falls back to classic pins
+rather than failing the screen (`web/src/map/pins.ts`).
 
 > Never put `KASHROOT_GOOGLE_MAPS_API_KEY` (the server geocoding key) here. Anything
 > prefixed `VITE_` is compiled into the bundle and published to the world.
