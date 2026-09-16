@@ -762,38 +762,314 @@ a {
   color: var(--ink);
 }
 
-/* ── Filters screen ───────────────────────────────────────────────────── */
+/* ── Form groups (the list sheets) ────────────────────────────────────── */
 
 .filter-group__title {
   font: 700 14.5px Assistant, sans-serif;
   margin: 0 0 10px;
 }
 
-.filter-group {
+/* ── Filter bar ───────────────────────────────────────────────────────── */
+
+/*
+ * One row that neither scrolls nor wraps: the sliders button holds the start, and
+ * the three chips share what is left. Nothing here overflows — the chips shrink and
+ * ellipsize instead — so the bar can never push the page sideways and no filter can
+ * end up parked off the edge where nobody will find it. The bar is its own stacking
+ * context above the list, so the popover it drops and the tap-catcher behind it sit
+ * over the cards.
+ *
+ * Tokens only: the chips wear the theme's solid glass, hairline and CTA ink, so a
+ * theme switch reaches them with no rule here. No blur — a row of backdrop filters
+ * costs frames on a phone for nothing visible against a flat ground.
+ */
+.fbar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  max-width: 100%;
+  padding-block: 11px 3px;
+  padding-inline: 20px;
+}
+
+.fbar__chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.fbar__all,
+.fchip,
+.fopt {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.fbar__all {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hair);
+  background: var(--glass-solid);
+}
+
+/*
+ * How many filters are on. Without it a narrowed list looks exactly like a thin
+ * corpus, and "there is nothing here" is the one wrong impression this product must
+ * never leave by accident.
+ */
+.fbar__count {
+  position: absolute;
+  top: -3px;
+  inset-inline-end: -3px;
+  min-width: 18px;
+  height: 18px;
+  padding-inline: 4px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--bg-ink);
+  background: var(--cta);
+  color: var(--cta-ink);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+
+.fchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* Shrinks to share the row rather than overflowing it; the label ellipsizes. */
+  flex: 0 1 auto;
+  min-width: 0;
+  height: 40px;
+  padding-inline: 14px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hair);
+  background: var(--glass-solid);
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.fchip[data-active="true"] {
+  background: var(--cta);
+  color: var(--cta-ink);
+  border-color: transparent;
+}
+
+.fchip[aria-expanded="true"] {
+  border-color: var(--ink);
+}
+
+/* The icons keep their size while the label gives way. */
+.fchip > svg {
+  flex: none;
+}
+
+/* A certifier's name can be long; the chip is not the place to read all of it. */
+.fchip__label {
+  min-width: 0;
+  max-width: 14em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fchip__chevron {
+  opacity: 0.7;
+}
+
+.fchip[aria-expanded="true"] .fchip__chevron {
+  transform: rotate(180deg);
+}
+
+/* Press feedback that works under a finger; hover only where there is a pointer. */
+.fbar__all:active,
+.fchip:active,
+.fopt:active {
+  opacity: 0.7;
+}
+
+@media (hover: hover) {
+  .fbar__all:hover,
+  .fchip:not([data-active="true"]):hover,
+  .fopt:not([aria-pressed="true"]):hover {
+    border-color: var(--sub);
+  }
+}
+
+/*
+ * Transparent, over the whole viewport: any tap outside the popover closes it.
+ * Fixed, not absolute, because the bar is the positioning context here — and
+ * nothing up the tree transforms, so fixed still means the viewport.
+ */
+.fpop__scrim {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  cursor: default;
+}
+
+.fpop {
+  position: absolute;
+  top: calc(100% + 2px);
+  inset-inline: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius-tile);
+  border: 1px solid var(--glass-line);
+  background: var(--glass-solid);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  /* Never taller than what is left of the screen above the home indicator. */
+  max-height: min(60vh, 420px);
+  max-height: min(60dvh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.fpop:focus {
+  outline: none;
+}
+
+.fpop__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
+}
+
+.fpop__title {
+  font-size: 14.5px;
+  font-weight: 700;
+}
+
+.fpop__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding-inline: 8px;
+  font-size: 13px;
+  color: var(--sub);
+}
+
+.fopts {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-/*
- * The sliders button wears a dot whenever a soft filter is off its default. Without
- * it a narrowed list looks exactly like a thin corpus, and "there is nothing here"
- * is the one wrong impression this product must never leave by accident.
- */
-.searchbar__flag {
-  position: relative;
+.fopts__empty {
+  text-align: start;
+  margin: 0;
 }
 
-.searchbar__flag::after {
-  content: "";
-  position: absolute;
-  top: -2px;
-  inset-inline-end: -2px;
-  width: 7px;
-  height: 7px;
+.fopt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding-inline: 16px;
   border-radius: var(--radius-pill);
-  background: var(--ink);
-  border: 1.5px solid var(--bg-ink);
+  border: 1px solid var(--hair);
+  font-size: 14px;
+}
+
+.fopt[aria-pressed="true"] {
+  background: var(--cta);
+  color: var(--cta-ink);
+  border-color: transparent;
+  font-weight: 600;
+}
+
+/*
+ * The filter sheet: the location sheet's frame, re-laid as head / scrolling body /
+ * fixed foot, so the two actions stay on screen however long the lists grow. The
+ * `.sheet.fsheet` pair outranks `.sheet` wherever this block sits in the file.
+ */
+.sheet.fsheet {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.fsheet__head {
+  padding: 16px 20px 8px;
+}
+
+.fsheet__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 8px 20px 20px;
+}
+
+.fsheet__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font: 700 14.5px Assistant, sans-serif;
+}
+
+.fsheet__switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+}
+
+.fsheet__switch .fsheet__label {
+  margin: 0;
+}
+
+.fsheet__foot {
+  display: flex;
+  gap: 10px;
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--hair);
+}
+
+.fsheet__foot .cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 12px 18px;
+  font-size: 14.5px;
+}
+
+.fsheet__clear {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.fsheet__apply {
+  flex: 1;
 }
 
 /* ── Panels ────────────────────────────────────────────────────────────── */

@@ -1,5 +1,5 @@
 /**
- * Home — location header, search field, category chips, 2-up tinted result grid.
+ * Home — location header, search field, filter bar, 2-up tinted result grid.
  *
  * The count of what was *checked* — never of what "matched": with this corpus a
  * large share of results are UNKNOWN, and a "23 restaurants match you" banner over
@@ -8,20 +8,19 @@
  * screen's `<h1>`, visually hidden, so the page keeps a real heading and the count
  * is still there for anyone reading with a screen reader.
  *
- * Two design elements are dropped rather than faked: the "14 open now" subtitle and
- * the "open now" chip. Israel hours logic is out of POC scope, so the API returns no
- * open-now state and a chip that silently did nothing would be worse than no chip.
- *
- * The chips filter by published diet type. The comp draws category chips (bakeries,
- * ice cream, cafés) and the corpus has no category field, so those would be chips
- * that cannot filter anything — see the note on `search.allFilter` in strings.ts.
+ * The filter bar (components/filters/FilterBar.tsx) took the place of the kitchen
+ * chips, and its sliders button the place of the one that sat in the search field —
+ * one control per job. Home is the distance search, so it is the screen that sends
+ * the bar's radius; the other facets go out through `toSearchFilters`, and a changed
+ * request is what re-runs the search.
  */
 
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MAX_QUERY_LENGTH, type DietType, type SearchRequest } from "../api/types";
+import { MAX_QUERY_LENGTH, type SearchRequest } from "../api/types";
 import { hasVerifiedMatch } from "../api/viewmodel";
-import { BellIcon, PinIcon, SearchIcon, SlidersIcon } from "../components/icons";
+import { FilterBar } from "../components/filters/FilterBar";
+import { BellIcon, PinIcon, SearchIcon } from "../components/icons";
 import { LocationSheet } from "../components/LocationSheet";
 import { RestaurantGridCard } from "../components/RestaurantCard";
 import {
@@ -35,7 +34,8 @@ import { SaveToListHost } from "../components/SaveToListSheet";
 import { TabBar } from "../components/TabBar";
 import { InstallPrompt } from "../components/InstallPrompt";
 import { PAGE_SIZE } from "../config";
-import { isDefault, useFilters } from "../filters/useFilters";
+import { toSearchFilters } from "../filters/model";
+import { useFilters } from "../filters/useFilters";
 import { useCity } from "../location/useCity";
 import { useOrigin } from "../location/useOrigin";
 import { isNetworkError, useSearch } from "../hooks/useApi";
@@ -43,8 +43,6 @@ import { useI18n } from "../i18n/I18nProvider";
 import { toPayload } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
 import { useSaveToggle } from "../saved/useSaveToggle";
-
-type HomeFilter = "all" | DietType;
 
 export function Home() {
   const { t, lang } = useI18n();
@@ -55,14 +53,10 @@ export function Home() {
   // Where "near me" is measured from: the device, a typed address, or this city's
   // centre. The sheet sets it; the header only reports it.
   const { origin, source, addressLabel } = useOrigin(city);
-  // The chips and the filters screen are two views of one state, so a kitchen picked
-  // in either shows as picked in the other.
-  const { filters, setFilters } = useFilters();
-  const filter: HomeFilter = filters.diet ?? "all";
+  // The bar and this request read one store, so a chip tapped there re-runs this.
+  const { filters, reset: resetFilters } = useFilters();
   const [pickingPlace, setPickingPlace] = useState(false);
   const [query, setQuery] = useState("");
-
-  const setFilter = (next: HomeFilter) => setFilters({ diet: next === "all" ? null : next });
 
   // What the header says we are searching near. The device names itself, a typed
   // address is quoted back verbatim, and a city falls back to its area label.
@@ -71,29 +65,19 @@ export function Home() {
       ? t.map.youAreHere
       : (addressLabel ?? (lang === "en" ? city.areaEn : city.areaHe));
 
-  const request = useMemo<SearchRequest>(
-    () => ({
+  const request = useMemo<SearchRequest>(() => {
+    const facets = toSearchFilters(filters);
+    return {
       profile: toPayload(profile),
       center: origin,
       radius_km: filters.radiusKm,
       page_size: PAGE_SIZE,
-      ...(filters.diet ? { filters: { diet_type: filters.diet } } : {}),
-    }),
-    [profile, filters, origin],
-  );
+      ...(facets ? { filters: facets } : {}),
+    };
+  }, [profile, filters, origin]);
 
   const { data, loading, error, reload } = useSearch(request);
   const results = data?.items ?? [];
-
-  // The four kitchens, as a shortcut for the same control on /filters. The map used
-  // to sit here as a sixth chip; it is a tab now, so a chip that navigated away
-  // would be the odd one out in a row of filters.
-  const chips: Array<[HomeFilter, string]> = [
-    ["all", t.home.tabs.all],
-    ["meat", t.home.tabs.meat],
-    ["dairy", t.home.tabs.dairy],
-    ["pareve", t.home.tabs.pareve],
-  ];
 
   return (
     <div className="shell">
@@ -155,14 +139,6 @@ export function Home() {
         <button type="submit" className="sr-only">
           {t.nav.search}
         </button>
-        <button
-          type="button"
-          className={`searchbar__icon${isDefault(filters) ? "" : " searchbar__flag"}`}
-          aria-label={isDefault(filters) ? t.home.openFilters : t.home.filtersActive}
-          onClick={() => navigate("/filters")}
-        >
-          <SlidersIcon size={17} />
-        </button>
       </form>
 
       {/*
@@ -180,19 +156,7 @@ export function Home() {
             : t.home.resultsTitle(data?.total ?? 0)}
       </h1>
 
-      <div className="chips" role="tablist">
-        {chips.map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            className="chip"
-            aria-pressed={key === filter}
-            onClick={() => setFilter(key)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <FilterBar />
 
       <div className="shell__scroll" style={{ paddingTop: 10 }}>
         {error && isNetworkError(error) && <OfflineBanner />}
@@ -201,10 +165,7 @@ export function Home() {
         ) : error ? (
           <ErrorState isNetwork={isNetworkError(error)} onRetry={reload} />
         ) : results.length === 0 ? (
-          <EmptyResults
-            onWidenProfile={() => navigate("/profile")}
-            onShowAll={() => setFilter("all")}
-          />
+          <EmptyResults onWidenProfile={() => navigate("/profile")} onShowAll={resetFilters} />
         ) : (
           <>
             {!hasVerifiedMatch(results) && <NoVerifiedMatchesBanner />}

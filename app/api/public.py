@@ -19,7 +19,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import Select, func, literal, or_, select
+from sqlalchemy import Select, exists, func, literal, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.consts import (
@@ -269,6 +269,16 @@ def build_search_statement(request: SearchRequest) -> Select[Any]:
     plene/defective spelling normalization — and it only ever adds a WHERE clause; it
     never touches this function's ORDER BY.
 
+    ``filters.diet_types`` (multi-select) is applied in addition to the existing
+    single ``filters.diet_type`` when both are sent (AND, not OR-with-each-other).
+    ``filters.certifier_ids``, when non-empty, restricts to restaurants with an
+    ``EXISTS`` match against ``Certificate.certifier_id`` — deliberately regardless of
+    ``Certificate.state``, since this is a filter on certificate *identity* only; it
+    never touches the kashrut verdict computed later in ``search_restaurants``.
+    ``filters.open_now`` and ``filters.min_rating`` are accepted but never applied
+    here — no Israel hours logic and no rating data exist yet (see their field
+    docstrings on ``SearchFilters``).
+
     Parameters:
         request (SearchRequest): the validated search request.
 
@@ -281,8 +291,19 @@ def build_search_statement(request: SearchRequest) -> Select[Any]:
         stmt = stmt.where(Restaurant.city_slug == request.city)
     if request.filters.diet_type is not None:
         stmt = stmt.where(Restaurant.diet_type == request.filters.diet_type)
+    if request.filters.diet_types:
+        stmt = stmt.where(Restaurant.diet_type.in_(request.filters.diet_types))
     if request.filters.price_level is not None:
         stmt = stmt.where(Restaurant.price_level == request.filters.price_level)
+    if request.filters.certifier_ids:
+        stmt = stmt.where(
+            exists(
+                select(Certificate.id).where(
+                    Certificate.restaurant_id == Restaurant.id,
+                    Certificate.certifier_id.in_(request.filters.certifier_ids),
+                )
+            )
+        )
     if request.query:
         pattern = f"%{_escape_like_value(request.query)}%"
         stmt = stmt.where(

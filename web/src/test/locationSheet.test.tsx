@@ -234,9 +234,9 @@ describe("home location sheet", () => {
 
   /**
    * The city moved off the sheet, but it is still the same question, so picking one
-   * anywhere — here, the filters screen — has to drop a pinned address. Two answers
-   * cannot both be live: the header would name one place and the results come from
-   * another.
+   * anywhere — here, the search screen's city chips — has to drop a pinned address.
+   * Two answers cannot both be live: the header would name one place and the results
+   * come from another.
    */
   it("drops a pinned address when a city is picked elsewhere", async () => {
     const user = userEvent.setup();
@@ -246,7 +246,8 @@ describe("home location sheet", () => {
     await pickAddress(user, "ביאליק 1");
     expect(await screen.findByText(CANDIDATE.label)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: he.home.openFilters }));
+    // An empty search from home opens the search screen, where the city chips are.
+    await user.click(screen.getByRole("button", { name: he.nav.search }));
     await user.click(await screen.findByRole("button", { name: "חיפה" }));
     await user.click(screen.getByRole("link", { name: he.nav.home }));
 
@@ -280,7 +281,7 @@ describe("home location sheet", () => {
     await pickAddress(user, "ביאליק 1");
     expect(await screen.findByText(CANDIDATE.label)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: he.home.openFilters }));
+    await user.click(screen.getByRole("button", { name: he.nav.search }));
     await user.click(await screen.findByRole("button", { name: "חיפה" }));
     await reload();
 

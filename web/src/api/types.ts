@@ -91,11 +91,25 @@ export interface GeoPoint {
   lon: number;
 }
 
-/** schemas_public.py :: SearchFilters — ordinary facets, never kashrut conditions. */
+/**
+ * schemas_public.py :: SearchFilters — facets that decide which restaurants are
+ * asked about. None of them is a condition on the verdict.
+ */
 export interface SearchFilters {
+  /** One kitchen; kept for compatibility. The filter bar sends `diet_types`. */
   diet_type?: DietType | null;
+  /** Any of these kitchens. */
+  diet_types?: DietType[];
+  /**
+   * Restaurants holding a certificate, in any state, from one of these certifiers.
+   * Narrows on certificate identity; each survivor keeps its own verdict.
+   */
+  certifier_ids?: string[];
   price_level?: number | null;
+  /** Accepted and ignored: the corpus records no opening hours yet. */
   open_now?: boolean | null;
+  /** 0–5. Accepted and ignored: the corpus records no restaurant ratings. */
+  min_rating?: number | null;
   amenities?: AmenityKey[];
 }
 

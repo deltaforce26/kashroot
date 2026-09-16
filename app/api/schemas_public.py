@@ -24,10 +24,14 @@ from app.api.consts import (
     DEFAULT_RADIUS_KM,
     ERROR_CENTER_OR_CITY_REQUIRED,
     ERROR_DUPLICATE_WHITELIST_CERTIFIER,
+    MAX_CERTIFIER_IDS,
+    MAX_DIET_TYPES,
     MAX_PAGE_SIZE,
     MAX_RADIUS_KM,
+    MAX_RATING,
     MAX_SEARCH_QUERY_LENGTH,
     MIN_RADIUS_KM,
+    MIN_RATING,
 )
 from app.api.schemas import UTCDateTime
 from app.match import Confidence, ReasonCode, Verdict
@@ -120,12 +124,61 @@ class SearchFilters(BaseModel):
     """
 
     diet_type: DietType | None = None
+    #: Multi-select kitchen filter for the web client's filter bar. Independent of
+    #: ``diet_type`` — both fields are additive (AND) when sent together, and
+    #: ``diet_type`` keeps working unchanged on its own for existing callers. Empty
+    #: (the default) is a no-op, not "match nothing".
+    diet_types: list[DietType] = Field(default_factory=list, max_length=MAX_DIET_TYPES)
     price_level: int | None = Field(default=None, ge=1, le=4)
     #: Accepted for forward compatibility. Israel hours logic (Shabbat/chagim) is out
     #: of scope for the POC (POC_PLAN.md §6) — every restaurant's open-now Layer 2
     #: component scores neutral regardless of this filter.
     open_now: bool | None = None
     amenities: list[AmenityKey] = Field(default_factory=list)
+    #: Restrict to restaurants with at least one certificate (any state — active,
+    #: expired, revoked, pending) from one of these certifiers. A filter on
+    #: certificate *identity* only: it never inspects certificate validity or the
+    #: Layer 1 verdict, so a restaurant surfaced this way can still show an
+    #: expired/revoked-driven NO_MATCH or UNKNOWN pill — this facet only decides who
+    #: is in the candidate set, never who "passes". Empty (the default) is a no-op.
+    certifier_ids: list[uuid.UUID] = Field(default_factory=list, max_length=MAX_CERTIFIER_IDS)
+    #: Accepted for forward compatibility only, like ``open_now``. There is no
+    #: restaurant rating data anywhere in the corpus or schema, so this field is
+    #: validated (bounds only) and then never applied to the query or the response —
+    #: it cannot narrow or reorder results today.
+    min_rating: float | None = Field(default=None, ge=MIN_RATING, le=MAX_RATING)
+
+    @field_validator("diet_types")
+    @classmethod
+    def _dedupe_diet_types(cls, value: list[DietType]) -> list[DietType]:
+        """Deduplicate while preserving first-seen order.
+
+        Parameters:
+            value (list[DietType]): the raw, already length-bounded list.
+
+        Return:
+            list[DietType]: the same values with duplicates removed.
+        """
+        if len(value) <= 1:
+            return value
+
+        return list(dict.fromkeys(value))
+
+    @field_validator("certifier_ids")
+    @classmethod
+    def _dedupe_certifier_ids(cls, value: list[uuid.UUID]) -> list[uuid.UUID]:
+        """Deduplicate while preserving first-seen order.
+
+        Parameters:
+            value (list[uuid.UUID]): the raw, already length-bounded list.
+
+        Return:
+            list[uuid.UUID]: the same values with duplicates removed.
+        """
+        if len(value) <= 1:
+            return value
+
+        return list(dict.fromkeys(value))
 
 
 class SearchRequest(BaseModel):

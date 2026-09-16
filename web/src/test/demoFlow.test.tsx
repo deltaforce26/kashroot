@@ -262,46 +262,12 @@ describe("demo flow", () => {
   });
 
   /**
-   * The sliders button opens the soft filters, not the profile — the two are
+   * The sliders button opens the filter sheet, not the profile — the two are
    * different powers and must not be reachable through the same control. Filters
    * narrow which restaurants get asked about; the profile decides what the answer
-   * is. Nothing on the filters screen can hide, sort or soften a verdict, which is
-   * why it renders no verdict pill at all.
+   * is. The sheet renders no verdict pill, and what it applies shows on the bar.
    */
-  it("opens the soft filters from home, and keeps kashrut out of them", async () => {
-    const user = userEvent.setup();
-    const { container } = renderApp("/");
-
-    await screen.findByText(he.presets.any.title);
-    await user.click(screen.getByText(he.presets.any.title));
-    await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
-
-    await user.click(await screen.findByRole("button", { name: he.home.openFilters }));
-    expect(await screen.findByText(he.filters.title)).toBeInTheDocument();
-    // Kashrut is named here only to say it is not one of these controls.
-    expect(screen.getByText(he.filters.kashrutTitle)).toBeInTheDocument();
-    expect(container.querySelector(".verdict")).toBeNull();
-
-    // A kitchen picked here is the one home shows as picked — one state, two views.
-    await user.click(screen.getByRole("button", { name: he.diet.dairy, pressed: false }));
-    await user.click(screen.getByRole("button", { name: he.filters.apply }));
-
-    expect(await screen.findByRole("button", { name: he.home.tabs.dairy })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    // …and home says so without being asked, so a narrowed list is never read as an
-    // empty corpus.
-    expect(screen.getByRole("button", { name: he.home.filtersActive })).toBeInTheDocument();
-  });
-
-  /**
-   * The sliders circle in the filters header is the same control that opened the
-   * screen, so it has to close it. Hebrew puts it in the top left and English in the
-   * top right — one `dir` flip, one control — and in both it must leave with the
-   * filters kept, not discarded: nothing here is staged, so closing *is* applying.
-   */
-  it("closes the filters from the header sliders button, keeping what was picked", async () => {
+  it("opens the filter sheet from home, and applies a kitchen to the bar", async () => {
     const user = userEvent.setup();
     renderApp("/");
 
@@ -310,16 +276,45 @@ describe("demo flow", () => {
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
     await user.click(await screen.findByRole("button", { name: he.home.openFilters }));
-    await screen.findByText(he.filters.title);
+    const sheet = await screen.findByRole("dialog", { name: he.filters.title });
+    expect(sheet.querySelector(".verdict")).toBeNull();
 
-    await user.click(screen.getByRole("button", { name: he.diet.dairy, pressed: false }));
-    await user.click(screen.getByRole("button", { name: he.filters.close }));
+    // A kitchen picked here is the one the bar shows as picked — one state, two views.
+    await user.click(within(sheet).getByRole("button", { name: he.diet.dairy, pressed: false }));
+    await user.click(within(sheet).getByRole("button", { name: he.filters.apply }));
 
-    expect(await screen.findByRole("button", { name: he.home.tabs.dairy })).toHaveAttribute(
-      "aria-pressed",
-      "true",
+    expect(
+      await screen.findByRole("button", { name: he.diet.dairy, expanded: false }),
+    ).toHaveAttribute("data-active", "true");
+    // …and home says so without being asked, so a narrowed list is never read as an
+    // empty corpus.
+    expect(screen.getByRole("button", { name: he.home.filtersActive })).toBeInTheDocument();
+  });
+
+  /**
+   * The sheet stages what it shows, so leaving it by the X means "never mind": the
+   * bar and the results stay exactly as they were.
+   */
+  it("discards the sheet's unapplied picks when it is closed", async () => {
+    const user = userEvent.setup();
+    renderApp("/");
+
+    await screen.findByText(he.presets.any.title);
+    await user.click(screen.getByText(he.presets.any.title));
+    await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
+
+    await user.click(await screen.findByRole("button", { name: he.home.openFilters }));
+    const sheet = await screen.findByRole("dialog", { name: he.filters.title });
+
+    await user.click(within(sheet).getByRole("button", { name: he.diet.dairy, pressed: false }));
+    await user.click(within(sheet).getByRole("button", { name: he.filters.close }));
+
+    expect(screen.queryByRole("dialog", { name: he.filters.title })).toBeNull();
+    expect(screen.getByRole("button", { name: he.filters.diet })).toHaveAttribute(
+      "data-active",
+      "false",
     );
-    expect(screen.queryByText(he.filters.title)).toBeNull();
+    expect(screen.getByRole("button", { name: he.home.openFilters })).toBeInTheDocument();
   });
 
   /**

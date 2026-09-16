@@ -140,12 +140,45 @@ function countFunctions(value: unknown): number {
   return 0;
 }
 
+/**
+ * The one exemption, and it is a path, not a word: `filters.rating` is the filter
+ * bar's restaurant-rating label ("דירוג" / "Rating"), shipped on the product owner's
+ * call (Sep 2026). It scores a restaurant as a place to eat, never a certifier, and
+ * never kashrut. Only that exact key is skipped — the same word anywhere else in the
+ * table is still a finding, which the test below proves.
+ */
+const EXEMPT_PATHS = ["filters.rating"] as const;
+
+function withoutPath(table: unknown, dotted: string): unknown {
+  const [head, ...rest] = dotted.split(".");
+  if (!head || !table || typeof table !== "object") return table;
+  const kept: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(table)) {
+    if (key !== head) kept[key] = value;
+    else if (rest.length > 0) kept[key] = withoutPath(value, rest.join("."));
+  }
+  return kept;
+}
+
+const withoutExemptions = (table: unknown): unknown => EXEMPT_PATHS.reduce(withoutPath, table);
+
 describe("certifier neutrality in the string table", () => {
   it.each<Lang>(["he", "en"])("has no ranking language anywhere in %s", (lang) => {
-    const offenders = collectStrings(STRINGS[lang]).filter((text) =>
+    const offenders = collectStrings(withoutExemptions(STRINGS[lang])).filter((text) =>
       RANKING_WORDS[lang].test(text),
     );
     expect(offenders).toEqual([]);
+  });
+
+  it("exempts the rating filter's label and nothing else", () => {
+    const table = {
+      filters: { rating: "דירוג", kashrut: "דירוג כשרות" },
+      presets: { rating: "דירוג" },
+    };
+    const offenders = collectStrings(withoutExemptions(table)).filter((text) =>
+      RANKING_WORDS.he.test(text),
+    );
+    expect(offenders).toEqual(["דירוג כשרות", "דירוג"]);
   });
 
   it.each<Lang>(["he", "en"])("scans the parameterized strings in %s, not just the literals", (lang) => {
