@@ -118,6 +118,11 @@ A wrong host here fails as a 404 on every API call, with no CORS error to hint a
 All three are baked in at build time, so changing any of them needs a redeploy, not
 a restart.
 
+The browser key needs **Maps JavaScript API**, **Geocoding API** and **Places API
+(New)** enabled in the Cloud project and allowed in the key's API restrictions. Places
+powers the location sheet's as-you-type address completions; without it the field
+offers none and says nothing, and a submitted address still goes through the geocoder.
+
 Without a map ID the app falls back to Google's development ID, `DEMO_MAP_ID`. The
 map still draws, but the ID is documented as development-only, cannot be styled, and
 is not something to demo on. The pins are advanced markers, which need *some* map ID
