@@ -463,6 +463,22 @@ describe("the stylesheet declarations the separation leans on", () => {
     expect(rule).toMatch(/overscroll-behavior-y:\s*none/);
   });
 
+  /**
+   * The map's locate button floats in the same containing block as the tab bar and is
+   * meant to read as part of it, so both its clearance and its size come from the
+   * bar's own tokens. Hardcode either and it drifts the first time the bar changes
+   * height — and jsdom, which lays nothing out, would never notice.
+   */
+  it("sizes the map's locate button off the tab bar it floats above", () => {
+    const rule = block(".map__locate");
+    expect(rule).toMatch(/bottom:\s*calc\(var\(--tabbar-space\)/);
+    expect(rule).toMatch(/height:\s*var\(--tabbar-height\)/);
+    // Deliberately physical: furniture sits where the thumb is, so unlike the header
+    // above it this control does not swap sides with the reading direction.
+    expect(rule).toMatch(/(^|[\s;{])right:/);
+    expect(rule).not.toMatch(/inset-inline/);
+  });
+
   it("sizes the shell by whichever viewport measure is the smaller", () => {
     const rule = block("#root");
     expect(rule).toMatch(/height:\s*100%/);

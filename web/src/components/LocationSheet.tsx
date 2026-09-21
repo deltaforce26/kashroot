@@ -144,9 +144,17 @@ export function LocationSheet({ onClose }: { onClose: () => void }) {
           <CrosshairIcon size={16} />
           {locating ? t.origin.locating : t.origin.useMyLocation}
         </button>
+        {/* Two different truths, and they call for different next moves: with no
+            position at all the address field is the way forward, while a failed
+            refresh leaves the user exactly where they were and needs no action. */}
         {state === "unavailable" && (
           <p className="hint sheet__note" role="status">
             {t.origin.denied}
+          </p>
+        )}
+        {state === "stale" && (
+          <p className="hint sheet__note" role="status">
+            {t.origin.notRefreshed}
           </p>
         )}
 
