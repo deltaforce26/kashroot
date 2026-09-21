@@ -304,6 +304,7 @@ const he = {
     noResults: "לא מצאנו כתובת כזו בישראל. נסו לנסח אחרת.",
     lookupFailed: "לא הצלחנו לחפש את הכתובת. בדקו את החיבור ונסו שוב.",
     denied: "לא קיבלנו את המיקום שלכם. אפשר להקליד כתובת במקום.",
+    notRefreshed: "לא הצלחנו לקבל מיקום מעודכן. ממשיכים מהמיקום האחרון שלכם.",
   },
 
   // Shown on the launch screen only once the wait is long enough to need words —
@@ -689,6 +690,7 @@ const en: Strings = {
     noResults: "We couldn't find that address in Israel. Try wording it differently.",
     lookupFailed: "We couldn't look that address up. Check your connection and try again.",
     denied: "We didn't get your location. You can type an address instead.",
+    notRefreshed: "We couldn't get a new reading. Still measuring from where you were.",
   },
 
   launch: {

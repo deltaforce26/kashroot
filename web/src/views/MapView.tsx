@@ -30,6 +30,7 @@
  * never shows a bare grey rectangle or a Google error overlay.
  */
 
+import { LocateFixed } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
@@ -81,6 +82,22 @@ function verdictColour(verdict: Verdict): string {
 /** What a tap on a pin does: open that card, or close the one already open. */
 export function nextOpenId(current: string | null, tapped: string): string | null {
   return current === tapped ? null : tapped;
+}
+
+/** Close enough to read a street, which is what a pinned origin is worth looking at. */
+const ORIGIN_ZOOM = 14;
+
+/**
+ * What the zoom becomes when the camera moves to a new origin, or null to leave it be.
+ *
+ * Recentring only ever zooms *in*. Someone looking at the whole city gets brought close
+ * enough for their position to mean something; someone who deliberately zoomed to a
+ * street keeps their street, because pulling them back out would undo a choice they made
+ * with their own hands.
+ */
+export function nextZoom(current: number | undefined): number | null {
+  if (current === undefined || current >= ORIGIN_ZOOM) return null;
+  return ORIGIN_ZOOM;
 }
 
 /**
@@ -143,7 +160,7 @@ export function MapView() {
   const navigate = useNavigate();
   const { profile } = useProfile();
   const { city } = useCity();
-  const { origin, source, requestDeviceLocation } = useOrigin(city);
+  const { origin, source, state: originState, requestDeviceLocation } = useOrigin(city);
   const { status: mapsStatus, libs } = useGoogleMaps(lang);
 
   // The open card, by restaurant id. Nothing is open on arrival.
@@ -306,7 +323,25 @@ export function MapView() {
     map.panBy(0, -POPUP_PAN_UP);
   }, [open]);
 
+  // The camera follows the origin. The map is built once, with its centre fixed at
+  // construction, so without this the locate button silently changes what is searched
+  // and where "you are here" sits while leaving the viewport on the old city centre —
+  // which reads as a button that does nothing. Declared after the card effect on
+  // purpose: when both want the camera in one commit, the origin is the explicit ask.
+  //
+  // `origin` is reference-stable — a point object written once per publish in
+  // `useOrigin`, or the city's own `center` from config — so this fires on a real
+  // change and never on a re-render, and the user's own panning is left alone.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.panTo({ lat: origin.lat, lng: origin.lon });
+    const zoom = nextZoom(map.getZoom());
+    if (zoom !== null) map.setZoom(zoom);
+  }, [origin, mapsStatus]);
+
   const mapUnavailable = mapsStatus === "absent" || mapsStatus === "error";
+  const locating = originState === "requesting";
 
   return (
     <div className="shell">
@@ -338,7 +373,7 @@ export function MapView() {
         </div>
       )}
 
-      <div className="map__overlay">
+      <div className="map__overlay map__overlay--pair">
         <button
           type="button"
           className="circle glass"
@@ -357,15 +392,6 @@ export function MapView() {
             {t.map.list}
           </button>
         </span>
-        <button
-          type="button"
-          className="circle glass"
-          aria-label={t.origin.useMyLocation}
-          aria-pressed={source === "device"}
-          onClick={requestDeviceLocation}
-        >
-          <PinIcon size={16} />
-        </button>
       </div>
 
       {/* A map is a picture, so how many places are on it is the one thing a screen
@@ -386,6 +412,24 @@ export function MapView() {
       {popupHost && open
         ? createPortal(<MapPopupCard item={open} onClose={() => setOpenId(null)} />, popupHost)
         : null}
+
+      {/* Locate belongs to the map, not to the header: it moves the picture, and it
+          sits in the bottom corner where a thumb already is and where every map the
+          user has ever used keeps it — just clear of the tab bar. The browser's
+          permission prompt can take a beat to paint, and a tap with nothing behind it
+          reads as a dead button, so the label says what is happening and a second tap
+          cannot stack another request behind the first. */}
+      <button
+        type="button"
+        className="circle glass map__locate"
+        aria-label={locating ? t.origin.locating : t.origin.useMyLocation}
+        aria-pressed={source === "device"}
+        aria-busy={locating}
+        disabled={locating}
+        onClick={requestDeviceLocation}
+      >
+        <LocateFixed size={22} strokeWidth={2} aria-hidden />
+      </button>
 
       <TabBar />
     </div>
