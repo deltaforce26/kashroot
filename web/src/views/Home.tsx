@@ -113,7 +113,7 @@ export function Home() {
           and diet type together. */}
       <form
         className="searchbar glass"
-        style={{ margin: "14px 20px 0" }}
+        style={{ margin: "14px var(--gutter) 0" }}
         role="search"
         onSubmit={(event) => {
           event.preventDefault();

@@ -97,6 +97,26 @@ describe("filter bar", () => {
     expect(rule).not.toMatch(/overflow/);
   });
 
+  /**
+   * The row spans the same width as the search bar above it and the tab bar below:
+   * all three hang off the one gutter token, and the chips grow to reach the far edge.
+   * Asserted against the stylesheet for the same reason as above — jsdom cannot measure.
+   */
+  it("spans the same width as the search bar and the tab bar", () => {
+    const css = readFileSync(
+      path.join(path.dirname(fileURLToPath(import.meta.url)), "../styles.css"),
+      "utf8",
+    );
+    const ruleFor = (selector: string) => {
+      const start = css.indexOf(selector + " {");
+      expect(start, "no rule for " + selector).toBeGreaterThan(-1);
+      return css.slice(start, css.indexOf("}", start));
+    };
+    expect(ruleFor(".fbar")).toMatch(/padding-inline:\s*var\(--gutter\)/);
+    expect(ruleFor(".tabbar")).toMatch(/inset-inline:\s*var\(--gutter\)/);
+    expect(ruleFor(".fchip")).toMatch(/flex:\s*1 1 auto/);
+  });
+
   it("counts the filters only the sheet draws, so one set there is never invisible", async () => {
     const user = userEvent.setup();
     localStorage.setItem(KEY, JSON.stringify({ ...DEFAULT_FILTERS, radiusKm: 3, minRating: 4 }));

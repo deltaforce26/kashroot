@@ -69,6 +69,10 @@
   --radius-tile: 18px;
   --radius-pill: 99px;
   --shell-max: 430px;
+  /* The one distance everything keeps from the screen's side edges. The search bar,
+     the filter row and the tab bar all take it from here, so they are the same width
+     on any phone and cannot drift apart. */
+  --gutter: 20px;
   /* The floating tab bar's own height, and that height plus the gap it keeps from the
      screen edge — what a scrolling list reserves so its last row clears the bar, and
      what anything floating above the bar measures from. Neither is theme-dependent, so
@@ -230,7 +234,7 @@ a {
   /* The app is a phone surface; a desktop scrollbar gutter is not part of it.
      Scrolling stays, the bar does not — same treatment as .chips and .map__track. */
   scrollbar-width: none;
-  padding-inline: 20px;
+  padding-inline: var(--gutter);
   padding-bottom: 8px;
   display: flex;
   flex-direction: column;
@@ -262,7 +266,7 @@ a {
 }
 
 .shell__header {
-  padding: 22px 20px 0;
+  padding: 22px var(--gutter) 0;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -801,7 +805,7 @@ a {
   flex: none;
   max-width: 100%;
   padding-block: 11px 3px;
-  padding-inline: 20px;
+  padding-inline: var(--gutter);
 }
 
 .fbar__chips {
@@ -858,9 +862,11 @@ a {
 .fchip {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  /* Shrinks to share the row rather than overflowing it; the label ellipsizes. */
-  flex: 0 1 auto;
+  /* Grows so the row ends on the same edge as the search bar and the tab bar, and
+     shrinks to share the row rather than overflowing it; the label ellipsizes. */
+  flex: 1 1 auto;
   min-width: 0;
   height: 40px;
   padding-inline: 14px 12px;
@@ -935,7 +941,7 @@ a {
 .fpop {
   position: absolute;
   top: calc(100% + 2px);
-  inset-inline: 20px;
+  inset-inline: var(--gutter);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1338,7 +1344,7 @@ a {
 .tabbar {
   position: absolute;
   z-index: 10;
-  inset-inline: 24px;
+  inset-inline: var(--gutter);
   bottom: calc(16px + env(safe-area-inset-bottom));
   display: flex;
   border-radius: var(--radius-pill);
