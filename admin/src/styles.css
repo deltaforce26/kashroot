@@ -548,6 +548,28 @@ textarea {
   margin: 0;
 }
 
+/*
+ * The chosen restaurant on the standalone certificate screen. It replaces the
+ * results table rather than sitting beside it, so it has to carry the same weight
+ * a selected row would: the tint marks it as the subject of everything below.
+ * Logical properties only — the accent reads start-side under either direction.
+ */
+.picked-restaurant {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--tint-neutral);
+  border: 1px solid var(--glass-line);
+  border-inline-start: 3px solid var(--glass-line);
+  border-radius: var(--radius-tile);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+
+.picked-restaurant .muted {
+  font-size: 12.5px;
+}
+
 /* The certificate form, nested one level inside an already-expanded row. */
 .cert-create {
   display: flex;
