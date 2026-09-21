@@ -13,9 +13,16 @@
  * city and a pinned address are two answers to the same question.
  *
  * Permission is requested at the point of use, never on load, and never twice
- * unprompted. Denied, dismissed, unavailable or timed out all fall back to the city
- * centre: refusing to share your location is a legitimate choice, not an error
- * state. The sheet says so once, where the button is, and the header never nags.
+ * unprompted. Denied, dismissed, unavailable and timed out are one outcome: refusing
+ * to share your location is a legitimate choice, not an error state, and the sheet
+ * says so once, where the button is, while the header never nags.
+ *
+ * What that outcome costs depends on what was already chosen. A first request, with
+ * nothing behind it, falls back to the city centre. A request made when an origin is
+ * already in use leaves that origin standing — a device fix taken a minute ago is
+ * still where the user is, and a pinned address is still where they asked to search
+ * from, so one attempt that did not come back is no reason to move the whole screen
+ * out from under them.
  *
  * Persistence: the chosen origin survives a reload, because a refresh that silently
  * moves the user back to the city centre reports distances from a place they did not
@@ -42,7 +49,14 @@ import type { CityOption } from "../config";
 
 export type OriginSource = "device" | "city" | "address";
 
-export type GeoState = "idle" | "requesting" | "granted" | "unavailable";
+/**
+ * How the last device request ended.
+ *
+ * `stale` is the one worth naming: the request failed, but a fix from an earlier one
+ * is still the origin — so the position on screen is real and only the refresh is
+ * missing. `unavailable` means there is no device position at all.
+ */
+export type GeoState = "idle" | "requesting" | "granted" | "stale" | "unavailable";
 
 const TIMEOUT_MS = 8000;
 
@@ -236,8 +250,17 @@ export function useOrigin(city: CityOption): {
         );
       },
       () => {
-        // Denied, dismissed, position unavailable, or timed out. All the same
-        // outcome: we measure from the city instead and say so once, in the sheet.
+        // Denied, dismissed, position unavailable, or timed out — one outcome, and
+        // never a reason to discard an origin the user already has. Keeping the last
+        // device fix is the difference between a retry that quietly does nothing and
+        // a retry that throws the map back to the city centre; keeping a pinned
+        // address is the same courtesy for someone who only tried the shortcut.
+        //
+        // Storage is left alone with it, so the kept origin also survives a reload.
+        if (override) {
+          publish(override, override.source === "device" ? "stale" : "unavailable");
+          return;
+        }
         persist(null);
         publish(null, "unavailable");
       },

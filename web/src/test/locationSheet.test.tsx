@@ -96,14 +96,19 @@ async function pickAddress(user: User, typed: string) {
 /** How many times the device position was actually asked for. */
 let positionRequests = 0;
 
-/** A geolocation that answers however the test wants it to. */
-function stubGeolocation(behaviour: "grant" | "deny") {
+/**
+ * A geolocation that answers however the test wants it to. `grant-once` answers the
+ * first request and fails every one after it — a device that gave a fix and then went
+ * quiet, which is the shape of a timeout on a retry.
+ */
+function stubGeolocation(behaviour: "grant" | "deny" | "grant-once") {
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
     value: {
       getCurrentPosition: (ok: PositionCallback, fail: PositionErrorCallback) => {
         positionRequests += 1;
-        return behaviour === "grant"
+        const grants = behaviour === "grant" || (behaviour === "grant-once" && positionRequests === 1);
+        return grants
           ? ok({ coords: { latitude: 31.78, longitude: 35.21 } } as GeolocationPosition)
           : fail({ code: 1, message: "denied" } as GeolocationPositionError);
       },
@@ -154,6 +159,27 @@ describe("home location sheet", () => {
     expect(within(sheet).getByLabelText(he.origin.addressLabel)).toBeInTheDocument();
     // Cities are a filter, not an origin, and are not repeated here.
     expect(within(sheet).queryByRole("button", { name: "ירושלים" })).toBeNull();
+    // It drops from the top rather than rising from the bottom, so it lands on the
+    // header control that asked. jsdom lays nothing out; the modifier is the guarantee.
+    expect(sheet).toHaveClass("sheet--top");
+  });
+
+  /**
+   * React cannot animate a node it has already removed, so the sheet has to outlive
+   * the click that dismissed it: `close` only marks it as leaving, and the unmount
+   * waits out the exit. The failure this guards is the obvious refactor — wiring the
+   * X straight back to `onClose` — which looks right and silently drops the exit.
+   */
+  it("plays its exit out before it leaves, rather than vanishing on the click", async () => {
+    const user = userEvent.setup();
+    await reachHome(user);
+    const sheet = await openSheet(user);
+
+    await user.click(within(sheet).getByRole("button", { name: he.origin.close }));
+    expect(sheet).toHaveClass("sheet--leaving");
+    expect(sheet).toBeInTheDocument();
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
   it("opens from the address in the header too — the two are one control", async () => {
@@ -230,6 +256,48 @@ describe("home location sheet", () => {
     // Still the city, and the sheet stayed open so another way can be chosen.
     expect(screen.getByRole("dialog", { name: he.origin.title })).toBeInTheDocument();
     expect(screen.getByText("ירושלים · בית וגן")).toBeInTheDocument();
+  });
+
+  /**
+   * A request that fails says nothing about where the user is: the fix from a minute
+   * ago is still good. Falling back to the city on a timeout would move every screen —
+   * the map camera with them — because one attempt did not come back.
+   */
+  it("keeps the last device position when a later attempt fails", async () => {
+    const user = userEvent.setup();
+    stubGeolocation("grant-once");
+    await reachHome(user);
+    await openSheet(user);
+    await user.click(screen.getByRole("button", { name: he.origin.useMyLocation }));
+    await screen.findByText(he.map.youAreHere);
+
+    await openSheet(user);
+    await user.click(screen.getByRole("button", { name: he.origin.useMyLocation }));
+
+    // Said out loud — a refresh that did not happen is not the same as no position.
+    expect(await screen.findByText(he.origin.notRefreshed)).toBeInTheDocument();
+    expect(screen.queryByText(he.origin.denied)).toBeNull();
+    // Still measuring from the device, in memory and in storage.
+    expect(screen.getByText(he.map.youAreHere)).toBeInTheDocument();
+    expect(localStorage.getItem("kashroot.origin.v1")).toContain("device");
+  });
+
+  /** Same courtesy for someone who only tried the shortcut: their address stands. */
+  it("keeps a pinned address when the device cannot be reached", async () => {
+    const user = userEvent.setup();
+    geocodeImpl = async () => [CANDIDATE];
+    stubGeolocation("deny");
+    await reachHome(user);
+    await openSheet(user);
+    await pickAddress(user, "ביאליק 1");
+    await screen.findByText(CANDIDATE.label);
+
+    await openSheet(user);
+    await user.click(screen.getByRole("button", { name: he.origin.useMyLocation }));
+
+    expect(await screen.findByText(he.origin.denied)).toBeInTheDocument();
+    expect(screen.getByText(CANDIDATE.label)).toBeInTheDocument();
+    expect(localStorage.getItem("kashroot.origin.v1")).toContain(CANDIDATE.label);
   });
 
   /**

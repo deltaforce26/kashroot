@@ -95,7 +95,12 @@ export function cityBySlug(slug: string): CityOption {
 /** Comfortable walking/driving radius for the home list. */
 export const NEARBY_RADIUS_KM = 12;
 
-/** The server's ceiling; used when the map wants everything around a centre. */
+/**
+ * The server's ceiling on `radius_km`, mirrored from the API so this file's header
+ * describes the same bounds. No screen sends it: every distance search asks for the
+ * filter bar's radius (`RADIUS_OPTIONS`, which tops out well below this), so the
+ * reach is the user's choice rather than a sweep of everything.
+ */
 export const MAX_RADIUS_KM = 50;
 
 export const PAGE_SIZE = 20;

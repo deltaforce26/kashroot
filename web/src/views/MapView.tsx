@@ -26,21 +26,31 @@
  *
  * When there is no maps key, or the script fails to load — a blocked CDN, an
  * exhausted quota, or simply being offline — the screen falls back to the design's
- * striped placeholder with one line saying why, and the list is one tap away. It
+ * striped placeholder with one line saying why, and home is one tap away. It
  * never shows a bare grey rectangle or a Google error overlay.
+ *
+ * The screen carries the shared filter bar and a search field of its own, so its pins
+ * answer the same question home's cards answer. A filter tapped here is the filter
+ * tapped there — both read the one store in `filters/useFilters.ts` — and the reach is
+ * the bar's radius rather than a fixed sweep of the server's ceiling. There is no
+ * separate list screen to drift from: home is the list, and the tab bar is on screen,
+ * so the map needs no back button of its own.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { LocateFixed } from "lucide-react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
-import type { SearchRequest, Verdict } from "../api/types";
+import { MAX_QUERY_LENGTH, type SearchRequest, type Verdict } from "../api/types";
 import { certifierLabel, type ResultView } from "../api/viewmodel";
-import { ChevronIcon, CloseIcon, PinIcon } from "../components/icons";
+import { FilterBar } from "../components/filters/FilterBar";
+import { CloseIcon, PinIcon, SearchIcon } from "../components/icons";
 import { tintClass } from "../components/RestaurantCard";
-import { ErrorState } from "../components/states";
+import { EmptyQuery, EmptyResults, ErrorState } from "../components/states";
 import { TabBar } from "../components/TabBar";
 import { VERDICT_GLYPH, verdictLabel } from "../components/VerdictPill";
-import { MAX_RADIUS_KM } from "../config";
+import { toSearchFilters } from "../filters/model";
+import { useFilters } from "../filters/useFilters";
 import { isNetworkError, useSearch } from "../hooks/useApi";
 import { formatDistance, pickName, useI18n } from "../i18n/I18nProvider";
 import { useCity } from "../location/useCity";
@@ -81,6 +91,22 @@ function verdictColour(verdict: Verdict): string {
 /** What a tap on a pin does: open that card, or close the one already open. */
 export function nextOpenId(current: string | null, tapped: string): string | null {
   return current === tapped ? null : tapped;
+}
+
+/** Close enough to read a street, which is what a pinned origin is worth looking at. */
+const ORIGIN_ZOOM = 14;
+
+/**
+ * What the zoom becomes when the camera moves to a new origin, or null to leave it be.
+ *
+ * Recentring only ever zooms *in*. Someone looking at the whole city gets brought close
+ * enough for their position to mean something; someone who deliberately zoomed to a
+ * street keeps their street, because pulling them back out would undo a choice they made
+ * with their own hands.
+ */
+export function nextZoom(current: number | undefined): number | null {
+  if (current === undefined || current >= ORIGIN_ZOOM) return null;
+  return ORIGIN_ZOOM;
 }
 
 /**
@@ -143,7 +169,10 @@ export function MapView() {
   const navigate = useNavigate();
   const { profile } = useProfile();
   const { city } = useCity();
-  const { origin, source, requestDeviceLocation } = useOrigin(city);
+  // The one filter store, shared with home and search, so a chip tapped here is the
+  // chip tapped there and the map cannot become a third, differently-filtered answer.
+  const { filters } = useFilters();
+  const { origin, source, state: originState, requestDeviceLocation } = useOrigin(city);
   const { status: mapsStatus, libs } = useGoogleMaps(lang);
 
   // The open card, by restaurant id. Nothing is open on arrival.
@@ -159,15 +188,30 @@ export function MapView() {
   const openIdRef = useRef<string | null>(null);
   openIdRef.current = openId;
 
-  const request = useMemo<SearchRequest>(
-    () => ({
+  // Filters in place, like search's field and unlike home's, which navigates away:
+  // on a map the results are the screen, so there is nowhere to navigate to.
+  const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
+  const trimmedQuery = deferredQuery.trim();
+
+  const request = useMemo<SearchRequest>(() => {
+    const facets = toSearchFilters(filters);
+    return {
       profile: toPayload(profile),
       center: origin,
-      radius_km: MAX_RADIUS_KM,
+      // The bar's radius, not the server's ceiling: the map is a distance search with
+      // a centre, so it reaches exactly as far as home reaches. `toSearchFilters`
+      // leaves the radius out on purpose — it is top-level, not a facet.
+      radius_km: filters.radiusKm,
+      // Deliberately larger than home's PAGE_SIZE. A map is read at a glance rather
+      // than paged, so it plots the whole radius where home shows its first page of
+      // it — which makes the map a superset of home's cards by distance, never a
+      // different set. Do not "fix" this to PAGE_SIZE and leave the screen 20 pins.
       page_size: 100,
-    }),
-    [profile, origin],
-  );
+      ...(trimmedQuery ? { query: trimmedQuery.slice(0, MAX_QUERY_LENGTH) } : {}),
+      ...(facets ? { filters: facets } : {}),
+    };
+  }, [profile, origin, filters, trimmedQuery]);
   const { data, loading, error, reload } = useSearch(request);
 
   // Only geocoded records can be plotted; the rest still exist in the list.
@@ -306,10 +350,69 @@ export function MapView() {
     map.panBy(0, -POPUP_PAN_UP);
   }, [open]);
 
+  // The camera follows the origin. The map is built once, with its centre fixed at
+  // construction, so without this the locate button silently changes what is searched
+  // and where "you are here" sits while leaving the viewport on the old city centre —
+  // which reads as a button that does nothing. Declared after the card effect on
+  // purpose: when both want the camera in one commit, the origin is the explicit ask.
+  //
+  // `origin` is reference-stable — a point object written once per publish in
+  // `useOrigin`, or the city's own `center` from config — so this fires on a real
+  // change and never on a re-render, and the user's own panning is left alone.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.panTo({ lat: origin.lat, lng: origin.lon });
+    const zoom = nextZoom(map.getZoom());
+    if (zoom !== null) map.setZoom(zoom);
+  }, [origin, mapsStatus]);
+
   const mapUnavailable = mapsStatus === "absent" || mapsStatus === "error";
+  const locating = originState === "requesting";
 
   return (
     <div className="shell">
+      {/* The screen's heading, as on home: the count of what was *checked*, never of
+          what matched, and only once there is an answer to state. A map is a picture,
+          so this is the only heading a screen reader can get from it. */}
+      <h1 className="sr-only">
+        {error
+          ? t.states.errorTitle
+          : loading
+            ? t.states.loading
+            : t.home.resultsTitle(plotted.length)}
+      </h1>
+
+      {/*
+        The controls float over a full-bleed map rather than sitting in a header band
+        above it, which is why they are ordinary flow children with no wrapper: `.map`
+        is `position: absolute; inset: 0`, so it is out of flow and these lay out at
+        the top of the shell with nothing to push against.
+        A wrapper would in fact break the filter sheet — `.sheet` positions against its
+        nearest positioned ancestor, so an absolutely-positioned box around `FilterBar`
+        would anchor the sheet to that ~120px strip instead of the shell.
+        They come first so tab order and the accessibility tree read controls-then-map;
+        paint order is unaffected, an explicit positive z-index beating the map's `auto`.
+      */}
+      <label className="searchbar glass map__search">
+        <span className="searchbar__icon" aria-hidden="true">
+          <SearchIcon size={17} />
+        </span>
+        <input
+          type="search"
+          className="searchbar__input"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t.search.placeholder}
+          aria-label={t.search.placeholder}
+          maxLength={MAX_QUERY_LENGTH}
+        />
+      </label>
+
+      {/* Bare, like home's: the map is a distance search with a centre, so the radius
+          belongs in its sheet. (Search excludes it — a city search has no centre.) */}
+      <FilterBar />
+
       {mapsStatus === "ready" ? (
         <div className="map" ref={containerRef} aria-label={t.map.map} role="application" />
       ) : (
@@ -330,7 +433,10 @@ export function MapView() {
                   </div>
                 </div>
               </div>
-              <button type="button" className="cta" onClick={() => navigate("/map/list")}>
+              {/* Home is the list now, so the copy — "מעבר לרשימה" / "Go to the list",
+                  and the "The list works as usual" the banner above it ends on — stays
+                  true with the destination changed. */}
+              <button type="button" className="cta" onClick={() => navigate("/")}>
                 {t.map.toList}
               </button>
             </div>
@@ -338,54 +444,57 @@ export function MapView() {
         </div>
       )}
 
-      <div className="map__overlay">
-        <button
-          type="button"
-          className="circle glass"
-          aria-label={t.states.back}
-          // Home, not history: the map and its list toggle between each other, so
-          // "back" through history can bounce between the two instead of leaving.
-          onClick={() => navigate("/")}
-        >
-          <ChevronIcon />
-        </button>
-        <span className="segmented glass" style={{ padding: "5px 4px" }}>
-          <button type="button" aria-pressed={true}>
-            {t.map.map}
-          </button>
-          <button type="button" aria-pressed={false} onClick={() => navigate("/map/list")}>
-            {t.map.list}
-          </button>
-        </span>
-        <button
-          type="button"
-          className="circle glass"
-          aria-label={t.origin.useMyLocation}
-          aria-pressed={source === "device"}
-          onClick={requestDeviceLocation}
-        >
-          <PinIcon size={16} />
-        </button>
-      </div>
-
       {/* A map is a picture, so how many places are on it is the one thing a screen
           reader cannot get from it. Announced, not drawn: the map itself is the view. */}
       <p className="sr-only" role="status">
         {loading ? t.states.loadingShort : t.map.pinsShown(plotted.length)}
       </p>
 
-      {/* A search that failed leaves an empty map, which reads as "nothing here"
-          rather than "we could not ask" — so the failure is said out loud, over the
-          map, and the retry is right there. */}
-      {error && mapsStatus === "ready" && (
+      {/* The same coverage caveat home states in prose. A map has no room for a
+          paragraph, so it is said to screen readers only — and in a line of its own,
+          not inside the `role="status"` above, which would re-announce this standing
+          fact every time the result count changed. */}
+      <p className="sr-only">{t.map.note}</p>
+
+      {/*
+        An empty map, said out loud over it. A failed search reads as "nothing here"
+        rather than "we could not ask", and now that filters and a query can empty the
+        map on purpose, so does an ordinary miss — the same three states search draws
+        under its list, in the one slot a map has room for.
+      */}
+      {mapsStatus === "ready" && (error || (!loading && plotted.length === 0)) && (
         <div className="map__notice">
-          <ErrorState isNetwork={isNetworkError(error)} onRetry={reload} />
+          {error ? (
+            <ErrorState isNetwork={isNetworkError(error)} onRetry={reload} />
+          ) : trimmedQuery ? (
+            <EmptyQuery query={trimmedQuery} onClear={() => setQuery("")} />
+          ) : (
+            <EmptyResults onWidenProfile={() => navigate("/profile")} />
+          )}
         </div>
       )}
 
       {popupHost && open
         ? createPortal(<MapPopupCard item={open} onClose={() => setOpenId(null)} />, popupHost)
         : null}
+
+      {/* Locate belongs to the map, not to the header: it moves the picture, and it
+          sits in the bottom corner where a thumb already is and where every map the
+          user has ever used keeps it — just clear of the tab bar. The browser's
+          permission prompt can take a beat to paint, and a tap with nothing behind it
+          reads as a dead button, so the label says what is happening and a second tap
+          cannot stack another request behind the first. */}
+      <button
+        type="button"
+        className="circle glass map__locate"
+        aria-label={locating ? t.origin.locating : t.origin.useMyLocation}
+        aria-pressed={source === "device"}
+        aria-busy={locating}
+        disabled={locating}
+        onClick={requestDeviceLocation}
+      >
+        <LocateFixed size={22} strokeWidth={2} aria-hidden />
+      </button>
 
       <TabBar />
     </div>

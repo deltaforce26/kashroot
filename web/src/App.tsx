@@ -16,7 +16,6 @@ import { isProfileUsable } from "./profile/profile";
 import { SaveTargetProvider } from "./saved/SaveTargetProvider";
 import { useProfile } from "./profile/ProfileProvider";
 import { Home } from "./views/Home";
-import { MapList } from "./views/MapList";
 import { MapView } from "./views/MapView";
 import { NotFound } from "./views/NotFound";
 import { OnboardingCertifiers } from "./views/OnboardingCertifiers";
@@ -107,16 +106,11 @@ export default function App() {
               </RequireProfile>
             }
           />
-          {/* The map's own results, listed. It is a sibling of /map rather than a
-              child so the map tab stays highlighted on both. */}
-          <Route
-            path="/map/list"
-            element={
-              <RequireProfile>
-                <MapList />
-              </RequireProfile>
-            }
-          />
+          {/* The map's list was a second, differently-filtered answer to the question
+              home already answers, so home is the list now. Same as /filters above:
+              the old address still lands somewhere real, which matters for anyone
+              whose installed PWA kept it. */}
+          <Route path="/map/list" element={<Navigate to="/map" replace />} />
           <Route
             path="/profile"
             element={
