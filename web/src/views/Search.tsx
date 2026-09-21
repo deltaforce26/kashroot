@@ -94,7 +94,7 @@ export function Search() {
         </div>
       </header>
 
-      <label className="searchbar glass" style={{ margin: "14px 20px 0" }}>
+      <label className="searchbar glass" style={{ margin: "14px var(--gutter) 0" }}>
         <span className="searchbar__icon" aria-hidden="true">
           <SearchIcon size={17} />
         </span>
