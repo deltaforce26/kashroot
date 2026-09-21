@@ -468,4 +468,32 @@ describe("the stylesheet declarations the separation leans on", () => {
     expect(rule).toMatch(/height:\s*100%/);
     expect(rule).toMatch(/max-height:\s*100dvh/);
   });
+
+  /**
+   * The location sheet is anchored to the top of the shell while every other sheet
+   * still rises from the bottom, and the difference is one modifier layered over the
+   * shared `.sheet` rule. Both halves have to be asserted: dropping `bottom: auto`
+   * would leave the panel stretched from the header to the tab bar, and the markup
+   * test in locationSheet.test.tsx cannot see it, because jsdom applies no CSS.
+   */
+  it("anchors the location sheet to the top without stretching it", () => {
+    const rule = block(".sheet--top");
+    expect(rule).toMatch(/top:\s*0/);
+    expect(rule).toMatch(/bottom:\s*auto/);
+    // The bottom sheet it overrides is still the bottom sheet the saved lists use.
+    expect(block(".sheet")).toMatch(/bottom:\s*0/);
+  });
+
+  /**
+   * The sheet is still mounted for the length of its exit, so the end state has to be
+   * held: under the default `backwards` it would snap back into view for the frame
+   * before React removes it. `pointer-events` is the other half — a sheet on its way
+   * out must stop catching taps meant for the screen behind it.
+   */
+  it("holds the location sheet's exit open until the node is actually gone", () => {
+    const rule = block(".sheet--top.sheet--leaving");
+    expect(rule).toMatch(/animation-name:\s*sheetLift/);
+    expect(rule).toMatch(/animation-fill-mode:\s*forwards/);
+    expect(rule).toMatch(/pointer-events:\s*none/);
+  });
 });
