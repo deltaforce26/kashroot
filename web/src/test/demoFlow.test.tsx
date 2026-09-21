@@ -112,6 +112,14 @@ describe("demo flow", () => {
     const panel = await screen.findByLabelText(he.verdict.whyMatch);
     expect(within(panel).getAllByRole("listitem").length).toBeGreaterThan(0);
     expect(screen.getByText(he.restaurant.certificate)).toBeInTheDocument();
+
+    // The verification age is the panel's line. The certificate card once repeated
+    // it as a badge; it now carries the record's source instead.
+    expect(screen.getAllByText(/אומת (לפני|היום|אתמול|בשנה)/)).toHaveLength(1);
+    const certificate = screen.getByRole("region", { name: he.restaurant.certificate });
+    expect(
+      within(certificate).getByText(new RegExp(`^${he.restaurant.source}:`)),
+    ).toBeInTheDocument();
   });
 
   /**
@@ -210,6 +218,10 @@ describe("demo flow", () => {
    * No maps key is configured in test (or on a fresh clone), which is precisely the
    * state the fallback exists for. The map screen must degrade to the design's
    * striped placeholder with an explanation and a way out — never a grey rectangle.
+   *
+   * The way out is the point of the second half: both fallback lines end "The list
+   * works as usual", and since the map's own list was deleted that sentence is only
+   * true if the button lands on home. So it is followed rather than merely counted.
    */
   it("falls back to an explained placeholder when there is no maps key", async () => {
     const user = userEvent.setup();
@@ -222,7 +234,9 @@ describe("demo flow", () => {
 
     expect(await screen.findByText(he.map.unavailableTitle)).toBeInTheDocument();
     expect(screen.getByText(he.map.unavailableNoKey)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: he.map.toList })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: he.map.toList }));
+    expect(await screen.findByText(he.home.nearYou)).toBeInTheDocument();
   });
 
   it("tells the user the list is partial rather than implying it is everything", async () => {
@@ -483,6 +497,18 @@ describe("the stylesheet declarations the separation leans on", () => {
     const rule = block("#root");
     expect(rule).toMatch(/height:\s*100%/);
     expect(rule).toMatch(/max-height:\s*100dvh/);
+  });
+
+  /**
+   * The 430px column is a laptop affordance. Unconditional, it left any phone wider
+   * than 430 CSS px — large Pixels are 448 — with a strip of bare `body` down each
+   * side. The base rule must stay uncapped; only the wide-viewport query may cap it.
+   */
+  it("caps the shell's width on wide viewports only, never on a phone", () => {
+    expect(block(".shell")).not.toMatch(/max-width/);
+    expect(css).toMatch(
+      /@media \(min-width: 600px\) \{\s*\.shell \{\s*max-width: var\(--shell-max\)/,
+    );
   });
 
   /**

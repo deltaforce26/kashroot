@@ -1,25 +1,32 @@
-"""Restaurant directory — browse every record, correct its non-kashrut details.
+"""Restaurant directory — browse every record, correct or hand-enter one.
 
 The other queue endpoints answer "what needs my attention?". This one answers "show
 me the corpus", which is what a moderator needs when a report arrives about a place
-that is not in any queue: a wrong address, a renamed business, a branch that closed.
+that is not in any queue — a wrong address, a renamed business, a branch that closed
+— or when a restaurant ingestion never picked up needs to be entered by hand at all.
 
 Fail-safe by construction, not by convention (CLAUDE.md, locked):
 
 * No kashrut fact is writable here. Certificates, their attributes and their states
   are returned as read-only context; every transition that touches them lives in
-  ``app.api.admin.actions`` and is guarded there.
-* ``record_state``, ``needs_review`` and ``corroboration_count`` are owned by the
-  review queue and by ingestion, and are not in the editable whitelist.
+  ``app.api.admin.actions`` and (for the certificate hand-entry itself)
+  ``app.api.admin.certificates`` — never here.
+* ``record_state`` and ``needs_review`` are otherwise owned by the review queue and
+  by ingestion; the one exception is ``create_restaurant``, where the moderator's
+  review-routing checkbox maps onto that pair directly (plan decision 2).
+  ``corroboration_count`` is never moderator-chosen — ingestion owns it on an edit,
+  and a hand-entered row always starts at 1.
 * The router writes only ``EDITABLE_RESTAURANT_FIELDS`` ∩ the request's explicitly-set
   fields, so an unlisted column cannot be written even if the schema grows one.
 
 Correcting name/city/address re-derives ``dedupe_key`` in the same transaction: the
 key is ingestion's natural key for the row, and leaving it stale would make the next
 pipeline run insert a duplicate beside the corrected record instead of matching it.
+Creating a restaurant derives the same key up front and refuses a collision (409)
+rather than silently creating two records ingestion cannot tell apart.
 
-Every edit writes an ``AuditLog`` row in the caller's transaction, like every other
-mutation in this package.
+Every mutation writes an ``AuditLog`` row in the caller's transaction, like every
+other mutation in this package.
 """
 
 from __future__ import annotations
@@ -29,22 +36,28 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.admin.audit import apply_changes, write_audit
+from app.api.admin.audit import apply_changes, jsonable, write_audit
 from app.api.admin.consts import (
     DEDUPE_KEY_CONFLICT_DETAIL,
+    DEDUPE_KEY_TAKEN_DETAIL,
     DEFAULT_PAGE_LIMIT,
     MAX_PAGE_LIMIT,
     MAX_RESTAURANT_QUERY_LENGTH,
+    QUEUED_RECORD_STATE,
     RESTAURANT_IDENTITY_FIELDS,
+    UNQUEUED_RECORD_STATE,
     URL_RESTAURANT_FIELDS,
 )
 from app.api.admin.helpers import get_or_404, paginate
 from app.api.deps import require_moderator
 from app.api.schemas import Page
 from app.api.schemas_restaurants import (
+    AUDITED_RESTAURANT_CREATE_FIELDS,
     EDITABLE_RESTAURANT_FIELDS,
+    CreateRestaurantRequest,
     RestaurantDetail,
     UpdateRestaurantRequest,
 )
@@ -112,6 +125,77 @@ def list_restaurants(
     )
 
 
+@router.post(
+    "/restaurants",
+    response_model=RestaurantDetail,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_restaurant(
+    body: CreateRestaurantRequest,
+    actor: str = Depends(require_moderator),
+    session: Session = Depends(get_session),
+) -> RestaurantDetail:
+    """Hand-enter a restaurant that ingestion never picked up, fully audited.
+
+    ``dedupe_key`` is derived here, never entered: the same natural key ingestion
+    uses (``app.ingestion.normalize.restaurant_dedupe_key``), so a later pipeline run
+    matches this row instead of inserting a duplicate beside it. A collision is
+    refused with 409 both up front (the common case) and again as a race backstop on
+    the UNIQUE index if two moderators submit the same identity at once — mirrors
+    ``photos.upload_certificate_photo``'s dedupe race handling.
+
+    The review-routing checkbox (``body.needs_review``, plan decision 2) maps onto
+    ``(record_state, needs_review)`` as a pair, never a direct column write: checked
+    queues the row into ``/queues/review``; unchecked marks it moderator-verified and
+    keeps it out of every queue.
+    """
+    submitted = body.model_dump()
+    values: dict[str, Any] = {
+        field: submitted[field] for field in EDITABLE_RESTAURANT_FIELDS if field in submitted
+    }
+    _url_strings(values)
+    dedupe_key = restaurant_dedupe_key(
+        values.get("name_he"), values.get("city_he"), values.get("address_he")
+    )
+    existing = session.scalar(select(Restaurant.id).where(Restaurant.dedupe_key == dedupe_key))
+    if existing is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=DEDUPE_KEY_TAKEN_DETAIL)
+
+    queued = body.needs_review
+    values["dedupe_key"] = dedupe_key
+    values["record_state"] = QUEUED_RECORD_STATE if queued else UNQUEUED_RECORD_STATE
+    values["needs_review"] = queued
+    values["corroboration_count"] = 1
+
+    restaurant = Restaurant(**values)
+    session.add(restaurant)
+    try:
+        session.flush()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=DEDUPE_KEY_TAKEN_DETAIL) from None
+
+    write_audit(
+        session,
+        "restaurant",
+        restaurant.id,
+        AuditAction.CREATE,
+        {
+            field: {"before": None, "after": jsonable(getattr(restaurant, field))}
+            for field in AUDITED_RESTAURANT_CREATE_FIELDS
+        },
+        actor,
+        {
+            "action": "create_restaurant",
+            "note": body.note,
+            "queued_for_review": queued,
+            "dedupe_key": dedupe_key,
+        },
+    )
+
+    return RestaurantDetail.model_validate(restaurant)
+
+
 @router.get("/restaurants/{restaurant_id}", response_model=RestaurantDetail)
 def get_restaurant(
     restaurant_id: uuid.UUID,
@@ -150,9 +234,7 @@ def update_restaurant(
     values: dict[str, Any] = {
         field: submitted[field] for field in EDITABLE_RESTAURANT_FIELDS if field in submitted
     }
-    for field in URL_RESTAURANT_FIELDS:
-        if values.get(field) is not None:
-            values[field] = str(values[field])
+    _url_strings(values)
     if any(field in values for field in RESTAURANT_IDENTITY_FIELDS):
         values.update(_rekeyed(session, restaurant, values))
 
@@ -172,6 +254,24 @@ def update_restaurant(
     )
 
     return RestaurantDetail.model_validate(restaurant)
+
+
+def _url_strings(values: dict[str, Any]) -> None:
+    """
+    Coerce validated URL fields from pydantic ``Url`` objects to plain strings.
+
+    Shared by ``create_restaurant`` and ``update_restaurant``: both write onto the
+    same ``Text`` columns, which store URLs as strings, never as a pydantic type.
+
+    Parameters:
+        values (dict[str, Any]): The whitelisted write values, mutated in place.
+
+    Return:
+        None
+    """
+    for field in URL_RESTAURANT_FIELDS:
+        if values.get(field) is not None:
+            values[field] = str(values[field])
 
 
 def _rekeyed(session: Session, restaurant: Restaurant, values: dict[str, Any]) -> dict[str, Any]:

@@ -153,7 +153,9 @@ const he = {
           ? "אומת אתמול"
           : days > 365
             ? "אומת לפני יותר משנה"
-            : `אומת לפני ${days} ימים`,
+            : days > 100
+              ? "אומת בשנה האחרונה"
+              : `אומת לפני ${days} ימים`,
     neverVerified: "לא אומת מעולם על ידינו",
     source: "מקור",
     sources: {
@@ -273,7 +275,6 @@ const he = {
 
   map: {
     map: "מפה",
-    list: "רשימה",
     placeholder: (city: string) => `מפה — ${city}`,
     note: "מוצגים רק עסקים שיש להם מיקום ממופה במאגר.",
     // The map has a real design for having no map — see useGoogleMaps.
@@ -546,7 +547,9 @@ const en: Strings = {
           ? "Verified yesterday"
           : days > 365
             ? "Verified over a year ago"
-            : `Verified ${days} days ago`,
+            : days > 100
+              ? "Verified in the last year"
+              : `Verified ${days} days ago`,
     neverVerified: "Never verified by us",
     source: "Source",
     sources: {
@@ -659,7 +662,6 @@ const en: Strings = {
 
   map: {
     map: "Map",
-    list: "List",
     placeholder: (city: string) => `map — ${city}`,
     note: "Only businesses with a mapped location in our records appear here.",
     unavailableTitle: "The map isn't available right now",

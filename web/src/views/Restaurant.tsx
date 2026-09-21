@@ -34,18 +34,12 @@ import { useSaveToggle } from "../saved/useSaveToggle";
 function CertificateCard({ evidence }: { evidence: CertificateEvidenceOut }) {
   const { t, lang } = useI18n();
   const validUntil = formatDate(evidence.valid_until);
-  const age = evidence.freshness.evidence_age_days;
   const certifierName =
     lang === "en" ? (evidence.certifier.name_en ?? evidence.certifier.name_he) : evidence.certifier.name_he;
 
-  const freshness =
-    age === null
-      ? { text: t.restaurant.neverVerified, tone: "amber" as const }
-      : {
-          text: t.restaurant.verifiedAgo(age),
-          tone: evidence.freshness.is_stale ? ("amber" as const) : ("green" as const),
-        };
-
+  // The verification age is an API reason and already has its line in the evidence
+  // panel above; this card carries the fact that panel does not — where the
+  // certificate record came from.
   return (
     <section className="panel glass cert-card" aria-label={t.restaurant.certificate}>
       <div className="cert-card__photo stripe-flat" aria-hidden="true">
@@ -55,7 +49,9 @@ function CertificateCard({ evidence }: { evidence: CertificateEvidenceOut }) {
         <div className="cert-card__title">{t.restaurant.certificate}</div>
         <span>{certifierName}</span>
         <span>{validUntil ? t.restaurant.validUntil(validUntil) : t.restaurant.noExpiry}</span>
-        <span className={`badge-soft badge-soft--${freshness.tone}`}>{freshness.text}</span>
+        <span>
+          {t.restaurant.source}: {t.restaurant.sources[evidence.provenance.source]}
+        </span>
       </div>
     </section>
   );

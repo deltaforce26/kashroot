@@ -486,6 +486,103 @@ textarea {
   gap: 8px;
 }
 
+/* ── Hand entry ────────────────────────────────────────────────────────── */
+
+/*
+ * The create affordance sits above the filters, not inside them: adding a record
+ * is not a way of looking at records. Logical properties only, like everything
+ * else here — the bar reads start-to-end under either root direction.
+ */
+.create-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.create-bar .muted {
+  font-size: 12.5px;
+}
+
+/*
+ * The create panel is the same object as an expanded row's detail — it composes
+ * with `.detail` rather than restating it — but it is not inside a row, so it
+ * carries the row-detail tint and rounding itself.
+ */
+.create-panel {
+  background: var(--tint-neutral);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-tile);
+  padding: 4px 16px 16px;
+  margin-bottom: 18px;
+}
+
+.create-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.create-panel-header h3 {
+  margin: 0;
+}
+
+/*
+ * A checkbox must not inherit the field width `.tristate-row input` sets, and its
+ * label reads beside the box rather than above it.
+ */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.checkbox-row input {
+  width: auto;
+  flex: none;
+  margin: 0;
+}
+
+/*
+ * The chosen restaurant on the standalone certificate screen. It replaces the
+ * results table rather than sitting beside it, so it has to carry the same weight
+ * a selected row would: the tint marks it as the subject of everything below.
+ * Logical properties only — the accent reads start-side under either direction.
+ */
+.picked-restaurant {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--tint-neutral);
+  border: 1px solid var(--glass-line);
+  border-inline-start: 3px solid var(--glass-line);
+  border-radius: var(--radius-tile);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+
+.picked-restaurant .muted {
+  font-size: 12.5px;
+}
+
+/* The certificate form, nested one level inside an already-expanded row. */
+.cert-create {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-inline-start: 3px solid var(--glass-line);
+  padding-inline-start: 14px;
+}
+
+.cert-create h4 {
+  margin: 0;
+}
+
 .expiry-forms {
   display: flex;
   gap: 20px;

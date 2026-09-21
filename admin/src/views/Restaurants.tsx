@@ -5,7 +5,7 @@ import {
   AMENITY_KEYS,
   DIET_TYPES,
   RESTAURANT_STATUSES,
-  type AmenityKey,
+  type CertificateOut,
   type DietType,
   type RestaurantDetail,
   type RestaurantStatus,
@@ -18,7 +18,18 @@ import {
   Ltr,
   restaurantName,
 } from "../components/data";
+import { CreateCertificatePanel } from "../components/CreateCertificatePanel";
+import { CreateRestaurantPanel } from "../components/CreateRestaurantPanel";
 import { CityFilter, Pager } from "../components/QueueControls";
+import {
+  AMENITY_CHOICE_LABELS,
+  AMENITY_CHOICES,
+  amenitiesFrom,
+  FIELD_GROUPS,
+  FIELD_LABELS,
+  LTR_FIELDS,
+  type TextField,
+} from "../components/restaurantFields";
 import { EmptyState, ErrorState, LoadingState } from "../components/states";
 import { useToast } from "../components/Toast";
 import { usePagedQuery } from "../hooks/usePagedQuery";
@@ -31,66 +42,7 @@ import {
   RESTAURANT_STATUS_LABELS,
 } from "../labels";
 
-/** Free-text fields, in the order the editor lays them out. */
-type TextField =
-  | "name_he"
-  | "name_en"
-  | "branch_label"
-  | "address_he"
-  | "address_en"
-  | "city_he"
-  | "city_en"
-  | "city_slug"
-  | "neighborhood_he"
-  | "phone"
-  | "website"
-  | "menu_url"
-  | "business_type_he"
-  | "notes";
-
-const FIELD_LABELS: Record<TextField, string> = {
-  name_he: "שם (עברית)",
-  name_en: "שם (אנגלית)",
-  branch_label: "שם הסניף",
-  address_he: "כתובת (עברית)",
-  address_en: "כתובת (אנגלית)",
-  city_he: "עיר (עברית)",
-  city_en: "עיר (אנגלית)",
-  city_slug: "מזהה עיר (slug)",
-  neighborhood_he: "שכונה (עברית)",
-  phone: "טלפון",
-  website: "אתר אינטרנט",
-  menu_url: "קישור לתפריט",
-  business_type_he: "סוג העסק (עברית)",
-  notes: "הערות לרשומה",
-};
-
-/** Latin-only fields: forced LTR so a slug or URL never reorders under bidi. */
-const LTR_FIELDS: ReadonlySet<TextField> = new Set<TextField>([
-  "city_slug",
-  "phone",
-  "website",
-  "menu_url",
-]);
-
-const FIELD_GROUPS: ReadonlyArray<{ title: string; fields: readonly TextField[] }> = [
-  { title: "זיהוי", fields: ["name_he", "name_en", "branch_label"] },
-  {
-    title: "מיקום",
-    fields: ["address_he", "address_en", "city_he", "city_en", "city_slug", "neighborhood_he"],
-  },
-  { title: "יצירת קשר", fields: ["phone", "website", "menu_url"] },
-];
-
 const STATUS_LABELS = RESTAURANT_STATUS_LABELS;
-
-/** Tri-state, like the certificate attribute editor: "—" means nothing recorded. */
-const AMENITY_CHOICES = ["", "true", "false"] as const;
-const AMENITY_CHOICE_LABELS: Record<(typeof AMENITY_CHOICES)[number], string> = {
-  "": "— לא נרשם",
-  true: "כן",
-  false: "לא",
-};
 
 interface Draft {
   text: Record<TextField, string>;
@@ -122,15 +74,6 @@ function draftOf(item: RestaurantDetail): Draft {
   };
 }
 
-function amenitiesOf(draft: Draft): Partial<Record<AmenityKey, boolean>> {
-  const built: Partial<Record<AmenityKey, boolean>> = {};
-  for (const key of AMENITY_KEYS) {
-    if (draft.amenities[key] !== "") built[key] = draft.amenities[key] === "true";
-  }
-
-  return built;
-}
-
 /**
  * The PATCH body: only what the moderator actually changed.
  *
@@ -152,7 +95,7 @@ function buildPatch(item: RestaurantDetail, draft: Draft): UpdateRestaurantReque
   const price = draft.price_level === "" ? null : Number(draft.price_level);
   if (price !== item.price_level) patch.price_level = price;
   if (draft.status !== item.status) patch.status = draft.status;
-  const amenities = amenitiesOf(draft);
+  const amenities = amenitiesFrom(draft.amenities);
   if (JSON.stringify(amenities) !== JSON.stringify(item.amenities)) patch.amenities = amenities;
 
   return patch;
@@ -162,17 +105,39 @@ export function Restaurants() {
   const [query, setQuery] = useState("");
   const [city, setCity] = useState("");
   const [status, setStatus] = useState("");
-  const { items, total, loading, error, offset, reload, replaceItem, next, prev } =
+  const { showToast } = useToast();
+  const { items, total, loading, error, offset, reload, replaceItem, prependItem, next, prev } =
     usePagedQuery<RestaurantDetail>("/api/admin/restaurants", {
       q: query || undefined,
       city: city || undefined,
       status: status || undefined,
     });
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   return (
     <section>
       <h2>מסעדות</h2>
+      <div className="create-bar">
+        <button type="button" onClick={() => setCreating((open) => !open)}>
+          {creating ? "סגירת טופס ההוספה" : "הוספת מסעדה"}
+        </button>
+        <span className="muted">
+          הזנה ידנית של מסעדה שאינה במאגר. היצירה מתועדת, ואינה יוצרת שום עובדת כשרות.
+        </span>
+      </div>
+      {creating && (
+        <CreateRestaurantPanel
+          onCancel={() => setCreating(false)}
+          onCreated={(created) => {
+            // The server's row, not the draft: what is on screen is what was stored.
+            prependItem(created);
+            setCreating(false);
+            setExpandedId(created.id);
+            showToast("המסעדה נוצרה ותועדה. אפשר להוסיף לה תעודה עכשיו.");
+          }}
+        />
+      )}
       <div className="controls">
         <label className="control">
           חיפוש
@@ -261,6 +226,12 @@ export function Restaurants() {
                       <RestaurantEditor
                         item={item}
                         onSaved={(updated) => replaceItem((r) => r.id === updated.id, updated)}
+                        onCertificateCreated={(created) =>
+                          replaceItem((r) => r.id === item.id, {
+                            ...item,
+                            certificates: [...item.certificates, created],
+                          })
+                        }
                       />
                     </td>
                   </tr>
@@ -276,19 +247,27 @@ export function Restaurants() {
 }
 
 /**
- * The details editor. Kashrut is not editable here and never will be: certificates
- * are rendered read-only below the form, and the request type cannot carry a
- * certificate field. Everything the form does write is audited server-side.
+ * The details editor. Kashrut is never *edited* here: the details form cannot carry
+ * a certificate field, and an existing certificate below it is read-only. Adding a
+ * new certificate is a separate act in its own panel, separately audited — a create
+ * is not a status raise, because there is no prior status to raise.
+ *
+ * `draftOf(item)` is a `useState` initializer and nothing more: a new `item` prop —
+ * after a certificate is attached to this row, say — must NOT clobber edits in
+ * progress. Do not "fix" this with a useEffect.
  */
 function RestaurantEditor({
   item,
   onSaved,
+  onCertificateCreated,
 }: {
   item: RestaurantDetail;
   onSaved: (updated: RestaurantDetail) => void;
+  onCertificateCreated: (created: CertificateOut) => void;
 }) {
   const { showToast } = useToast();
   const [draft, setDraft] = useState<Draft>(() => draftOf(item));
+  const [addingCertificate, setAddingCertificate] = useState(false);
   const [validation, setValidation] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -503,7 +482,7 @@ function RestaurantEditor({
       </dl>
 
       <div className="cert-block">
-        <h4>תעודות — לקריאה בלבד כאן</h4>
+        <h4>תעודות ברשומה</h4>
         {item.certificates.length === 0 ? (
           <p className="muted">אין תעודות ברשומה זו.</p>
         ) : (
@@ -512,9 +491,30 @@ function RestaurantEditor({
           ))
         )}
         <p className="muted">
-          עובדות כשרות לעולם אינן נערכות מתוך המדריך. יש להשתמש בתורי הבדיקה, הדיווחים,
-          פקיעת התוקף והתמונות — המסלולים האלה מוגנים ומתועדים.
+          אפשר להוסיף כאן תעודה חדשה, והיצירה מתועדת. תעודה קיימת אינה ניתנת לעריכה מכאן —
+          שינוי מצב של תעודה עובר דרך תורי הבדיקה, הדיווחים, פקיעת התוקף והתמונות, שהם
+          המסלולים המוגנים והמתועדים.
         </p>
+        <div className="action-row">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setAddingCertificate((open) => !open)}
+          >
+            {addingCertificate ? "סגירת טופס התעודה" : "הוספת תעודה"}
+          </button>
+        </div>
+        {addingCertificate && (
+          <CreateCertificatePanel
+            restaurantId={item.id}
+            onCancel={() => setAddingCertificate(false)}
+            onCreated={(created) => {
+              setAddingCertificate(false);
+              onCertificateCreated(created);
+              showToast("התעודה נוספה ותועדה על שם המודרטור.");
+            }}
+          />
+        )}
       </div>
     </div>
   );

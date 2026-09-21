@@ -8,19 +8,25 @@ rather than by convention:
 * Fail-safe (PRD §13): no moderation path may ever *raise* a kashrut status except
   ``actions.verify_renewal``, which demands explicit renewal evidence. Flag
   resolutions in particular can only close the flag or degrade — see
-  ``helpers.degrade_certificate_state``.
+  ``helpers.degrade_certificate_state``. Creating a certificate (``certificates``
+  module) is not a status *raise* — there is no prior status to raise from — but it
+  is the one place a moderator picks ``state`` freely; that is a locked, narrow
+  exception the user made explicitly (see that module's docstring), not a loophole
+  in this rule. Every transition on a certificate that already exists still goes
+  through ``actions`` / ``helpers.degrade_certificate_state``, same as always.
 * The match engine (``app.match``) is never imported anywhere in this package; it
   records facts and provenance, it draws no kashrut conclusions.
 * ``/audit`` is read-only. There is no write endpoint for audit rows, ever.
 
 Module map:
-    consts   — paging limits, SLA windows, upload caps, fail-safe state ranking
-    audit    — jsonable / apply_changes / write_audit
-    helpers  — date basis, paging, locked lookups, degrade guard, serializers
-    queues   — the five read endpoints
-    actions  — resolve-review, resolve-flag, degrade, verify-renewal
-    photos   — evidence upload, listing, and review
-    restaurants — the full directory: browse every record, edit non-kashrut details
+    consts       — paging limits, SLA windows, upload caps, fail-safe state ranking
+    audit        — jsonable / apply_changes / write_audit
+    helpers      — date basis, paging, locked lookups, degrade guard, serializers
+    queues       — the five read endpoints
+    actions      — resolve-review, resolve-flag, degrade, verify-renewal
+    photos       — evidence upload, listing, and review
+    restaurants  — the full directory: browse every record, edit or hand-enter one
+    certificates — hand-enter a certificate on an existing restaurant; certifier picker
 """
 
 from __future__ import annotations
@@ -28,6 +34,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.api.admin.actions import router as actions_router
+from app.api.admin.certificates import router as certificates_router
 from app.api.admin.photos import router as photos_router
 from app.api.admin.queues import router as queues_router
 from app.api.admin.restaurants import router as restaurants_router
@@ -41,5 +48,6 @@ router.include_router(queues_router)
 router.include_router(actions_router)
 router.include_router(photos_router)
 router.include_router(restaurants_router)
+router.include_router(certificates_router)
 
 __all__ = ["router"]
