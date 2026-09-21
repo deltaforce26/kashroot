@@ -200,9 +200,10 @@ a {
 /* ── Shell ─────────────────────────────────────────────────────────────── */
 
 /*
- * 390×844 is the design's viewport basis. On a phone the app is full-bleed; on a
- * desktop it is centred at that width so the demo can be shown on a laptop without
- * the layout stretching into something the design never described. No fake bezel.
+ * 390×844 is the design's viewport basis. On a phone the app is full-bleed; from
+ * 600px up (see the media query below) it is centred at that width so the demo can
+ * be shown on a laptop without the layout stretching into something the design
+ * never described. No fake bezel.
  */
 .shell {
   position: relative;
@@ -211,13 +212,22 @@ a {
   flex: 1;
   min-height: 0;
   width: 100%;
-  max-width: var(--shell-max);
   margin-inline: auto;
   background: var(--bg);
   background-attachment: fixed;
   overflow: hidden;
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* The cap is for laptops/tablets only. Keyed to viewport width, not to a list of
+   devices: every phone in portrait is under 600 CSS px (Material's "compact"
+   class), including large Pixels (448) and phones with Display size turned down,
+   which the old unconditional 430px cap left with a strip of body on each side. */
+@media (min-width: 600px) {
+  .shell {
+    max-width: var(--shell-max);
+  }
 }
 
 .shell__scroll {

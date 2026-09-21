@@ -468,4 +468,16 @@ describe("the stylesheet declarations the separation leans on", () => {
     expect(rule).toMatch(/height:\s*100%/);
     expect(rule).toMatch(/max-height:\s*100dvh/);
   });
+
+  /**
+   * The 430px column is a laptop affordance. Unconditional, it left any phone wider
+   * than 430 CSS px — large Pixels are 448 — with a strip of bare `body` down each
+   * side. The base rule must stay uncapped; only the wide-viewport query may cap it.
+   */
+  it("caps the shell's width on wide viewports only, never on a phone", () => {
+    expect(block(".shell")).not.toMatch(/max-width/);
+    expect(css).toMatch(
+      /@media \(min-width: 600px\) \{\s*\.shell \{\s*max-width: var\(--shell-max\)/,
+    );
+  });
 });
