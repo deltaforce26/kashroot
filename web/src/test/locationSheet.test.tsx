@@ -154,6 +154,27 @@ describe("home location sheet", () => {
     expect(within(sheet).getByLabelText(he.origin.addressLabel)).toBeInTheDocument();
     // Cities are a filter, not an origin, and are not repeated here.
     expect(within(sheet).queryByRole("button", { name: "ירושלים" })).toBeNull();
+    // It drops from the top rather than rising from the bottom, so it lands on the
+    // header control that asked. jsdom lays nothing out; the modifier is the guarantee.
+    expect(sheet).toHaveClass("sheet--top");
+  });
+
+  /**
+   * React cannot animate a node it has already removed, so the sheet has to outlive
+   * the click that dismissed it: `close` only marks it as leaving, and the unmount
+   * waits out the exit. The failure this guards is the obvious refactor — wiring the
+   * X straight back to `onClose` — which looks right and silently drops the exit.
+   */
+  it("plays its exit out before it leaves, rather than vanishing on the click", async () => {
+    const user = userEvent.setup();
+    await reachHome(user);
+    const sheet = await openSheet(user);
+
+    await user.click(within(sheet).getByRole("button", { name: he.origin.close }));
+    expect(sheet).toHaveClass("sheet--leaving");
+    expect(sheet).toBeInTheDocument();
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
   it("opens from the address in the header too — the two are one control", async () => {
