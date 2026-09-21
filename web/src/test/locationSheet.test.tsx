@@ -33,6 +33,15 @@ type Candidates = Array<{ label: string; point: { lat: number; lon: number } }>;
 const geocodeCalls: Array<[string, string]> = [];
 let geocodeImpl: (query: string) => Promise<Candidates> = async () => [];
 
+/** The as-you-type completions, doubled the same way and for the same reason. */
+type Suggestions = Array<{
+  id: string;
+  label: string;
+  resolve: () => Promise<Candidates[number]>;
+}>;
+const suggestCalls: string[] = [];
+let suggestImpl: (query: string) => Promise<Suggestions> = async () => [];
+
 vi.mock("../map/useGoogleMaps", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../map/useGoogleMaps")>()),
   // The address field is only drawn when a geocoder is reachable, so the tests that
@@ -41,6 +50,10 @@ vi.mock("../map/useGoogleMaps", async (importOriginal) => ({
   geocodeAddress: (query: string, lang: "he" | "en") => {
     geocodeCalls.push([query, lang]);
     return geocodeImpl(query);
+  },
+  suggestAddresses: (query: string) => {
+    suggestCalls.push(query);
+    return suggestImpl(query);
   },
 }));
 
@@ -139,6 +152,8 @@ describe("home location sheet", () => {
   afterEach(() => {
     geocodeCalls.length = 0;
     geocodeImpl = async () => [];
+    suggestCalls.length = 0;
+    suggestImpl = async () => [];
     positionRequests = 0;
     // The origin is process-wide by design, so it has to be put back between tests,
     // in storage as well as in memory.
@@ -227,6 +242,110 @@ describe("home location sheet", () => {
 
     await user.type(screen.getByLabelText(he.origin.addressLabel), "דיזנגוף");
     await user.click(screen.getByRole("button", { name: he.origin.addressSubmit }));
+
+    expect(await screen.findByText(he.origin.lookupFailed)).toBeInTheDocument();
+    expect(within(sheet).getByLabelText(he.origin.addressLabel)).toBeInTheDocument();
+  });
+
+  it("offers completions while the address is still being typed", async () => {
+    const user = userEvent.setup();
+    suggestImpl = async () => [{ id: "p1", label: CANDIDATE.label, resolve: async () => CANDIDATE }];
+    await reachHome(user);
+    await openSheet(user);
+
+    await user.type(screen.getByLabelText(he.origin.addressLabel), "ביאל");
+
+    const list = await screen.findByRole("list", { name: he.origin.suggestions });
+    expect(within(list).getByRole("button", { name: new RegExp(CANDIDATE.label) })).toBeInTheDocument();
+    // Nothing was submitted: the geocoder was not asked, and the pause was one request.
+    expect(geocodeCalls).toEqual([]);
+    expect(suggestCalls).toEqual(["ביאל"]);
+  });
+
+  it("measures from a completion once it is picked", async () => {
+    const user = userEvent.setup();
+    suggestImpl = async () => [{ id: "p1", label: CANDIDATE.label, resolve: async () => CANDIDATE }];
+    await reachHome(user);
+    await openSheet(user);
+
+    await user.type(screen.getByLabelText(he.origin.addressLabel), "ביאל");
+    await user.click(await screen.findByRole("button", { name: new RegExp(CANDIDATE.label) }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByText(CANDIDATE.label)).toBeInTheDocument();
+    expect(localStorage.getItem("kashroot.origin.v1")).toContain(CANDIDATE.label);
+  });
+
+  /**
+   * Answers come back in whatever order the network likes. A slow answer to "די" that
+   * lands after the answer to "דיזנ" would put completions on screen for text the
+   * field no longer holds.
+   */
+  it("does not let a slow earlier answer replace a later one", async () => {
+    const user = userEvent.setup();
+    let releaseFirst: (items: Suggestions) => void = () => {};
+    suggestImpl = (query) =>
+      query === "די"
+        ? new Promise<Suggestions>((resolve) => {
+            releaseFirst = resolve;
+          })
+        : Promise.resolve([{ id: "late", label: "דיזנגוף, תל אביב", resolve: async () => CANDIDATE }]);
+    await reachHome(user);
+    await openSheet(user);
+    const field = screen.getByLabelText(he.origin.addressLabel);
+
+    await user.type(field, "די");
+    await waitFor(() => expect(suggestCalls).toEqual(["די"]));
+    await user.type(field, "זנ");
+    await screen.findByRole("button", { name: /דיזנגוף, תל אביב/ });
+
+    releaseFirst([{ id: "early", label: "דימונה", resolve: async () => CANDIDATE }]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(screen.queryByRole("button", { name: /דימונה/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /דיזנגוף, תל אביב/ })).toBeInTheDocument();
+  });
+
+  /**
+   * Completions are a courtesy. With Places unreachable the field must behave as it
+   * did before it had any — quiet while typing, and still answering on submit.
+   */
+  it("stays quiet when completions fail, and still answers a submitted address", async () => {
+    const user = userEvent.setup();
+    suggestImpl = async () => {
+      throw new Error("places not enabled");
+    };
+    geocodeImpl = async () => [CANDIDATE];
+    await reachHome(user);
+    await openSheet(user);
+
+    await user.type(screen.getByLabelText(he.origin.addressLabel), "ביאליק 1");
+    await waitFor(() => expect(suggestCalls.length).toBeGreaterThan(0));
+    expect(screen.queryByText(he.origin.lookupFailed)).toBeNull();
+    expect(screen.queryByText(he.origin.noResults)).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: he.origin.addressSubmit }));
+    await user.click(await screen.findByRole("button", { name: new RegExp(CANDIDATE.label) }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByText(CANDIDATE.label)).toBeInTheDocument();
+  });
+
+  it("says so when a picked completion cannot be turned into a place", async () => {
+    const user = userEvent.setup();
+    suggestImpl = async () => [
+      {
+        id: "p1",
+        label: CANDIDATE.label,
+        resolve: async () => {
+          throw new Error("offline");
+        },
+      },
+    ];
+    await reachHome(user);
+    const sheet = await openSheet(user);
+
+    await user.type(screen.getByLabelText(he.origin.addressLabel), "ביאל");
+    await user.click(await screen.findByRole("button", { name: new RegExp(CANDIDATE.label) }));
 
     expect(await screen.findByText(he.origin.lookupFailed)).toBeInTheDocument();
     expect(within(sheet).getByLabelText(he.origin.addressLabel)).toBeInTheDocument();

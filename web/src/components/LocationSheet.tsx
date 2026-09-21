@@ -13,6 +13,11 @@
  * because they call for different next moves. A refused location permission is not
  * an error: it is stated once, next to the button that asked, and never again.
  *
+ * The field answers twice. While the user types it offers completions, and those are
+ * quiet: half a word that matches nothing is not "no such place", and a completion
+ * service that cannot be reached is not yet anybody's problem. Submitting is the
+ * question asked out loud, and only that path says "not found" or "lookup failed".
+ *
  * The sheet does not filter or rank anything. It moves the origin; the API re-answers.
  */
 
@@ -21,14 +26,27 @@ import { CloseIcon, CrosshairIcon, PinIcon, SearchIcon } from "./icons";
 import { useI18n } from "../i18n/I18nProvider";
 import { useCity } from "../location/useCity";
 import { useOrigin } from "../location/useOrigin";
-import { geocodeAddress, hasMapsKey, type GeocodeCandidate } from "../map/useGoogleMaps";
+import {
+  geocodeAddress,
+  hasMapsKey,
+  suggestAddresses,
+  type AddressSuggestion,
+  type GeocodeCandidate,
+} from "../map/useGoogleMaps";
 import { MAX_QUERY_LENGTH } from "../api/types";
 
 type Lookup =
   | { state: "idle" }
+  | { state: "suggestions"; items: AddressSuggestion[] }
   | { state: "searching" }
   | { state: "done"; candidates: GeocodeCandidate[] }
   | { state: "failed" };
+
+/** Long enough that a word typed at speed is one request, short enough to feel live. */
+const SUGGEST_DEBOUNCE_MS = 250;
+
+/** A single letter completes to everything, which is to say nothing. */
+const SUGGEST_MIN_CHARS = 2;
 
 /**
  * How long the sheet takes to leave. It must match `sheetLift` and `scrimClear` in
@@ -85,7 +103,35 @@ export function LocationSheet({ onClose }: { onClose: () => void }) {
     if (askedRef.current && state === "granted") close();
   }, [state, close]);
 
+  // Completions answer out of order and after the user has moved on. Each typing
+  // pause takes a number, and anything that supersedes it — more typing, a submit, a
+  // pick — takes the next one, so a late answer finds it is no longer the one awaited.
+  const requestRef = useRef(0);
+
+  useEffect(() => {
+    const trimmed = address.trim();
+    if (!hasMapsKey() || trimmed.length < SUGGEST_MIN_CHARS) return;
+    const request = ++requestRef.current;
+    const timer = window.setTimeout(() => {
+      if (requestRef.current !== request) return;
+      suggestAddresses(trimmed, lang).then(
+        (items) => {
+          if (requestRef.current !== request) return;
+          setLookup(items.length > 0 ? { state: "suggestions", items } : { state: "idle" });
+        },
+        () => {
+          // Silence, not `failed`: nothing was asked yet. Only completions for text
+          // that is no longer in the field are taken down.
+          if (requestRef.current !== request) return;
+          setLookup((current) => (current.state === "suggestions" ? { state: "idle" } : current));
+        },
+      );
+    }, SUGGEST_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [address, lang]);
+
   async function lookUpAddress(query: string) {
+    requestRef.current += 1;
     setLookup({ state: "searching" });
     try {
       setLookup({ state: "done", candidates: await geocodeAddress(query, lang) });
@@ -99,6 +145,16 @@ export function LocationSheet({ onClose }: { onClose: () => void }) {
   function pick(candidate: GeocodeCandidate) {
     setAddressOrigin(candidate.label, candidate.point);
     close();
+  }
+
+  async function pickSuggestion(item: AddressSuggestion) {
+    requestRef.current += 1;
+    setLookup({ state: "searching" });
+    try {
+      pick(await item.resolve());
+    } catch {
+      setLookup({ state: "failed" });
+    }
   }
 
   const locating = state === "requesting";
@@ -176,9 +232,18 @@ export function LocationSheet({ onClose }: { onClose: () => void }) {
               className="searchbar__input"
               value={address}
               autoFocus
+              autoComplete="off"
               onChange={(event) => {
-                setAddress(event.target.value);
-                setLookup({ state: "idle" });
+                const next = event.target.value;
+                setAddress(next);
+                // Completions stay up until the next answer replaces them, so the list
+                // does not blink on every key. Anything else on show was an answer to
+                // text that is no longer in the field.
+                setLookup((current) =>
+                  current.state === "suggestions" && next.trim().length >= SUGGEST_MIN_CHARS
+                    ? current
+                    : { state: "idle" },
+                );
               }}
               placeholder={t.origin.addressPlaceholder}
               aria-label={t.origin.addressLabel}
@@ -202,6 +267,24 @@ export function LocationSheet({ onClose }: { onClose: () => void }) {
           )}
           {lookup.state === "done" && lookup.candidates.length === 0 && (
             <p className="hint sheet__note">{t.origin.noResults}</p>
+          )}
+          {lookup.state === "suggestions" && (
+            <ul className="sheet__results" aria-label={t.origin.suggestions}>
+              {lookup.items.map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    className="sheet__result"
+                    onClick={() => void pickSuggestion(item)}
+                  >
+                    <span className="sheet__result-icon" aria-hidden="true">
+                      <PinIcon size={15} />
+                    </span>
+                    {item.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
           {lookup.state === "done" && lookup.candidates.length > 0 && (
             <ul className="sheet__results" aria-label={t.origin.results}>
