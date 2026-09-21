@@ -7,6 +7,7 @@ import { AuditLog } from "./views/AuditLog";
 import { Expiry } from "./views/Expiry";
 import { Flags } from "./views/Flags";
 import { Login } from "./views/Login";
+import { NewCertificate } from "./views/NewCertificate";
 import { Photos } from "./views/Photos";
 import { Restaurants } from "./views/Restaurants";
 import { ReviewQueue } from "./views/ReviewQueue";
@@ -50,6 +51,7 @@ export default function App() {
           <NavLink to="/expiry">פקיעת תוקף</NavLink>
           <NavLink to="/photos">תמונות</NavLink>
           <NavLink to="/restaurants">מסעדות</NavLink>
+          <NavLink to="/certificates/new">תעודה חדשה</NavLink>
           <NavLink to="/audit">יומן ביקורת</NavLink>
         </nav>
         <button type="button" className="logout" onClick={handleLogout}>
@@ -64,6 +66,7 @@ export default function App() {
           <Route path="/expiry" element={<Expiry />} />
           <Route path="/photos" element={<Photos />} />
           <Route path="/restaurants" element={<Restaurants />} />
+          <Route path="/certificates/new" element={<NewCertificate />} />
           <Route path="/audit" element={<AuditLog />} />
           <Route path="*" element={<Navigate to="/review" replace />} />
         </Routes>
