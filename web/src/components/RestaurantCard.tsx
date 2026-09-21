@@ -57,10 +57,14 @@ function useCardText(item: ResultView) {
     : null;
 
   const meta = [dietLabel, address || city, distance, closes].filter(Boolean).join(" · ");
-  // The grid tile is half the width of a row card; it carries only the two facts
-  // that fit there — the published diet type and the distance.
+  // The grid tile is half the width of a row card. Its first line carries the two
+  // facts that always fit — the published diet type and the distance — and the
+  // street (or city) goes on a line of its own, where it can truncate without ever
+  // pushing the distance out. It is what tells two branches of one chain apart:
+  // without it, two "טייסטי מיט" tiles at 2.6 km and 3.5 km read as a duplicate.
   const metaShort = [dietLabel, distance].filter(Boolean).join(" · ");
-  return { name, meta, metaShort, evidence };
+  const where = address || city;
+  return { name, meta, metaShort, where, evidence };
 }
 
 interface CardProps {
@@ -197,7 +201,7 @@ export function RestaurantTileCard({ item, saved, onToggleSave }: CardProps) {
  */
 export function RestaurantGridCard({ item, saved, onToggleSave }: CardProps) {
   const { t } = useI18n();
-  const { name, metaShort } = useCardText(item);
+  const { name, metaShort, where } = useCardText(item);
 
   return (
     <article className={`card card--grid ${tintClass(item.dietType)}`}>
@@ -217,6 +221,19 @@ export function RestaurantGridCard({ item, saved, onToggleSave }: CardProps) {
           <div className="card__meta on-tint" style={{ fontSize: 11 }}>
             {metaShort}
           </div>
+          {where && (
+            <div
+              className="card__meta on-tint card__where"
+              style={{
+                fontSize: 11,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {where}
+            </div>
+          )}
         </div>
         <button
           type="button"
