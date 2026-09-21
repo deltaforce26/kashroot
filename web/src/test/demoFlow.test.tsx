@@ -486,6 +486,18 @@ describe("the stylesheet declarations the separation leans on", () => {
   });
 
   /**
+   * The 430px column is a laptop affordance. Unconditional, it left any phone wider
+   * than 430 CSS px — large Pixels are 448 — with a strip of bare `body` down each
+   * side. The base rule must stay uncapped; only the wide-viewport query may cap it.
+   */
+  it("caps the shell's width on wide viewports only, never on a phone", () => {
+    expect(block(".shell")).not.toMatch(/max-width/);
+    expect(css).toMatch(
+      /@media \(min-width: 600px\) \{\s*\.shell \{\s*max-width: var\(--shell-max\)/,
+    );
+  });
+
+  /**
    * The location sheet is anchored to the top of the shell while every other sheet
    * still rises from the bottom, and the difference is one modifier layered over the
    * shared `.sheet` rule. Both halves have to be asserted: dropping `bottom: auto`
