@@ -3,9 +3,10 @@
  * screen down with it.
  *
  * The pin the design asks for is `AdvancedMarkerElement`: it takes a DOM node, so a
- * verdict dot is a styled div coloured straight from the theme's custom properties,
- * and the open card is a React card portalled into a second marker's content node —
- * anchored to its coordinate by Google through every pan and zoom.
+ * pin is Google's own `PinElement` teardrop, coloured straight from the theme's custom
+ * properties and carrying the verdict's glyph in its head, and the open card is a React
+ * card portalled into a second marker's content node — anchored to its coordinate by
+ * Google through every pan and zoom.
  *
  * That marker is a custom element the Maps API registers for us, and in a browser
  * where that registration has not happened — a second copy of the API on the page, a
@@ -17,8 +18,8 @@
  * dot.
  *
  * So the map degrades instead of throwing:
- *   - a pin is an advanced marker, or the deprecated `Marker` with a circle symbol
- *     of the same size and colour, or nothing at all;
+ *   - a pin is an advanced marker, or the deprecated `Marker` with a circle symbol in
+ *     the same verdict colour, or nothing at all;
  *   - the open card's anchor is an advanced marker, or an `InfoWindow` holding the
  *     same React card — plainer, still anchored to the right point — or nothing, in
  *     which case the map still pans and the list is one tap away.
@@ -31,6 +32,12 @@
 export interface PinStyle {
   /** Already resolved from the theme — pins never decide a verdict colour. */
   colour: string;
+  /**
+   * Already resolved from the verdict, for the same reason the colour is: a pin draws
+   * what it is handed and knows nothing about kashrut. Absent on a pin that marks a
+   * place rather than an answer, which gets Google's own plain pin head instead.
+   */
+  glyph?: string;
   selected: boolean;
   zIndex: number;
 }
@@ -58,7 +65,21 @@ export interface PopupAnchor {
   remove(): void;
 }
 
-/** Diameter of the dot in pixels, and the width of its white ring. */
+/**
+ * How much bigger a pin gets while its card is open. `1` is `PinElement` at its
+ * natural size, and the selected one grows by about the ratio the old dot did.
+ */
+const SCALE = { plain: 1, selected: 1.35 } as const;
+
+/**
+ * How tall the largest pin on the map stands above its point, in pixels — which is
+ * how far the open card has to clear the coordinate the two of them share. Google
+ * draws a `PinElement` 37px tall at scale 1, so the selected pin is that scaled up,
+ * rounded up: a pixel of extra air costs nothing, a pixel short puts a card over a pin.
+ */
+export const SELECTED_PIN_HEIGHT = Math.ceil(37 * SCALE.selected);
+
+/** Diameter of the fallback dot in pixels, and the width of its white ring. */
 const SIZE = { plain: 16, selected: 22 } as const;
 const RING = { plain: 2.5, selected: 3 } as const;
 
@@ -85,29 +106,29 @@ function reportBroken(what: string, error: unknown): void {
   console.error(`[kashroot] advanced markers unusable, ${what}:`, error);
 }
 
-/** The filled circle in a white ring, grown a little while its card is open. */
-export function styleDot(dot: HTMLElement, style: PinStyle): void {
-  const diameter = style.selected ? SIZE.selected : SIZE.plain;
-  dot.style.cssText = [
-    `width:${diameter}px`,
-    `height:${diameter}px`,
-    "box-sizing:border-box",
-    "border-radius:50%",
-    `background:${style.colour}`,
-    `border:${style.selected ? RING.selected : RING.plain}px solid #fff`,
-  ].join(";");
-}
-
-/** A pin's visual as a DOM node, which is what an advanced marker takes. */
-function markerDot(style: PinStyle): HTMLElement {
-  const dot = document.createElement("div");
-  styleDot(dot, style);
-  return dot;
+/**
+ * A pin's visual as a DOM node, which is what an advanced marker takes.
+ *
+ * Built again from scratch on every restyle rather than edited: a `PinElement` renders
+ * its teardrop from the options it was constructed with, so there is no in-place tweak
+ * to make the way the old dot's `cssText` could simply be rewritten.
+ */
+function markerPin(lib: google.maps.MarkerLibrary, style: PinStyle): HTMLElement {
+  return new lib.PinElement({
+    background: style.colour,
+    borderColor: "#fff",
+    glyphColor: "#fff",
+    // `glyph` rather than the newer `glyphText` that deprecates it: an older release
+    // of the API ignores the new field outright, and the failure that buys is a pin
+    // with a silently empty head — exactly the kind of quiet wrong this file avoids.
+    glyph: style.glyph ?? null,
+    scale: style.selected ? SCALE.selected : SCALE.plain,
+  }).element;
 }
 
 /**
- * The same dot as a classic marker's symbol. `scale` is a radius, so it is half the
- * diameter the advanced pin gets: the two kinds must be the same size on screen.
+ * The fallback dot as a classic marker's symbol. `scale` is a radius, so it is half
+ * the diameter — the last place `SIZE` and `RING` are still read.
  */
 function dotSymbol(style: PinStyle): google.maps.Symbol {
   return {
@@ -135,17 +156,24 @@ function advancedPin(lib: google.maps.MarkerLibrary, spec: PinSpec): Pin {
     position: spec.position,
     title: spec.title,
     zIndex: spec.zIndex,
-    // A dot marks a point, so it sits centred on it rather than standing on it the
-    // way a teardrop pin would — which is the anchor an advanced marker uses by
-    // default.
-    anchorTop: "-50%",
+    // No `anchorTop` here on purpose. A teardrop stands on its point, which is where
+    // an advanced marker puts its content by default; the dot that used to live here
+    // was the exception, pulled back by half its height to sit centred on the point
+    // instead.
     gmpClickable: true,
-    content: markerDot(spec),
+    content: markerPin(lib, spec),
   });
   if (spec.onClick) marker.addListener("gmp-click", spec.onClick);
   return {
     update(style) {
-      if (marker.content instanceof HTMLElement) styleDot(marker.content, style);
+      // A restyle that cannot be built leaves the pin looking exactly as it did,
+      // which is a stale size — not the lost screen a throw would cost, and `update`
+      // runs inside a render effect too.
+      try {
+        marker.content = markerPin(lib, style);
+      } catch (error) {
+        reportBroken("a pin keeps the size it was drawn at", error);
+      }
       marker.zIndex = style.zIndex;
     },
     remove() {
@@ -154,6 +182,11 @@ function advancedPin(lib: google.maps.MarkerLibrary, spec: PinSpec): Pin {
   };
 }
 
+/**
+ * Deliberately still a flat dot rather than a teardrop: the only browsers that ever
+ * reach here are the ones that cannot construct an advanced marker at all, and a
+ * hand-rolled SVG pin path is a lot of surface to own for them.
+ */
 function legacyPin(lib: google.maps.MarkerLibrary, spec: PinSpec): Pin {
   const marker = new lib.Marker({
     map: spec.map,
@@ -206,6 +239,24 @@ export interface PopupSpec {
 }
 
 /**
+ * The card and its pin are two markers on one coordinate, and a teardrop's coordinate
+ * is its tip — so a card hung straight off that point would land on top of the pin it
+ * belongs to. The host is wrapped in a spacer as tall as the pin instead: the wrapper's
+ * bottom edge sits on the point, the card floats clear above the pin, and Google goes on
+ * gluing the whole thing to its coordinate. The alternative, re-deriving pixels on every
+ * `bounds_changed`, drifts mid-gesture and is the reason the card is a marker at all.
+ */
+function popupWrapper(host: HTMLElement): HTMLElement {
+  const wrapper = document.createElement("div");
+  wrapper.style.paddingBottom = `${SELECTED_PIN_HEIGHT}px`;
+  // The spacer is empty air over the pin, so taps have to fall through it to the map
+  // underneath. The card inside turns them back on for itself.
+  wrapper.style.pointerEvents = "none";
+  wrapper.appendChild(host);
+  return wrapper;
+}
+
+/**
  * Anchors the open card to its point, or returns `null` when neither anchor can be
  * built — the map keeps working, a tapped pin simply opens nothing.
  *
@@ -224,7 +275,7 @@ export function createPopupAnchor(
         // The card stands entirely above its point, the way a speech bubble does.
         anchorTop: "-100%",
         zIndex: spec.zIndex,
-        content: spec.host,
+        content: popupWrapper(spec.host),
       });
       return {
         remove() {

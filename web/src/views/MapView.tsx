@@ -17,8 +17,9 @@
  * re-derive pixels on every `bounds_changed` and still drift mid-gesture.
  *
  * Pins are `AdvancedMarkerElement`, which takes a DOM node rather than the deprecated
- * `Marker`'s symbol path — so the dot is a styled div and the colour comes straight
- * from the same custom property. Advanced markers only render on a map created with a
+ * `Marker`'s symbol path — so a pin is Google's own teardrop, coloured straight from
+ * the same custom property and carrying the verdict's glyph, the one the pill already
+ * uses, in its head. Advanced markers only render on a map created with a
  * map ID, which is why the map is constructed with one; see `useGoogleMaps`. A
  * browser that cannot build one gets classic pins and a plainer card instead of a
  * crash — every marker on this screen goes through `map/pins.ts`, which never throws.
@@ -38,17 +39,18 @@ import { ChevronIcon, CloseIcon, PinIcon } from "../components/icons";
 import { tintClass } from "../components/RestaurantCard";
 import { ErrorState } from "../components/states";
 import { TabBar } from "../components/TabBar";
+import { VERDICT_GLYPH, verdictLabel } from "../components/VerdictPill";
 import { MAX_RADIUS_KM } from "../config";
 import { isNetworkError, useSearch } from "../hooks/useApi";
 import { formatDistance, pickName, useI18n } from "../i18n/I18nProvider";
 import { useCity } from "../location/useCity";
 import { useOrigin } from "../location/useOrigin";
-import { createPin, createPopupAnchor, type Pin } from "../map/pins";
+import { createPin, createPopupAnchor, SELECTED_PIN_HEIGHT, type Pin } from "../map/pins";
 import { MAP_ID, useGoogleMaps } from "../map/useGoogleMaps";
 import { toPayload } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
 
-/** Above the pins and above "you are here", so a card is never half-hidden by a dot. */
+/** Above the pins and above "you are here", so a card is never half-hidden by a pin. */
 const POPUP_Z = 30;
 
 /** "You are here" sits above every result pin, and the open card's pin above the rest. */
@@ -63,8 +65,11 @@ const ME_COLOUR = "#1a73e8";
  * How far the camera moves up when a card opens, in pixels. `panTo` would centre the
  * pin and let the card run into the top controls, so the pin is left sitting below
  * centre with the card in the clear space above it.
+ *
+ * The card now starts a pin's height further up than it did over a flat dot, so the pin
+ * is dropped by exactly that much to leave the air above the card where it was.
  */
-const POPUP_PAN_UP = 80;
+const POPUP_PAN_UP = 80 + SELECTED_PIN_HEIGHT;
 
 /** Reads a verdict colour from the live theme so map and pills cannot drift apart. */
 function verdictColour(verdict: Verdict): string {
@@ -208,8 +213,11 @@ export function MapView() {
       const pin = createPin(libs.marker, {
         map,
         position: { lat: item.geo!.lat, lng: item.geo!.lon },
-        title: pickName(lang, item.nameHe, item.nameEn),
+        // A pin says its verdict in a colour and a glyph, neither of which reaches a
+        // screen reader — so the title, which does, carries the word as well.
+        title: `${pickName(lang, item.nameHe, item.nameEn)} · ${verdictLabel(item.kashrut.verdict, t)}`,
         colour: verdictColour(item.kashrut.verdict),
+        glyph: VERDICT_GLYPH[item.kashrut.verdict],
         selected,
         zIndex: selected ? SELECTED_Z : PLAIN_Z,
         onClick: () => setOpenId((current) => nextOpenId(current, item.id)),
@@ -230,6 +238,7 @@ export function MapView() {
       const selected = entry.id === openId;
       entry.pin.update({
         colour: verdictColour(entry.verdict),
+        glyph: VERDICT_GLYPH[entry.verdict],
         selected,
         zIndex: selected ? SELECTED_Z : PLAIN_Z,
       });
@@ -280,6 +289,10 @@ export function MapView() {
       position: { lat: origin.lat, lng: origin.lon },
       title: t.map.youAreHere,
       colour: ME_COLOUR,
+      // Deliberately no glyph. This pin marks where the user is standing, not an answer
+      // about a place — a ✓ or a ? in its head would read as a verdict on the user's own
+      // position. It keeps Google's plain pin head, the way its blue is not a verdict
+      // colour either.
       selected: false,
       zIndex: ME_Z,
     });

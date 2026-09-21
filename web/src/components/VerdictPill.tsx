@@ -12,7 +12,17 @@
 import type { Verdict } from "../api/types";
 import { useI18n } from "../i18n/I18nProvider";
 
-const GLYPH: Record<Verdict, string> = { match: "✓", no_match: "✕", unknown: "?" };
+/**
+ * One glyph per verdict, shared with the map's pins so that the pill for a place and
+ * the pin for the same place cannot drift apart. A `Record` rather than a lookup with a
+ * fallback: a fourth verdict has to be a type error here, not a blank pin on a map that
+ * nobody notices until someone trusts it.
+ */
+export const VERDICT_GLYPH: Record<Verdict, string> = {
+  match: "✓",
+  no_match: "✕",
+  unknown: "?",
+};
 
 export function verdictLabel(verdict: Verdict, t: ReturnType<typeof useI18n>["t"], long = false) {
   switch (verdict) {
@@ -36,7 +46,7 @@ export function VerdictPill({ verdict, size = "sm", long = false }: VerdictPillP
   return (
     <span className={`verdict verdict--${verdict}${size === "lg" ? " verdict--lg" : ""}`}>
       <span className="verdict__glyph" aria-hidden="true">
-        {GLYPH[verdict]}
+        {VERDICT_GLYPH[verdict]}
       </span>
       {verdictLabel(verdict, t, long)}
     </span>
