@@ -209,13 +209,17 @@ describe("Restaurant directory", () => {
     );
   });
 
-  it("shows certificates as read-only context and can never submit a kashrut field", async () => {
+  it("shows existing certificates as read-only context and can never submit a kashrut field", async () => {
     const user = userEvent.setup();
     renderDirectory();
     const save = await openEditor(user);
 
-    expect(screen.getByText(/תעודות — לקריאה בלבד כאן/)).toBeInTheDocument();
-    expect(screen.getByText(/עובדות כשרות לעולם אינן נערכות מתוך המדריך/)).toBeInTheDocument();
+    expect(screen.getByText(/תעודות ברשומה/)).toBeInTheDocument();
+    expect(screen.getByText(/תעודה קיימת אינה ניתנת לעריכה מכאן/)).toBeInTheDocument();
+    // Adding a certificate is a separate act behind its own button; the details
+    // form itself still has no attribute editor, which is what this proves —
+    // together with the fact that the panel has not been mounted.
+    expect(screen.getByRole("button", { name: "הוספת תעודה" })).toBeInTheDocument();
     expect(screen.queryByLabelText(/גלאט/)).not.toBeInTheDocument();
 
     await user.clear(screen.getByLabelText(/^טלפון$/));
