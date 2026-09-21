@@ -93,6 +93,83 @@ NO_FIELDS_DETAIL = (
     "(a note on its own changes nothing)"
 )
 
+#: Fields of a new restaurant written at create time, in the CREATE audit row's
+#: "changes" payload — the editable set plus the three fields the router derives or
+#: assigns rather than takes from the request: ``dedupe_key`` (derived from
+#: name/city/address) and the ``(record_state, needs_review)`` pair the review
+#: checkbox maps onto.
+AUDITED_RESTAURANT_CREATE_FIELDS: tuple[str, ...] = (
+    *EDITABLE_RESTAURANT_FIELDS,
+    "dedupe_key",
+    "record_state",
+    "needs_review",
+)
+
+
+def validated_name_he(value: str | None) -> str | None:
+    """
+    Reject a whitespace-only display name.
+
+    Shared by :class:`UpdateRestaurantRequest` (where ``None`` means "untouched")
+    and :class:`CreateRestaurantRequest` (where the field is required, so the
+    ``None`` branch never triggers there).
+
+    Parameters:
+        value (str | None): The submitted Hebrew name, or None when untouched.
+
+    Return:
+        str | None: The stripped name, or None.
+    """
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        raise ValueError(NAME_HE_BLANK_DETAIL)
+
+    return value
+
+
+def validated_city_slug(value: str | None) -> str | None:
+    """
+    Constrain the city slug to the ASCII slug shape city filters rely on.
+
+    Shared by :class:`UpdateRestaurantRequest` and :class:`CreateRestaurantRequest`.
+
+    Parameters:
+        value (str | None): The submitted slug, or None when cleared/untouched.
+
+    Return:
+        str | None: The slug unchanged, or None.
+    """
+    if value is None:
+        return None
+    if re.fullmatch(CITY_SLUG_PATTERN, value) is None:
+        raise ValueError(CITY_SLUG_DETAIL)
+
+    return value
+
+
+def validated_amenities(value: dict[str, bool] | None) -> dict[str, bool] | None:
+    """
+    Validate amenity keys against :class:`app.models.enums.AmenityKey`.
+
+    Shared by :class:`UpdateRestaurantRequest` and :class:`CreateRestaurantRequest`.
+
+    Parameters:
+        value (dict[str, bool] | None): The submitted amenity map, or None.
+
+    Return:
+        dict[str, bool] | None: The map unchanged, or None.
+    """
+    if value is None:
+        return None
+    allowed = {amenity.value for amenity in AmenityKey}
+    unknown = sorted(set(value) - allowed)
+    if unknown:
+        raise ValueError(UNKNOWN_AMENITY_DETAIL.format(unknown=unknown, allowed=sorted(allowed)))
+
+    return value
+
 
 class RestaurantDetail(RestaurantBrief):
     """Every restaurant field the directory shows or writes, plus read-only context.
@@ -156,7 +233,7 @@ class UpdateRestaurantRequest(BaseModel):
     @classmethod
     def _name_he_not_blank(cls, value: str | None) -> str | None:
         """
-        Reject a whitespace-only display name.
+        Delegate to the shared name_he validator.
 
         Parameters:
             value (str | None): The submitted Hebrew name, or None when untouched.
@@ -164,19 +241,13 @@ class UpdateRestaurantRequest(BaseModel):
         Return:
             str | None: The stripped name, or None.
         """
-        if value is None:
-            return None
-        value = value.strip()
-        if not value:
-            raise ValueError(NAME_HE_BLANK_DETAIL)
-
-        return value
+        return validated_name_he(value)
 
     @field_validator("city_slug")
     @classmethod
     def _city_slug_is_a_slug(cls, value: str | None) -> str | None:
         """
-        Constrain the city slug to the ASCII slug shape city filters rely on.
+        Delegate to the shared city_slug validator.
 
         Parameters:
             value (str | None): The submitted slug, or None when cleared/untouched.
@@ -184,18 +255,13 @@ class UpdateRestaurantRequest(BaseModel):
         Return:
             str | None: The slug unchanged, or None.
         """
-        if value is None:
-            return None
-        if re.fullmatch(CITY_SLUG_PATTERN, value) is None:
-            raise ValueError(CITY_SLUG_DETAIL)
-
-        return value
+        return validated_city_slug(value)
 
     @field_validator("amenities")
     @classmethod
     def _amenities_are_known_keys(cls, value: dict[str, bool] | None) -> dict[str, bool] | None:
         """
-        Validate amenity keys against :class:`app.models.enums.AmenityKey`.
+        Delegate to the shared amenities validator.
 
         Parameters:
             value (dict[str, bool] | None): The submitted amenity map, or None.
@@ -203,16 +269,7 @@ class UpdateRestaurantRequest(BaseModel):
         Return:
             dict[str, bool] | None: The map unchanged, or None.
         """
-        if value is None:
-            return None
-        allowed = {amenity.value for amenity in AmenityKey}
-        unknown = sorted(set(value) - allowed)
-        if unknown:
-            raise ValueError(
-                UNKNOWN_AMENITY_DETAIL.format(unknown=unknown, allowed=sorted(allowed))
-            )
-
-        return value
+        return validated_amenities(value)
 
     @model_validator(mode="after")
     def _required_fields_are_not_cleared(self) -> UpdateRestaurantRequest:
@@ -244,3 +301,102 @@ class UpdateRestaurantRequest(BaseModel):
             raise ValueError(NO_FIELDS_DETAIL)
 
         return self
+
+
+class CreateRestaurantRequest(BaseModel):
+    """Hand-entry of a new restaurant, fully audited (PRD FR8 create path).
+
+    Reaches exactly ``EDITABLE_RESTAURANT_FIELDS`` — no field this schema can set is
+    unreachable from :class:`UpdateRestaurantRequest`, and vice versa. Unlike PATCH
+    there is no "untouched" state: ``name_he`` is required, and ``status`` /
+    ``amenities`` default the same way the column itself defaults (``open`` / ``{}``).
+
+    ``needs_review`` is the moderator's review-routing checkbox (plan decision 2): it
+    is never written to a column directly — the router maps it onto
+    ``(record_state, needs_review)`` as a pair. ``note`` is the moderator's reason for
+    the entry; like PATCH's ``note`` it is audited and never stored on the restaurant
+    row, deliberately outside ``EDITABLE_RESTAURANT_FIELDS`` for the same reason.
+
+    ``dedupe_key`` is not expressible here either: like every other identity-derived
+    field, it is computed by the router from ``name_he`` / ``city_he`` / ``address_he``,
+    never entered by hand. ``extra="ignore"`` (pydantic's default, left as-is) is not
+    the real enforcement — the ``EDITABLE_RESTAURANT_FIELDS`` intersection at the
+    write site is, exactly as for PATCH.
+    """
+
+    name_he: str = Field(max_length=MAX_NAME_LENGTH)
+    name_en: OptionalText = Field(default=None, max_length=MAX_NAME_LENGTH)
+    branch_label: OptionalText = Field(default=None, max_length=MAX_BRANCH_LABEL_LENGTH)
+    address_he: OptionalText = Field(default=None, max_length=MAX_NAME_LENGTH)
+    address_en: OptionalText = Field(default=None, max_length=MAX_NAME_LENGTH)
+    city_he: OptionalText = Field(default=None, max_length=MAX_CITY_LENGTH)
+    city_en: OptionalText = Field(default=None, max_length=MAX_CITY_LENGTH)
+    city_slug: OptionalText = Field(default=None, max_length=MAX_CITY_LENGTH)
+    neighborhood_he: OptionalText = Field(default=None, max_length=MAX_CITY_LENGTH)
+    phone: OptionalText = Field(default=None, max_length=MAX_PHONE_LENGTH)
+    website: BlankableHttpUrl = None
+    menu_url: BlankableHttpUrl = None
+    business_type_he: OptionalText = Field(default=None, max_length=MAX_BUSINESS_TYPE_LENGTH)
+    diet_type: DietType | None = None
+    price_level: int | None = Field(default=None, ge=MIN_PRICE_LEVEL, le=MAX_PRICE_LEVEL)
+    #: StrictBool: an amenity is recorded true or false, never coerced from "yes"/1.
+    amenities: dict[str, StrictBool] = Field(default_factory=dict)
+    status: RestaurantStatus = RestaurantStatus.OPEN
+    notes: OptionalText = None
+    #: The "שליחה לתור בדיקה" checkbox (plan decision 2), default on. Mapped onto
+    #: ``(record_state, needs_review)`` by the router — never a direct column write.
+    needs_review: bool = True
+    note: OptionalText = None
+
+    @field_validator("name_he")
+    @classmethod
+    def _name_he_not_blank(cls, value: str) -> str:
+        """
+        Reject a whitespace-only display name.
+
+        ``name_he`` is required on create, so the shared validator's None branch
+        (reserved for the update schema's "untouched" case) never triggers here.
+
+        Parameters:
+            value (str): The submitted Hebrew name.
+
+        Return:
+            str: The stripped name.
+        """
+        stripped = validated_name_he(value)
+        if stripped is None:
+            raise ValueError(NAME_HE_BLANK_DETAIL)
+
+        return stripped
+
+    @field_validator("city_slug")
+    @classmethod
+    def _city_slug_is_a_slug(cls, value: str | None) -> str | None:
+        """
+        Delegate to the shared city_slug validator.
+
+        Parameters:
+            value (str | None): The submitted slug, or None.
+
+        Return:
+            str | None: The slug unchanged, or None.
+        """
+        return validated_city_slug(value)
+
+    @field_validator("amenities")
+    @classmethod
+    def _amenities_are_known_keys(cls, value: dict[str, bool]) -> dict[str, bool]:
+        """
+        Delegate to the shared amenities validator.
+
+        Parameters:
+            value (dict[str, bool]): The submitted amenity map.
+
+        Return:
+            dict[str, bool]: The map unchanged.
+        """
+        validated = validated_amenities(value)
+        if validated is None:
+            return {}
+
+        return validated

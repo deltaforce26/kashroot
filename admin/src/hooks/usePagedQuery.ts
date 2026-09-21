@@ -19,6 +19,19 @@ interface PagedQueryState<T> {
    * row in the database cannot drift.
    */
   replaceItem: (predicate: (item: T) => boolean, next: T) => void;
+  /**
+   * Put a freshly created row at the top of the page. Same non-optimistic contract
+   * as `replaceItem`: the caller passes what the API returned.
+   *
+   * Tradeoff, beside the removal note above: the server orders this list by
+   * `name_he`, so the prepended row is almost never where the server would put it,
+   * and `next()` (which computes `offset + items.length`) therefore starts one row
+   * later than it should. Accepted — the alternative, `reload()`, drops the new row
+   * off the page entirely whenever it sorts elsewhere, and the moderator needs that
+   * row on screen immediately to attach a certificate to it. The drift is cosmetic
+   * and self-heals on any refetch.
+   */
+  prependItem: (item: T) => void;
   next: () => void;
   prev: () => void;
 }
@@ -112,6 +125,11 @@ export function usePagedQuery<T>(
     setItems((prev) => prev.map((item) => (predicate(item) ? updated : item)));
   }, []);
 
+  const prependItem = useCallback((item: T) => {
+    setItems((prev) => [item, ...prev]);
+    setTotal((n) => n + 1);
+  }, []);
+
   const next = useCallback(() => {
     setPage({
       key: paramsKey,
@@ -132,6 +150,7 @@ export function usePagedQuery<T>(
     reload,
     removeItem,
     replaceItem,
+    prependItem,
     next,
     prev,
   };

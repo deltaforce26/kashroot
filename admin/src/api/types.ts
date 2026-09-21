@@ -37,6 +37,17 @@ export type CertificateSource =
 
 export type CertificateState = "active" | "expired" | "revoked" | "pending";
 
+/**
+ * CertifierType from app/models/enums.py. Display-only: the console never ranks
+ * certifiers, and a type is a description of who issues the certificate, not a
+ * statement about how good it is.
+ */
+export type CertifierType =
+  | "rabbanut_local"
+  | "rabbanut_national"
+  | "badatz"
+  | "private";
+
 export type FlagType =
   | "closed"
   | "no_certificate_displayed"
@@ -86,6 +97,25 @@ export const AMENITY_KEYS: readonly AmenityKey[] = [
   "groups",
 ];
 
+/**
+ * Enum order from app/models/enums.py — drives the certificate state select.
+ * There is no default: the moderator must pick one, so a certificate can never
+ * become `active` because nobody chose otherwise.
+ */
+export const CERTIFICATE_STATES: readonly CertificateState[] = [
+  "active",
+  "expired",
+  "revoked",
+  "pending",
+];
+
+/** Enum order from app/models/enums.py — drives the certificate level select. */
+export const CERTIFICATION_LEVELS: readonly CertificationLevel[] = [
+  "unknown",
+  "regular",
+  "mehadrin",
+];
+
 /** Enum order from app/models/enums.py — drives the tri-state attribute editor. */
 export const CERTIFICATE_ATTRIBUTES: readonly CertificateAttribute[] = [
   "glatt",
@@ -122,6 +152,23 @@ export interface Page<T> {
 export interface CertifierBrief {
   name_he: string;
   name_en: string | null;
+}
+
+/**
+ * CertifierOption (schemas_certificates.py) — the certificate picker's row.
+ *
+ * Deliberately carries NO levels field. A list of levels rendered beside a
+ * certifier reads as a ranking, and the app never ranks certifiers: the user
+ * whitelists, the app reports facts. Inactive certifiers are still selectable —
+ * a real historical certificate must be recordable — and are marked as such.
+ */
+export interface CertifierOption {
+  id: string;
+  slug: string;
+  name_he: string;
+  name_en: string | null;
+  type: CertifierType;
+  is_active: boolean;
 }
 
 export interface CertificateOut {
@@ -313,6 +360,75 @@ export interface UpdateRestaurantRequest {
   notes?: string | null;
   /** Audited with the change; never stored on the restaurant row. */
   note?: string | null;
+}
+
+/**
+ * CreateRestaurantRequest (schemas_restaurants.py). POST semantics, not PATCH:
+ * an omitted optional is simply not set, so the client omits empty fields rather
+ * than sending `null` (a `null` means "clear", which has no meaning on create).
+ *
+ * `needs_review` is the "send to the review queue" checkbox, not a direct column
+ * write: the server maps it to the (record_state, needs_review) pair —
+ * true → unknown_pending_verification, false → moderator_verified.
+ *
+ * Inexpressible on purpose: `record_state`, `dedupe_key` (derived from
+ * name/city/address by ingestion), `corroboration_count`, and anything about a
+ * certificate. Creating a restaurant never creates a kashrut fact.
+ */
+export interface CreateRestaurantRequest {
+  name_he: string;
+  name_en?: string;
+  branch_label?: string;
+  address_he?: string;
+  address_en?: string;
+  city_he?: string;
+  city_en?: string;
+  /** Lowercase ASCII slug, e.g. "tel-aviv" — the key city filters run on. */
+  city_slug?: string;
+  neighborhood_he?: string;
+  phone?: string;
+  website?: string;
+  menu_url?: string;
+  business_type_he?: string;
+  diet_type?: DietType;
+  /** 1–4. */
+  price_level?: number;
+  amenities: Partial<Record<AmenityKey, boolean>>;
+  status: RestaurantStatus;
+  notes?: string;
+  /** Routes the new row: true → review queue, false → moderator_verified. */
+  needs_review: boolean;
+  /** Audited with the creation; never stored on the restaurant row. */
+  note?: string;
+}
+
+/**
+ * CreateCertificateRequest (schemas_certificates.py). The restaurant is the path
+ * parameter, never a body field.
+ *
+ * `state` is required and undefaulted — a locked product decision. The moderator
+ * chooses freely across the whole enum with no server-side evidence gate, and the
+ * compensating control is the audit row naming them. Requiring the field is what
+ * stops a certificate becoming `active` because nobody chose otherwise.
+ *
+ * `attributes` is tri-state by omission: send only the keys the moderator can
+ * affirm, and an absent key stays unknown. Unlike the photo-review request there
+ * is NO `null` variant — there is nothing to clear on a row that does not exist.
+ *
+ * Inexpressible on purpose: `source`, `verified_by_label`, `verified_at`,
+ * `corroboration_count`, `import_key`, `source_document_id`, `evidence_photo_key`
+ * and `is_demo_seed` — all server-stamped provenance.
+ */
+export interface CreateCertificateRequest {
+  certifier_id: string;
+  level: CertificationLevel;
+  state: CertificateState;
+  attributes?: Partial<Record<CertificateAttribute, boolean>>;
+  valid_from?: string; // ISO date
+  valid_until?: string; // ISO date
+  notes?: string;
+  /** Audited with the creation; never stored on the certificate row. */
+  note?: string;
 }
 
 export type PhotoReviewDecision = "accept" | "reject";
