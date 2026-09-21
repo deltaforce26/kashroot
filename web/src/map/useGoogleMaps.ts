@@ -111,8 +111,9 @@ function loadGeocoder(language: "he" | "en"): Promise<google.maps.Geocoder> {
  * place" are different answers and the sheet says different things about them. An
  * empty array means the lookup worked and found nothing.
  *
- * The typed address is sent to Google's geocoder, which is the one place in the app
- * where a user's location text leaves our own server. It is never persisted here.
+ * The typed address is sent to Google's geocoder. Together with `suggestAddresses`
+ * below, this is the one place in the app where a user's location text leaves our own
+ * server. It is never persisted here.
  */
 export async function geocodeAddress(
   query: string,
@@ -140,6 +141,85 @@ export async function geocodeAddress(
       lon: result.geometry.location.lng(),
     },
   }));
+}
+
+/**
+ * One completion offered while the user is still typing. It carries no point: a
+ * prediction is only a name, and looking the point up is a second, billed call, so it
+ * is made for the one suggestion that gets picked and for none of the others.
+ */
+export interface AddressSuggestion {
+  id: string;
+  label: string;
+  resolve(): Promise<GeocodeCandidate>;
+}
+
+let placesPromise: Promise<google.maps.PlacesLibrary> | null = null;
+
+function loadPlaces(language: "he" | "en"): Promise<google.maps.PlacesLibrary> {
+  if (!placesPromise) {
+    configure(language);
+    placesPromise = importLibrary("places").catch((error: unknown) => {
+      // Cleared so the next keystroke can retry once the network is back.
+      placesPromise = null;
+      throw error;
+    });
+  }
+  return placesPromise;
+}
+
+/**
+ * Google bills autocomplete per session, not per keystroke, as long as every request
+ * of one typing run carries the same token and the run ends in a details fetch. The
+ * token is therefore kept across calls and dropped by `resolve`, which is that fetch.
+ */
+let sessionToken: google.maps.places.AutocompleteSessionToken | null = null;
+
+/**
+ * Partial address text -> completions, restricted to Israel.
+ *
+ * Needs "Places API (New)" enabled on the browser key. Rejects when the lookup itself
+ * failed, like `geocodeAddress`; an empty array means it worked and had nothing to
+ * offer. The sheet treats a rejection here as silence rather than as an error, because
+ * nobody asked a question yet — the submitted lookup is what answers out loud.
+ *
+ * This sends the text to Google as it is typed, not only on submit. It is never
+ * persisted here.
+ */
+export async function suggestAddresses(
+  query: string,
+  language: "he" | "en",
+): Promise<AddressSuggestion[]> {
+  if (!hasMapsKey()) throw new Error("No maps key configured");
+  const places = await loadPlaces(language);
+  sessionToken ??= new places.AutocompleteSessionToken();
+  const { suggestions } = await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+    input: query,
+    language,
+    region: "il",
+    includedRegionCodes: ["il"],
+    sessionToken,
+  });
+  return suggestions
+    .flatMap((suggestion) => (suggestion.placePrediction ? [suggestion.placePrediction] : []))
+    .slice(0, MAX_CANDIDATES)
+    .map((prediction) => {
+      const label = prediction.text.text;
+      return {
+        id: prediction.placeId,
+        label,
+        resolve: async () => {
+          const place = prediction.toPlace();
+          try {
+            await place.fetchFields({ fields: ["location"] });
+          } finally {
+            sessionToken = null;
+          }
+          if (!place.location) throw new Error("Place has no location");
+          return { label, point: { lat: place.location.lat(), lon: place.location.lng() } };
+        },
+      };
+    });
 }
 
 export function useGoogleMaps(language: "he" | "en"): {
