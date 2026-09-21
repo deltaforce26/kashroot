@@ -202,9 +202,10 @@ a {
 /* ── Shell ─────────────────────────────────────────────────────────────── */
 
 /*
- * 390×844 is the design's viewport basis. On a phone the app is full-bleed; on a
- * desktop it is centred at that width so the demo can be shown on a laptop without
- * the layout stretching into something the design never described. No fake bezel.
+ * 390×844 is the design's viewport basis. On a phone the app is full-bleed; from
+ * 600px up (see the media query below) it is centred at that width so the demo can
+ * be shown on a laptop without the layout stretching into something the design
+ * never described. No fake bezel.
  */
 .shell {
   position: relative;
@@ -213,13 +214,22 @@ a {
   flex: 1;
   min-height: 0;
   width: 100%;
-  max-width: var(--shell-max);
   margin-inline: auto;
   background: var(--bg);
   background-attachment: fixed;
   overflow: hidden;
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* The cap is for laptops/tablets only. Keyed to viewport width, not to a list of
+   devices: every phone in portrait is under 600 CSS px (Material's "compact"
+   class), including large Pixels (448) and phones with Display size turned down,
+   which the old unconditional 430px cap left with a strip of body on each side. */
+@media (min-width: 600px) {
+  .shell {
+    max-width: var(--shell-max);
+  }
 }
 
 .shell__scroll {
@@ -1644,6 +1654,47 @@ a {
   position: relative;
   z-index: 4;
   margin: 22px 20px 0;
+}
+
+/*
+ * Locate, where a map puts it: the bottom corner a thumb already reaches, lifted clear
+ * of the floating tab bar by the same token the scrolling screens reserve for it, so
+ * the two can never drift apart.
+ *
+ * Cut from the tab bar's own material — its glass, its lift, its height and its gutter
+ * — so the two read as one floating layer rather than a header button that wandered
+ * down the screen.
+ *
+ * `right`, not `inset-inline-end`, and this is the one control on the screen that does
+ * not mirror: the header above it is navigation and follows the reading direction, but
+ * this is furniture placed where the thumb is, and the thumb does not move to the other
+ * side of the phone when the language does.
+ */
+.map__locate {
+  position: absolute;
+  right: 24px;
+  bottom: calc(var(--tabbar-space) + 12px);
+  width: var(--tabbar-height);
+  height: var(--tabbar-height);
+  z-index: 10;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+}
+
+/*
+ * The map's own header carries two controls where the list's carries three, because
+ * locate moved down to the canvas. Three tracks keep the map/list toggle on the
+ * screen's centre line — which is exactly where `space-between` leaves it on the list,
+ * the back and locate buttons being the same width — so the toggle does not shift
+ * under the thumb when you switch between the two screens.
+ */
+.map__overlay--pair {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  justify-items: start;
+}
+
+.map__overlay--pair > :nth-child(2) {
+  justify-self: center;
 }
 
 /*

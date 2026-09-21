@@ -16,6 +16,7 @@ import type {
   CertificateSource,
   CertificateState,
   CertificationLevel,
+  CertifierType,
   DietType,
   EvidencePhotoStatus,
   FlagType,
@@ -83,6 +84,17 @@ export const CERTIFICATION_LEVEL_LABELS: Record<CertificationLevel, string> = {
   unknown: "לא ידועה",
   regular: "רגילה",
   mehadrin: "מהדרין",
+};
+
+/**
+ * Who issues the certificate — a description, never a ranking. The console shows
+ * it so a moderator can tell two similarly-named certifiers apart in the picker.
+ */
+export const CERTIFIER_TYPE_LABELS: Record<CertifierType, string> = {
+  rabbanut_local: "רבנות מקומית",
+  rabbanut_national: "הרבנות הראשית",
+  badatz: "בד״ץ",
+  private: "גוף פרטי",
 };
 
 export const FLAG_TYPE_LABELS: Record<FlagType, string> = {

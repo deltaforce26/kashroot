@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from zoneinfo import ZoneInfo
 
-from app.models import CertificateSource, CertificateState
+from app.models import CertificateSource, CertificateState, RecordState
 
 MAX_PAGE_LIMIT = 200
 DEFAULT_PAGE_LIMIT = 50
@@ -85,3 +85,31 @@ DEDUPE_KEY_CONFLICT_DETAIL = (
     "another restaurant already occupies that name/city/address identity — two rows "
     "may not share a dedupe key. Resolve the duplicate before renaming this record."
 )
+
+#: Restaurant hand-entry review routing (plan decision 2 — the create form's
+#: "שליחה לתור בדיקה" checkbox). Checked -> queued for review; unchecked -> the
+#: moderator is asserting the record needs no further check. The router maps the
+#: checkbox boolean onto this pair; neither value is ever chosen independently.
+QUEUED_RECORD_STATE = RecordState.UNKNOWN_PENDING_VERIFICATION
+UNQUEUED_RECORD_STATE = RecordState.MODERATOR_VERIFIED
+
+#: Source stamped on every certificate the console hand-enters: the moderator is
+#: asserting the record, the same provenance level an accepted evidence-photo review
+#: confers (see PHOTO_VERIFIED_SOURCE above).
+CONSOLE_CERTIFICATE_SOURCE = CertificateSource.MODERATOR_VERIFIED
+
+#: Prefix for every actor label the console stamps onto a provenance column
+#: (verified_by_label, uploaded_by, …), so the value reads "who, through what path".
+MODERATOR_ACTOR_PREFIX = "moderator:"
+
+#: Free-text search over the create-certificate picker (name_he / name_en / slug).
+MAX_CERTIFIER_QUERY_LENGTH = 200
+
+DEDUPE_KEY_TAKEN_DETAIL = (
+    "another restaurant already occupies that name/city/address identity — this "
+    "looks like a duplicate rather than a new record"
+)
+
+#: CreateCertificateRequest's date-order check. Data integrity only — unrelated to,
+#: and never a gate on, the certificate's ``state`` (plan decision 1).
+CERTIFICATE_DATES_DETAIL = "valid_until must not be earlier than valid_from"
