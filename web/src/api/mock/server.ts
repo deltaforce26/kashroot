@@ -358,17 +358,31 @@ export function mockCertifiers(): Promise<CertifierListItem[]> {
   return delay(items);
 }
 
+/**
+ * `query`, as the API does it (app/api/public.py): a case-insensitive substring over
+ * the Hebrew name, the English name and the Hebrew address — no fuzzy matching and no
+ * Hebrew normalization, which is exactly what the search UI promises and no more.
+ */
+function matchesQuery(restaurant: (typeof RESTAURANTS)[number], query: string): boolean {
+  const needle = query.toLowerCase();
+  return [restaurant.name_he, restaurant.name_en, restaurant.address_he].some(
+    (field) => typeof field === "string" && field.toLowerCase().includes(needle),
+  );
+}
+
 export function mockSearch(request: SearchRequest, now = new Date()): Promise<SearchResponseOut> {
   const center = request.center ?? DEFAULT_CENTER;
   const radiusKm = request.radius_km ?? 25;
   const dietTypes = request.filters?.diet_types ?? [];
   const certifierIds = request.filters?.certifier_ids ?? [];
+  const query = request.query?.trim() ?? "";
 
   const items: SearchResultItemOut[] = [];
   for (const restaurant of RESTAURANTS) {
     const distanceKm = haversineKm(center, restaurant);
     if (request.center && distanceKm > radiusKm) continue;
     if (request.city && restaurant.city_slug !== request.city) continue;
+    if (query && !matchesQuery(restaurant, query)) continue;
     if (request.filters?.diet_type && restaurant.diet_type !== request.filters.diet_type) continue;
     if (dietTypes.length > 0 && !(restaurant.diet_type && dietTypes.includes(restaurant.diet_type)))
       continue;

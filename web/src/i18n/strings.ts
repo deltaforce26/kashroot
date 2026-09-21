@@ -273,7 +273,6 @@ const he = {
 
   map: {
     map: "מפה",
-    list: "רשימה",
     placeholder: (city: string) => `מפה — ${city}`,
     note: "מוצגים רק עסקים שיש להם מיקום ממופה במאגר.",
     // The map has a real design for having no map — see useGoogleMaps.
@@ -659,7 +658,6 @@ const en: Strings = {
 
   map: {
     map: "Map",
-    list: "List",
     placeholder: (city: string) => `map — ${city}`,
     note: "Only businesses with a mapped location in our records appear here.",
     unavailableTitle: "The map isn't available right now",

@@ -1638,15 +1638,46 @@ a {
   z-index: 2;
 }
 
-.map__overlay {
+/*
+ * The map's search field, floating over the map with the filter bar under it.
+ *
+ * No wrapper and no absolute positioning: `.map` is `position: absolute; inset: 0`, so
+ * it is out of flow and these two lay out at the top of the shell over a map that runs
+ * edge to edge beneath them. `.fbar` already carries its own `position: relative` and
+ * `z-index`; this needs both, because `.map` is positioned with `z-index: auto` and
+ * would otherwise paint over a non-positioned sibling.
+ *
+ * The gutter is the 20px `.fbar` and `.shell__scroll` use, and the 22px top is what the
+ * map's old overlay row sat at — so the controls landed where the header used to.
+ */
+.map__search {
+  position: relative;
+  z-index: 4;
+  margin: 22px 20px 0;
+}
+
+/*
+ * Locate, where a map puts it: the bottom corner a thumb already reaches, lifted clear
+ * of the floating tab bar by the same token the scrolling screens reserve for it, so
+ * the two can never drift apart.
+ *
+ * Cut from the tab bar's own material — its glass, its lift, its height and its gutter
+ * — so the two read as one floating layer rather than a header button that wandered
+ * down the screen.
+ *
+ * `right`, not `inset-inline-end`, and this is the one control on the screen that does
+ * not mirror: the header above it is navigation and follows the reading direction, but
+ * this is furniture placed where the thumb is, and the thumb does not move to the other
+ * side of the phone when the language does.
+ */
+.map__locate {
   position: absolute;
-  top: 22px;
-  inset-inline: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  z-index: 3;
+  right: 24px;
+  bottom: calc(var(--tabbar-space) + 12px);
+  width: var(--tabbar-height);
+  height: var(--tabbar-height);
+  z-index: 10;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
 }
 
 /*

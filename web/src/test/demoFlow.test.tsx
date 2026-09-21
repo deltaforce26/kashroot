@@ -210,6 +210,10 @@ describe("demo flow", () => {
    * No maps key is configured in test (or on a fresh clone), which is precisely the
    * state the fallback exists for. The map screen must degrade to the design's
    * striped placeholder with an explanation and a way out — never a grey rectangle.
+   *
+   * The way out is the point of the second half: both fallback lines end "The list
+   * works as usual", and since the map's own list was deleted that sentence is only
+   * true if the button lands on home. So it is followed rather than merely counted.
    */
   it("falls back to an explained placeholder when there is no maps key", async () => {
     const user = userEvent.setup();
@@ -222,7 +226,9 @@ describe("demo flow", () => {
 
     expect(await screen.findByText(he.map.unavailableTitle)).toBeInTheDocument();
     expect(screen.getByText(he.map.unavailableNoKey)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: he.map.toList })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: he.map.toList }));
+    expect(await screen.findByText(he.home.nearYou)).toBeInTheDocument();
   });
 
   it("tells the user the list is partial rather than implying it is everything", async () => {
