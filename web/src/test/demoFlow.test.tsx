@@ -112,6 +112,14 @@ describe("demo flow", () => {
     const panel = await screen.findByLabelText(he.verdict.whyMatch);
     expect(within(panel).getAllByRole("listitem").length).toBeGreaterThan(0);
     expect(screen.getByText(he.restaurant.certificate)).toBeInTheDocument();
+
+    // The verification age is the panel's line. The certificate card once repeated
+    // it as a badge; it now carries the record's source instead.
+    expect(screen.getAllByText(/אומת (לפני|היום|אתמול|בשנה)/)).toHaveLength(1);
+    const certificate = screen.getByRole("region", { name: he.restaurant.certificate });
+    expect(
+      within(certificate).getByText(new RegExp(`^${he.restaurant.source}:`)),
+    ).toBeInTheDocument();
   });
 
   /**

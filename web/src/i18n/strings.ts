@@ -153,7 +153,9 @@ const he = {
           ? "אומת אתמול"
           : days > 365
             ? "אומת לפני יותר משנה"
-            : `אומת לפני ${days} ימים`,
+            : days > 100
+              ? "אומת בשנה האחרונה"
+              : `אומת לפני ${days} ימים`,
     neverVerified: "לא אומת מעולם על ידינו",
     source: "מקור",
     sources: {
@@ -545,7 +547,9 @@ const en: Strings = {
           ? "Verified yesterday"
           : days > 365
             ? "Verified over a year ago"
-            : `Verified ${days} days ago`,
+            : days > 100
+              ? "Verified in the last year"
+              : `Verified ${days} days ago`,
     neverVerified: "Never verified by us",
     source: "Source",
     sources: {
