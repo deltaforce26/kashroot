@@ -16,7 +16,7 @@
  * The sheet does not filter or rank anything. It moves the origin; the API re-answers.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CloseIcon, CrosshairIcon, PinIcon, SearchIcon } from "./icons";
 import { useI18n } from "../i18n/I18nProvider";
 import { useCity } from "../location/useCity";
@@ -30,6 +30,26 @@ type Lookup =
   | { state: "done"; candidates: GeocodeCandidate[] }
   | { state: "failed" };
 
+/**
+ * How long the sheet takes to leave. It must match `sheetLift` and `scrimClear` in
+ * styles.css: the class starts the animation and this timer unmounts the component,
+ * so a shorter timer would cut the slide off part-way and a longer one would leave
+ * an invisible sheet sitting over the screen swallowing taps.
+ */
+const EXIT_MS = 180;
+
+/**
+ * Asked at the moment of closing rather than read once, because the setting can be
+ * changed while the app is open. Under `reduce` the stylesheet draws no exit, so
+ * there is nothing to wait out and the sheet goes at once.
+ */
+function exitDuration(): number {
+  const reduced =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return reduced ? 0 : EXIT_MS;
+}
+
 export function LocationSheet({ onClose }: { onClose: () => void }) {
   const { t, lang } = useI18n();
   const { city } = useCity();
@@ -41,17 +61,29 @@ export function LocationSheet({ onClose }: { onClose: () => void }) {
   // a refusal recorded on an earlier screen must not slam the sheet shut on open.
   const askedRef = useRef(false);
 
+  // Every way out runs through `close`, so the sheet cannot be unmounted from under
+  // its own exit: the scrim, the X, Escape and a granted permission all ask to leave
+  // and the timer below is the only thing that actually calls `onClose`.
+  const [leaving, setLeaving] = useState(false);
+  const close = useCallback(() => setLeaving(true), []);
+
+  useEffect(() => {
+    if (!leaving) return;
+    const timer = window.setTimeout(onClose, exitDuration());
+    return () => window.clearTimeout(timer);
+  }, [leaving, onClose]);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") close();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [close]);
 
   useEffect(() => {
-    if (askedRef.current && state === "granted") onClose();
-  }, [state, onClose]);
+    if (askedRef.current && state === "granted") close();
+  }, [state, close]);
 
   async function lookUpAddress(query: string) {
     setLookup({ state: "searching" });
@@ -66,7 +98,7 @@ export function LocationSheet({ onClose }: { onClose: () => void }) {
 
   function pick(candidate: GeocodeCandidate) {
     setAddressOrigin(candidate.label, candidate.point);
-    onClose();
+    close();
   }
 
   const locating = state === "requesting";
@@ -75,18 +107,25 @@ export function LocationSheet({ onClose }: { onClose: () => void }) {
     <>
       <button
         type="button"
-        className="sheet__scrim"
+        className={`sheet__scrim sheet__scrim--fade${
+          leaving ? " sheet__scrim--leaving" : ""
+        }`}
         aria-label={t.origin.close}
-        onClick={onClose}
+        onClick={close}
       />
-      <section className="sheet" role="dialog" aria-modal="true" aria-label={t.origin.title}>
+      <section
+        className={`sheet sheet--top${leaving ? " sheet--leaving" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t.origin.title}
+      >
         <div className="sheet__head">
           <h2 className="sheet__title">{t.origin.title}</h2>
           <button
             type="button"
             className="circle circle--sm glass"
             aria-label={t.origin.close}
-            onClick={onClose}
+            onClick={close}
           >
             <CloseIcon size={15} />
           </button>
@@ -105,9 +144,17 @@ export function LocationSheet({ onClose }: { onClose: () => void }) {
           <CrosshairIcon size={16} />
           {locating ? t.origin.locating : t.origin.useMyLocation}
         </button>
+        {/* Two different truths, and they call for different next moves: with no
+            position at all the address field is the way forward, while a failed
+            refresh leaves the user exactly where they were and needs no action. */}
         {state === "unavailable" && (
           <p className="hint sheet__note" role="status">
             {t.origin.denied}
+          </p>
+        )}
+        {state === "stale" && (
+          <p className="hint sheet__note" role="status">
+            {t.origin.notRefreshed}
           </p>
         )}
 
