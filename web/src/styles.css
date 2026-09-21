@@ -259,9 +259,16 @@ a {
  * The tab bar floats *over* this list rather than sitting under it, so its glass has
  * something to be glass against. That means the list has to reserve the bar's height
  * itself, or the last card ends up parked underneath it and unreachable.
+ *
+ * Reserved with a spacer, not `padding-bottom`: WebKit leaves a scrolling flex
+ * container's end padding out of its scrollable overflow, so on an iPhone the padding
+ * was never reachable and the last item stopped under the bar. A real flex item is
+ * counted everywhere. The column's 12px gap precedes it, hence the subtraction.
  */
-.shell:has(.tabbar) .shell__scroll {
-  padding-bottom: var(--tabbar-space);
+.shell:has(.tabbar) .shell__scroll::after {
+  content: "";
+  flex: none;
+  height: calc(var(--tabbar-space) - 12px);
 }
 
 /*
