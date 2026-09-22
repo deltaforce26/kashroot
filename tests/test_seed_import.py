@@ -39,9 +39,11 @@ def imported(session):
 def test_import_creates_certifiers_and_source_documents(session, imported):
     # 3, not 4: rabbanut_bnei_brak was merged into landa_bnei_brak (Aug 2026). The
     # source-document count is unchanged by that merge — a merge moves attribution, never
-    # provenance — and grew to 7 with the Elul 5786 Landa restaurants refresh.
-    assert count(session, Certifier) == 3
-    assert count(session, SourceDocument) == 7
+    # provenance — and grew to 7 with the Elul 5786 Landa restaurants refresh, then to 8
+    # with the misadot_mehadrin_restaurants_csv source (Sep 2026), which also brought 20
+    # new certifiers (3 -> 23; see CERTIFIER_SEED).
+    assert count(session, Certifier) == 23
+    assert count(session, SourceDocument) == 8
     doc = session.scalar(select(SourceDocument).where(SourceDocument.slug == "rubin_restaurants_pdf"))
     assert doc.source_date_label == "5786 (2026)"
     # Conservative: the earliest date the Hebrew-year label can mean.
@@ -95,8 +97,10 @@ def test_refreshed_rows_are_dated_by_their_freshest_source(session, imported):
 @pytest.mark.xfail(
     reason=(
         "3 Landa records (קברנה, רויאל, שביט - לכבוד שבת ויו\"ט) are in the corpus but "
-        "absent from landa_restaurants_elul_5786.csv, so this sees 44, not 41. Deferred "
-        "by explicit product decision pending research — see docs/data-review-todo.md."
+        "absent from landa_restaurants_elul_5786.csv, plus (since Sep 2026) 1 more "
+        "(קפה גרג, from misadot_mehadrin_restaurants_csv, evidenced only by a source "
+        "newer than the Elul list) — so this sees 45, not 41. Deferred by explicit "
+        "product decision pending research — see docs/data-review-todo.md items 1 and 2."
     ),
     strict=False,
 )

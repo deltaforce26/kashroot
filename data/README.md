@@ -1,7 +1,13 @@
 # Seed Data
 
 ## `seed/kashroot_seed_corpus.csv`
-375 unique records, deduplicated from 570 raw rows across 7 certifier source documents (142 Landa records were dropped by the Elul 5786 refresh — see below). Built by `scripts/build_seed.py` (data is embedded in the script as transcribed from sources; re-run to regenerate — it writes this file in place). Encoding: UTF-8 with BOM.
+522 unique records (519 from `scripts/build_seed.py`'s deterministic output + 3 hand-kept
+exceptions — see "Three Landa records" below), deduplicated across 8 source documents
+(142 Landa records were dropped by the Elul 5786 refresh — see below). Built by
+`scripts/build_seed.py` (data for sources 1-7 is embedded in the script as transcribed
+from sources; source 8 is parsed from `sources/misadot_mehadrin_restaurants.csv` at build
+time, since it names its own certifier per row rather than one certifier per document; the
+script writes this file in place). Encoding: UTF-8 with BOM.
 
 ### Columns
 | Column | Meaning |
@@ -11,10 +17,10 @@
 | `phone` | Normalized (digits, leading 0, or `*` short codes) |
 | `business_type_he` | As published (מסעדה, קייטרינג, מאפייה, חנות מזון…) |
 | `diet_type` | meat / dairy / pareve / fish / mixed / dairy_pareve — **inferred** from business type, blank if indeterminable |
-| `certifier_ids` | `;`-separated: `badatz_mehadrin_rubin`, `badatz_eda_haredit`, `landa_bnei_brak` |
-| `corroboration_count` | # of distinct source documents listing this business (35 have 2, 6 have 3) |
+| `certifier_ids` | `;`-separated certifier slugs (see the certifier tables below); a row can carry more than one, e.g. `beit_yosef;rabbanut_jerusalem` |
+| `corroboration_count` | # of distinct source documents listing this business (36 have 2, 6 have 3) |
 | `source_documents` / `source_date` | Provenance; dates are Hebrew-calendar list dates (Tamuz/Av/Elul 5786 = summer 2026). Freshest document first — the importer dates the certificate from it. Each document's own date lives in `SOURCE_DOCUMENT_SEED`, never inferred from whichever row cites it first |
-| `record_state` | `LIST_VERIFIED` (clean row from official list) or `UNKNOWN_PENDING_VERIFICATION` (56 rows) |
+| `record_state` | `LIST_VERIFIED` (clean row from official list) or `UNKNOWN_PENDING_VERIFICATION` (71 rows) |
 | `needs_review` | TRUE where poster layout made city/phone/address assignment ambiguous (mostly the Eda Haredit north poster) |
 | `dedupe_hash_sha256` | `sha256(f"{restaurant_name_he}|{address_he}|{city_he}")` hex digest — exact-match duplicate detection on the published Hebrew fields. Not a substitute for `record_key()`'s fuzzy merge key in `build_seed.py`, which already tolerates naming/punctuation variants at build time; this hash only catches byte-identical repeats post-build. |
 
@@ -28,6 +34,36 @@
 | `eda_haredit_north.pdf` | Badatz Eda Haredit | Poster layout, heavy OCR noise → most needs_review rows |
 | `landa_vacation_cities_poster.jpg` | Landa (Bnei Brak) | Poster, readable |
 | `landa_restaurants_elul_5786.csv` | Landa (Bnei Brak) | Clean table, supplied as CSV |
+| `misadot_mehadrin_restaurants.csv` | ~26 certifiers, one per row (see below) | Clean CSV scrape of misadotmehadrin.co.il, 145 restaurants; no publication date on the site — the label records receipt (2026-09-22) |
+
+### New certifiers added with the misadot_mehadrin_restaurants.csv source (Sep 2026)
+
+This source's `certificate` column named 28 distinct Hebrew values across ~26 organizations. Reused existing corpus certifiers where the value was unambiguously the same body (`הרב רובין` → `badatz_mehadrin_rubin`, `העדה החרדית` → `badatz_eda_haredit`, `מהדרין בני ברק` → `landa_bnei_brak`, per the documented rabbanut_bnei_brak merge). Everything else got a new slug in `CERTIFIER_SEED`:
+
+| Slug | Hebrew name | Type |
+|---|---|---|
+| `beit_yosef` | בית יוסף | private |
+| `rav_machpud` | הרב מחפוד | private |
+| `chatam_sofer_petah_tikva` | חתם סופר פתח תקווה | private |
+| `badatz_hadar_hakashrut_barda` | בד"ץ הדר הכשרות של הרב יצחק ברדא | badatz |
+| `rav_refael_manat` | הרב רפאל מנת | private |
+| `rabbanut_beer_yaakov`, `rabbanut_hatzor_haglilit`, `rabbanut_ashdod`, `rabbanut_gedera`, `rabbanut_jerusalem`, `rabbanut_kiryat_ata`, `rabbanut_ramat_gan`, `rabbanut_zichron_yaakov`, `rabbanut_petah_tikva`, `rabbanut_maale_adumim`, `rabbanut_sderot`, `rabbanut_afula`, `rabbanut_chevel_yavne` | Local rabbanut "mehadrin" tracks, one per city/council. `מהדרין <city>` and `רבנות מהדרין <city>` on the site are the same body (it just abbreviates) and share one slug per city. | rabbanut_local |
+
+One row (`קפה גן סיפור`, ירושלים) names `בית יוסף ומהדרין ירושלים` — two certifiers on
+one row — and carries both `beit_yosef` and `rabbanut_jerusalem` in `certifier_ids`.
+
+**Two certificate values could not be confidently attributed and are open product
+decisions — see `docs/data-review-todo.md` item 2:**
+- `הרב לנדא` / `הרב לנדאו` (spelling variants of each other) — seeded as
+  `rav_landa_variant_unverified`, deliberately **not** merged into `landa_bnei_brak`: this
+  source's footprint for it may differ from the Bnei-Brak-scoped Badatz Rav Landa entity
+  already in the corpus, and conflating them would let a MATCH leak across certifiers.
+- `קהילות` ("Kehilot") — no context in the source to identify the organization. Seeded as
+  `kehilot_unidentified`.
+
+Both slugs are distinct, newly created certifiers of their own, and every row that carries
+either one is forced to `needs_review=TRUE` / `UNKNOWN_PENDING_VERIFICATION` so neither can
+serve a MATCH before a human resolves who they are.
 
 ### Certifier merges
 - **`rabbanut_bnei_brak` → `landa_bnei_brak`** (Aug 2026, product decision). The Bnei Brak
@@ -65,6 +101,15 @@ cover restaurants only (`מסעדה חלבית` / `מסעדות ומזנונים
 category slice rather than the whole list, the corpus has dropped businesses that Landa
 still certifies. `Elul 5786 (Aug-Sep 2026)` records when the file was *received*
 (2026-08-29), not when Landa published it.
+
+**Sep 2026 update:** adding the misadot_mehadrin_restaurants_csv source surfaced the same
+tension from the other direction. One of its rows (`קפה גרג`, מצדה 5, בני ברק,
+`מהדרין בני ברק` → `landa_bnei_brak`) is evidenced only by a source *newer* than the Elul
+list, which the Elul list therefore never had a chance to confirm or deny — its silence
+isn't disconfirmation. `build_seed.py` no longer lets `AUTHORITATIVE_SOURCES` silently drop
+a record in that situation; it flags it `needs_review=TRUE` instead (see the
+`new_evidence_conflicts` check in the script and `docs/data-review-todo.md` item 2). This
+does not change how the original 7 sources merge with each other.
 
 One rename came with the refresh: **`שאבעס ביג - מחלקת אוכל מוכן` → `... פתוח`**, same
 address and phone. `RENAMED` in `scripts/build_seed.py` keys both rows onto one corpus

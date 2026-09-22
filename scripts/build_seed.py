@@ -1,4 +1,4 @@
-"""Kashroot seed corpus builder — normalizes 6 source documents into one CSV."""
+"""Kashroot seed corpus builder — normalizes 8 source documents into one CSV."""
 import csv
 import hashlib
 import re
@@ -639,6 +639,109 @@ for line in S7.strip().split("\n"):
     n, a, c, p, t = line.split("|")
     R.append([n, a, c, p, t, "", SRC7[0], SRC7[1], SRC7[2], "FALSE", ""])
 
+# ---------------- SOURCE 8: Misadot Mehadrin scrape (misadotmehadrin.co.il) ----------------
+# Unlike sources 1-7, each row of this source names its own certifier (the `certificate`
+# column) rather than the whole document sharing one, so it is parsed straight from the
+# copied CSV instead of transcribed as a `|`-delimited block. 145 data rows, some fields
+# (opening_hours) contain embedded newlines inside quotes — read with csv.DictReader,
+# never by splitting on raw newlines, or rows silently fracture.
+#
+# The site carries no publication date for the list, so — same convention as
+# landa_restaurants_elul_5786 — the label records when this pipeline received it
+# (2026-09-22), not when misadotmehadrin.co.il published it.
+SRC8_SLUG = "misadot_mehadrin_restaurants_csv"
+SRC8_DATE = "Tishrei 5787 (Sep 2026)"
+SRC8_PATH = "data/sources/misadot_mehadrin_restaurants.csv"
+
+# certificate (as published) -> certifier slug(s); ';'-separated for the one row that
+# names two certifiers at once ("בית יוסף ומהדרין ירושלים").
+CERT_MAP_8 = {
+    "הרב רובין": "badatz_mehadrin_rubin",
+    "העדה החרדית": "badatz_eda_haredit",
+    "מהדרין בני ברק": "landa_bnei_brak",
+    "בית יוסף": "beit_yosef",
+    "הרב מחפוד": "rav_machpud",
+    'חתם סופר פתח תקווה': "chatam_sofer_petah_tikva",
+    'בד"ץ הדר הכשרות של הרב יצחק ברדא': "badatz_hadar_hakashrut_barda",
+    "הרב רפאל מנת": "rav_refael_manat",
+    "בית יוסף ומהדרין ירושלים": "beit_yosef;rabbanut_jerusalem",
+    # `מהדרין <city>` and `רבנות מהדרין <city>` are the same local rabbanut (the site
+    # just abbreviates); both spellings map to one slug per city.
+    "מהדרין באר יעקב": "rabbanut_beer_yaakov",
+    "מהדרין חצור הגלילית": "rabbanut_hatzor_haglilit",
+    "מהדרין אשדוד": "rabbanut_ashdod",
+    "מהדרין גדרה": "rabbanut_gedera",
+    "רבנות מהדרין גדרה": "rabbanut_gedera",
+    "מהדרין ירושלים": "rabbanut_jerusalem",
+    "רבנות מהדרין ירושלים": "rabbanut_jerusalem",
+    "מהדרין קרית אתא": "rabbanut_kiryat_ata",
+    "רבנות מהדרין רמת גן": "rabbanut_ramat_gan",
+    "מהדרין זכרון יעקב": "rabbanut_zichron_yaakov",
+    "מהדרין פתח תקווה": "rabbanut_petah_tikva",
+    "רבנות מהדרין פתח תקווה": "rabbanut_petah_tikva",
+    "מהדרין מעלה אדומים": "rabbanut_maale_adumim",
+    "רבנות מהדרין מעלה אדומים": "rabbanut_maale_adumim",
+    "רבנות מהדרין שדרות": "rabbanut_sderot",
+    "מהדרין עפולה": "rabbanut_afula",
+    'הרבנות מהדרין חבל יבנה': "rabbanut_chevel_yavne",
+}
+
+# Open certifier-identity questions (see docs/data-review-todo.md item 2). Distinct new
+# slugs of their own — NEVER merged into an existing certifier (landa_bnei_brak in
+# particular), and every row that carries one is forced to needs_review so it can never
+# serve a MATCH before a human resolves who they are.
+LANDA_VARIANT_SLUG = "rav_landa_variant_unverified"  # 'הרב לנדא'/'הרב לנדאו' — spelling variants
+KEHILOT_SLUG = "kehilot_unidentified"  # 'קהילות' — no context to identify the organization
+CERT_MAP_8["הרב לנדא"] = LANDA_VARIANT_SLUG
+CERT_MAP_8["הרב לנדאו"] = LANDA_VARIANT_SLUG
+CERT_MAP_8["קהילות"] = KEHILOT_SLUG
+UNRESOLVED_CERTIFIER_FIELDS = {"הרב לנדא", "הרב לנדאו", "קהילות"}
+
+# This source spells פתח תקווה with a double vav; the corpus/CITY_EN convention (and
+# every other source) uses the single-vav פתח תקוה. Normalize so records aren't
+# fragmented into a second, spurious city.
+CITY_SPELLING_FIX_8 = {"פתח תקווה": "פתח תקוה"}
+
+
+def _load_src8_rows(path: str) -> list[dict]:
+    import csv as _csv
+
+    with open(path, encoding="utf-8-sig", newline="") as fh:
+        return list(_csv.DictReader(fh))
+
+
+for _row in _load_src8_rows(SRC8_PATH):
+    n = _row["name"].strip()
+    a = _row["address"].strip()
+    c = CITY_SPELLING_FIX_8.get(_row["city"].strip(), _row["city"].strip())
+    p = _row["phone"].strip()
+    category = _row["category"].strip()
+    cert_field = _row["certificate"].strip()
+
+    if cert_field not in CERT_MAP_8:
+        raise SystemExit(f"SRC8: unmapped certificate {cert_field!r} for {n!r} ({c})")
+    cert_slugs = CERT_MAP_8[cert_field].split(";")
+
+    nr = "FALSE"
+    notes = []
+    if category == "עגלת קפה":
+        # Coffee cart: not clearly meat/dairy/pareve. Leave diet_type blank (infer_diet
+        # below finds no meat/dairy keyword in "עגלת קפה" and returns "" on its own) and
+        # flag for review rather than guess.
+        nr = "TRUE"
+        notes.append("coffee cart (עגלת קפה) — diet_type indeterminable")
+    if cert_field in UNRESOLVED_CERTIFIER_FIELDS:
+        nr = "TRUE"
+        notes.append(
+            f"certifier identity unresolved ({cert_field!r}) — see data-review-todo.md item 2"
+        )
+
+    for cert_slug in cert_slugs:
+        # business_type_he holds `category` as published (בשרי/חלבי/עגלת קפה); infer_diet
+        # below reads the same meat/dairy keywords out of it that every other source's
+        # business_type column supplies, so diet inference needs no special case here.
+        R.append([n, a, c, p, category, "", cert_slug, SRC8_SLUG, SRC8_DATE, nr, "; ".join(notes)])
+
 # Sources whose rows supersede an earlier list for the records they cover: the newer
 # name, address, phone and business type win. Which source supplies a record's date is
 # not decided here but by SOURCE_RECENCY below — being newer is what makes a source
@@ -651,12 +754,14 @@ REFRESH_SOURCES = {SRC7[1]}
 # freshest list that carries a record supplies its date and is recorded first. The
 # importer picks the same document independently, from the same dates.
 SRC_LABEL = {src[1]: src[2] for src in (SRC1, SRC2, SRC3, SRC4, SRC5, SRC6, SRC7)}
+SRC_LABEL[SRC8_SLUG] = SRC8_DATE
 SOURCE_RECENCY = {
     "Tamuz 5786 (Jun-Jul 2026)": (2026, 6, 16),
     "Av 5786 (Jul-Aug 2026)": (2026, 7, 15),
     "Elul 5786 (Aug-Sep 2026)": (2026, 8, 14),
     "Summer 5786 (2026)": (2026, 6, 1),
     "5786 (2026)": (2025, 9, 23),
+    "Tishrei 5787 (Sep 2026)": (2026, 9, 22),
 }
 
 # Businesses the refresh republishes under a changed name. Keyed on the earlier
@@ -729,7 +834,13 @@ CITY_EN = {"בני ברק":"Bnei Brak","ירושלים":"Jerusalem","בית שמ
 "מגדל העמק":"Migdal HaEmek","בת ים":"Bat Yam","חדרה":"Hadera","גדרה":"Gedera","הרצליה":"Herzliya",
 "פרדס חנה":"Pardes Hanna","שדרות":"Sderot","אור יהודה":"Or Yehuda","זכרון יעקב":"Zikhron Ya'akov",
 "בית שאן":"Beit She'an","אור הגנוז":"Or HaGanuz","קריות":"Krayot","קרית שמואל":"Kiryat Shmuel",
-"חפץ חיים":"Hafetz Haim","יצהר":"Yitzhar"}
+"חפץ חיים":"Hafetz Haim","יצהר":"Yitzhar",
+"אבן שמואל":"Even Shmuel","אזור":"Azor","אילת":"Eilat","באר יעקב":"Be'er Ya'akov",
+"באר שבע":"Be'er Sheva","בית גמליאל":"Beit Gamliel","יבנה":"Yavne","כפר סבא":"Kfar Saba",
+"מבשרת ציון":"Mevaseret Zion","מודיעין":"Modiin","מעלה אדומים":"Ma'ale Adumim",
+"נהריה":"Nahariya","עין חמד":"Ein Hemed","קיבוץ גדות":"Kibbutz Gadot","קיסריה":"Caesarea",
+"קרית ביאליק":"Kiryat Bialik","ראש העין":"Rosh HaAyin","ראש פינה":"Rosh Pinna",
+"תל אביב":"Tel Aviv"}
 
 def dedupe_hash(name: str, addr: str, city: str) -> str:
     """SHA-256 of the published Hebrew name/address/city, for exact-match duplicate detection."""
@@ -801,6 +912,10 @@ for rname, rcity, raddr in RENAMED:
         raise SystemExit(f"RENAMED entry matches no record: {rname} / {rcity} / {raddr}")
 
 superseded = []
+# Records whose only evidence is a source dated after the authoritative one: the
+# authoritative list's silence on them isn't disconfirmation, because it predates and
+# never had a chance to see them. See docs/data-review-todo.md item 2.
+new_evidence_conflicts = []
 for src_slug, cert_slug in AUTHORITATIVE_SOURCES.items():
     for k in list(order):
         m = merged[k]
@@ -813,6 +928,19 @@ for src_slug, cert_slug in AUTHORITATIVE_SOURCES.items():
                     name=m["name"], city=m["city"], certifier=cert_slug, others=others
                 )
             )
+        authoritative_recency = SOURCE_RECENCY[SRC_LABEL[src_slug]]
+        if all(SOURCE_RECENCY[SRC_LABEL[s]] > authoritative_recency for s in m["srcs"]):
+            # Every source behind this record postdates the authoritative list, so its
+            # silence carries no weight — flag for human review instead of either
+            # silently dropping new evidence or silently trusting it clean.
+            m["nr"] = "TRUE"
+            note = (
+                f"not in {src_slug} (authoritative for {cert_slug}), but only evidenced "
+                "by source(s) newer than it — see docs/data-review-todo.md item 2"
+            )
+            m["note"] = f'{m["note"]}; {note}' if m["note"] else note
+            new_evidence_conflicts.append((m["name"], m["city"], m["btype"]))
+            continue
         superseded.append((m["name"], m["city"], m["btype"]))
         order.remove(k)
         del merged[k]
@@ -838,6 +966,8 @@ multi = sum(1 for m in merged.values() if len(m["srcs"])>1)
 nrv = sum(1 for m in merged.values() if m["nr"]=="TRUE")
 print(f"Total raw rows: {len(R)}")
 print(f"Superseded (dropped): {len(superseded)}")
+print(f"Flagged instead of dropped (new-evidence conflicts): {len(new_evidence_conflicts)}")
+print(new_evidence_conflicts)
 print(f"Unique records: {len(merged)}")
 print(f"Cross-source corroborated: {multi}")
 print(f"Needs review: {nrv}")

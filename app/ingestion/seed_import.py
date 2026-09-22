@@ -2,8 +2,8 @@
 
 What this pipeline does and does *not* establish (see data/README.md):
 
-* It establishes **status + certifier** only. Those six source documents are official
-  published lists — source-hierarchy level 1 (PRD §13).
+* It establishes **status + certifier** only. Those source documents are official
+  published lists or directory scrapes — source-hierarchy level 1 (PRD §13).
 * It establishes **no certificate attributes** (glatt, pas yisrael…) and **no expiry
   dates**, because the sources contain none. Certificates are therefore written with
   ``attributes = {}`` (every attribute *unknown*) and ``valid_until = NULL``. A profile
@@ -88,9 +88,115 @@ CERTIFIER_SEED: dict[str, dict[str, Any]] = {
         "name_en": "Badatz Rav Landa (Bnei Brak)",
         "type": CertifierType.BADATZ,
     },
+    # ---- Added with the misadot_mehadrin_restaurants_csv source (8th source, Sep 2026) ----
+    "beit_yosef": {
+        "name_he": 'בית יוסף',
+        "name_en": "Beit Yosef",
+        "type": CertifierType.PRIVATE,
+    },
+    "rav_machpud": {
+        "name_he": 'הרב מחפוד',
+        "name_en": "Rav Machpud",
+        "type": CertifierType.PRIVATE,
+    },
+    "chatam_sofer_petah_tikva": {
+        "name_he": 'חתם סופר פתח תקווה',
+        "name_en": "Chatam Sofer (Petah Tikva)",
+        "type": CertifierType.PRIVATE,
+    },
+    "badatz_hadar_hakashrut_barda": {
+        "name_he": 'בד"ץ הדר הכשרות של הרב יצחק ברדא',
+        "name_en": "Badatz Hadar HaKashrut (Rav Yitzchak Barda)",
+        "type": CertifierType.BADATZ,
+    },
+    "rav_refael_manat": {
+        "name_he": 'הרב רפאל מנת',
+        "name_en": "Rav Refael Manat",
+        "type": CertifierType.PRIVATE,
+    },
+    # `מהדרין <city>` / `רבנות מהדרין <city>` on misadotmehadrin.co.il are the same local
+    # rabbanut (the site just abbreviates); each city below got one slug for both spellings.
+    "rabbanut_beer_yaakov": {
+        "name_he": "רבנות מהדרין באר יעקב",
+        "name_en": "Rabbanut Mehadrin (Be'er Ya'akov)",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_hatzor_haglilit": {
+        "name_he": "רבנות מהדרין חצור הגלילית",
+        "name_en": "Rabbanut Mehadrin (Hatzor HaGlilit)",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_ashdod": {
+        "name_he": "רבנות מהדרין אשדוד",
+        "name_en": "Rabbanut Mehadrin (Ashdod)",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_gedera": {
+        "name_he": "רבנות מהדרין גדרה",
+        "name_en": "Rabbanut Mehadrin (Gedera)",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_jerusalem": {
+        "name_he": "רבנות מהדרין ירושלים",
+        "name_en": "Rabbanut Mehadrin (Jerusalem)",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_kiryat_ata": {
+        "name_he": "רבנות מהדרין קרית אתא",
+        "name_en": "Rabbanut Mehadrin (Kiryat Ata)",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_ramat_gan": {
+        "name_he": "רבנות מהדרין רמת גן",
+        "name_en": "Rabbanut Mehadrin (Ramat Gan)",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_zichron_yaakov": {
+        "name_he": "רבנות מהדרין זכרון יעקב",
+        "name_en": "Rabbanut Mehadrin (Zichron Yaakov)",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_petah_tikva": {
+        "name_he": "רבנות מהדרין פתח תקווה",
+        "name_en": "Rabbanut Mehadrin (Petah Tikva)",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_maale_adumim": {
+        "name_he": "רבנות מהדרין מעלה אדומים",
+        "name_en": "Rabbanut Mehadrin (Ma'ale Adumim)",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_sderot": {
+        "name_he": "רבנות מהדרין שדרות",
+        "name_en": "Rabbanut Mehadrin (Sderot)",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_afula": {
+        "name_he": "רבנות מהדרין עפולה",
+        "name_en": "Rabbanut Mehadrin (Afula)",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_chevel_yavne": {
+        "name_he": "הרבנות מהדרין חבל יבנה",
+        "name_en": "Rabbanut Mehadrin (Chevel Yavne regional council)",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    # ---- Open certifier-identity questions (see docs/data-review-todo.md item 2). Every
+    # certificate that carries one of these is forced to needs_review by the seed corpus
+    # build, so neither slug can serve a MATCH before a human resolves who they are. ----
+    "rav_landa_variant_unverified": {
+        "name_he": "הרב לנדא / הרב לנדאו",
+        "name_en": "Rav Landa/Landau (unverified — identity/footprint unresolved)",
+        "type": CertifierType.PRIVATE,
+    },
+    "kehilot_unidentified": {
+        "name_he": "קהילות",
+        "name_en": "Kehilot (unidentified organization)",
+        "type": CertifierType.PRIVATE,
+    },
 }
 
-#: The seven source documents behind the corpus. ``date_label`` is the document's own
+#: The source documents behind the corpus. ``date_label`` is the document's own
 #: published (or, where the source carries none, received) list date — a property of the
 #: document, never inferred from whichever corpus row happens to cite it first. A row may
 #: cite documents of different dates, so deriving the label from row order mislabels the
@@ -157,6 +263,26 @@ SOURCE_DOCUMENT_SEED: dict[str, dict[str, Any]] = {
             "label records receipt (2026-08-29), not publication."
         ),
     },
+    # 8th source (Sep 2026): unlike the first seven, this document names its own
+    # certifier per row (the corpus's `certifier_ids` column), not one certifier for the
+    # whole document — it aggregates ~26 different certifiers across 145 restaurants.
+    # `certifier_slug` is intentionally `None`: no single certifier_id is honest here,
+    # and SourceDocument.certifier_id is nullable for exactly this case.
+    "misadot_mehadrin_restaurants_csv": {
+        "title": "Misadot Mehadrin — kosher restaurant directory scrape",
+        "kind": SourceDocumentKind.MANUAL,
+        "certifier_slug": None,
+        "file": "misadot_mehadrin_restaurants.csv",
+        "date_label": "Tishrei 5787 (Sep 2026)",
+        "notes": (
+            "Scraped from misadotmehadrin.co.il; 145 restaurants, each row naming its "
+            "own certifier. The site carries no publication date — the label records "
+            "when this pipeline received it (2026-09-22), not when the site published "
+            "it. Two certificate values could not be attributed to a known "
+            "organization ('הרב לנדא'/'הרב לנדאו' and 'קהילות') and were seeded under "
+            "distinct, unverified slugs — see docs/data-review-todo.md item 2."
+        ),
+    },
 }
 
 #: Hebrew-calendar list labels → the **earliest** Gregorian date the label can mean.
@@ -168,6 +294,7 @@ SOURCE_DATE_EARLIEST: dict[str, dt.date] = {
     "Elul 5786 (Aug-Sep 2026)": dt.date(2026, 8, 14),
     "Summer 5786 (2026)": dt.date(2026, 6, 1),
     "5786 (2026)": dt.date(2025, 9, 23),  # 1 Tishrei 5786
+    "Tishrei 5787 (Sep 2026)": dt.date(2026, 9, 22),
 }
 
 RECORD_STATE_MAP: dict[str, RecordState] = {
@@ -277,7 +404,8 @@ def _ensure_source_documents(
             stats.source_documents_created += 1
         doc.title = spec["title"]
         doc.kind = spec["kind"]
-        doc.certifier_id = certifiers[spec["certifier_slug"]].id
+        certifier_slug = spec.get("certifier_slug")
+        doc.certifier_id = certifiers[certifier_slug].id if certifier_slug else None
         doc.uri = str(SOURCES_DIR / spec["file"])
         doc.notes = spec.get("notes")
         if label:
