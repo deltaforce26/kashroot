@@ -697,6 +697,20 @@ CERT_MAP_8["הרב לנדאו"] = LANDA_VARIANT_SLUG
 CERT_MAP_8["קהילות"] = KEHILOT_SLUG
 UNRESOLVED_CERTIFIER_FIELDS = {"הרב לנדא", "הרב לנדאו", "קהילות"}
 
+# One 'הרב לנדא' row identified as the same restaurant already in the corpus under
+# landa_bnei_brak — not a new instance of the open identity question above. Same phone
+# (029911778) and street as the landa_bnei_brak-certified מסובין / בית שמש record from
+# SRC1/SRC7 (rabbanut_bb_kitchens_pdf / landa_restaurants_elul_5786), just formatted
+# differently by this source ("יגאל אלון 2 , מתחם פז בכניסה לבית שמש" vs "שדרות יגאל אלון
+# 2"). Overrides the generic mapping for this one (name, city, address) only — every
+# other 'הרב לנדא'/'הרב לנדאו' row stays unresolved. See docs/data-review-todo.md item 2.
+CERT_FIELD_OVERRIDE_8 = {
+    ("מסובין", "בית שמש", "יגאל אלון 2 , מתחם פז בכניסה לבית שמש"): "landa_bnei_brak",
+}
+ADDR_ALIAS_8 = {
+    ("מסובין", "בית שמש", "יגאל אלון 2 , מתחם פז בכניסה לבית שמש"): "שדרות יגאל אלון 2",
+}
+
 # This source spells פתח תקווה with a double vav; the corpus/CITY_EN convention (and
 # every other source) uses the single-vav פתח תקוה. Normalize so records aren't
 # fragmented into a second, spurious city.
@@ -718,9 +732,14 @@ for _row in _load_src8_rows(SRC8_PATH):
     category = _row["category"].strip()
     cert_field = _row["certificate"].strip()
 
-    if cert_field not in CERT_MAP_8:
+    override_key = (n, c, a)
+    if override_key in CERT_FIELD_OVERRIDE_8:
+        cert_slugs = [CERT_FIELD_OVERRIDE_8[override_key]]
+    elif cert_field not in CERT_MAP_8:
         raise SystemExit(f"SRC8: unmapped certificate {cert_field!r} for {n!r} ({c})")
-    cert_slugs = CERT_MAP_8[cert_field].split(";")
+    else:
+        cert_slugs = CERT_MAP_8[cert_field].split(";")
+    a = ADDR_ALIAS_8.get(override_key, a)
 
     nr = "FALSE"
     notes = []
@@ -730,7 +749,7 @@ for _row in _load_src8_rows(SRC8_PATH):
         # flag for review rather than guess.
         nr = "TRUE"
         notes.append("coffee cart (עגלת קפה) — diet_type indeterminable")
-    if cert_field in UNRESOLVED_CERTIFIER_FIELDS:
+    if cert_field in UNRESOLVED_CERTIFIER_FIELDS and override_key not in CERT_FIELD_OVERRIDE_8:
         nr = "TRUE"
         notes.append(
             f"certifier identity unresolved ({cert_field!r}) — see data-review-todo.md item 2"

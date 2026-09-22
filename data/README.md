@@ -1,7 +1,7 @@
 # Seed Data
 
 ## `seed/kashroot_seed_corpus.csv`
-522 unique records (519 from `scripts/build_seed.py`'s deterministic output + 3 hand-kept
+521 unique records (518 from `scripts/build_seed.py`'s deterministic output + 3 hand-kept
 exceptions — see "Three Landa records" below), deduplicated across 8 source documents
 (142 Landa records were dropped by the Elul 5786 refresh — see below). Built by
 `scripts/build_seed.py` (data for sources 1-7 is embedded in the script as transcribed
@@ -18,9 +18,9 @@ script writes this file in place). Encoding: UTF-8 with BOM.
 | `business_type_he` | As published (מסעדה, קייטרינג, מאפייה, חנות מזון…) |
 | `diet_type` | meat / dairy / pareve / fish / mixed / dairy_pareve — **inferred** from business type, blank if indeterminable |
 | `certifier_ids` | `;`-separated certifier slugs (see the certifier tables below); a row can carry more than one, e.g. `beit_yosef;rabbanut_jerusalem` |
-| `corroboration_count` | # of distinct source documents listing this business (36 have 2, 6 have 3) |
+| `corroboration_count` | # of distinct source documents listing this business (35 have 2, 7 have 3) |
 | `source_documents` / `source_date` | Provenance; dates are Hebrew-calendar list dates (Tamuz/Av/Elul 5786 = summer 2026). Freshest document first — the importer dates the certificate from it. Each document's own date lives in `SOURCE_DOCUMENT_SEED`, never inferred from whichever row cites it first |
-| `record_state` | `LIST_VERIFIED` (clean row from official list) or `UNKNOWN_PENDING_VERIFICATION` (71 rows) |
+| `record_state` | `LIST_VERIFIED` (clean row from official list) or `UNKNOWN_PENDING_VERIFICATION` (70 rows) |
 | `needs_review` | TRUE where poster layout made city/phone/address assignment ambiguous (mostly the Eda Haredit north poster) |
 | `dedupe_hash_sha256` | `sha256(f"{restaurant_name_he}|{address_he}|{city_he}")` hex digest — exact-match duplicate detection on the published Hebrew fields. Not a substitute for `record_key()`'s fuzzy merge key in `build_seed.py`, which already tolerates naming/punctuation variants at build time; this hash only catches byte-identical repeats post-build. |
 
@@ -58,6 +58,12 @@ decisions — see `docs/data-review-todo.md` item 2:**
   `rav_landa_variant_unverified`, deliberately **not** merged into `landa_bnei_brak`: this
   source's footprint for it may differ from the Bnei-Brak-scoped Badatz Rav Landa entity
   already in the corpus, and conflating them would let a MATCH leak across certifiers.
+  One exception: `מסובין` / בית שמש (יגאל אלון 2) is mapped straight to `landa_bnei_brak`
+  via `CERT_FIELD_OVERRIDE_8` in `scripts/build_seed.py`, not this unresolved slug — its
+  phone number and street exactly match the `landa_bnei_brak`-certified record already in
+  the corpus from `rabbanut_bb_kitchens_pdf`/`landa_restaurants_elul_5786`, so it's the
+  same business under a confirmed certifier, not a new sighting of the open question. The
+  other 3 `rav_landa_variant_unverified` rows stay unresolved.
 - `קהילות` ("Kehilot") — no context in the source to identify the organization. Seeded as
   `kehilot_unidentified`.
 

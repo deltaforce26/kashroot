@@ -93,7 +93,7 @@ confirmation from Landa or a policy call on how new-evidence-vs-authoritative-so
 conflicts should resolve going forward.
 **Raised:** 2026-09-22, ingesting `misadot_mehadrin_restaurants.csv` (misadotmehadrin.co.il
 scrape) as the 8th seed corpus source.
-**Severity:** kashrut-correctness for the two unresolved identities (8 rows can currently
+**Severity:** kashrut-correctness for the two unresolved identities (7 rows can currently
 return UNKNOWN rather than a wrong MATCH, which is the fail-safe rule working correctly —
 but the underlying organizations still need identifying before these can ever resolve to
 MATCH). Lower severity for the new-evidence conflict (1 row), which is also currently
@@ -104,13 +104,19 @@ UNKNOWN.
 The source's `certificate` column named 28 distinct Hebrew values. Two could not be
 attributed to a known organization:
 
-- `הרב לנדא` / `הרב לנדאו` (spelling variants of each other, 4 rows total) — seeded as a
-  **new, distinct slug** `rav_landa_variant_unverified`, deliberately **not** merged into
+- `הרב לנדא` / `הרב לנדאו` (spelling variants of each other, originally 4 rows) — seeded as
+  a **new, distinct slug** `rav_landa_variant_unverified`, deliberately **not** merged into
   the corpus's existing `landa_bnei_brak` (Badatz Rav Landa, Bnei Brak). This source's rows
   under this name are in בית שמש, בני ברק, טבריה and ירושלים — a wider footprint than the
   Bnei-Brak-scoped entity already in the corpus, so treating them as the same organization
   without confirmation would let a MATCH leak across kashrut agencies, which CLAUDE.md's
-  fail-safe rule forbids.
+  fail-safe rule forbids. **One of the 4 has since been resolved and removed from this
+  count**: `מסובין` / בית שמש (יגאל אלון 2) has the exact same phone number and street as
+  the corpus's existing `landa_bnei_brak`-certified record for the same business — not
+  speculation about the organization generally, but a positive identification of this one
+  restaurant as a duplicate already in the corpus. It's mapped straight to `landa_bnei_brak`
+  via `CERT_FIELD_OVERRIDE_8` in `scripts/build_seed.py`. **3 rows remain unresolved**
+  (בני ברק, טבריה, ירושלים).
 - `קהילות` ("Kehilot", 4 rows) — no context in the source to identify which organization
   this is. Seeded as `kehilot_unidentified`.
 
@@ -123,7 +129,7 @@ until a human resolves who they are.
 1. Contact misadotmehadrin.co.il or the named rows' restaurants directly to identify the
    organizations behind `הרב לנדא`/`הרב לנדאו` and `קהילות`.
 2. If `הרב לנדא`/`הרב לנדאו` turns out to be the same Badatz Rav Landa already in the
-   corpus (`landa_bnei_brak`), re-slug those 4 rows and update `CERT_MAP_8` in
+   corpus (`landa_bnei_brak`), re-slug the remaining 3 rows and update `CERT_MAP_8` in
    `scripts/build_seed.py` accordingly — do not merge speculatively before then.
 3. If `קהילות` is identified, give it a proper slug and `CERTIFIER_SEED` entry in place of
    `kehilot_unidentified`.
