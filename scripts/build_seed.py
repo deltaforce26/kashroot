@@ -1,5 +1,6 @@
 """Kashroot seed corpus builder — normalizes 6 source documents into one CSV."""
 import csv
+import hashlib
 import re
 import unicodedata
 
@@ -730,6 +731,11 @@ CITY_EN = {"בני ברק":"Bnei Brak","ירושלים":"Jerusalem","בית שמ
 "בית שאן":"Beit She'an","אור הגנוז":"Or HaGanuz","קריות":"Krayot","קרית שמואל":"Kiryat Shmuel",
 "חפץ חיים":"Hafetz Haim","יצהר":"Yitzhar"}
 
+def dedupe_hash(name: str, addr: str, city: str) -> str:
+    """SHA-256 of the published Hebrew name/address/city, for exact-match duplicate detection."""
+    return hashlib.sha256(f"{name}|{addr}|{city}".encode("utf-8")).hexdigest()
+
+
 def record_key(name: str, city: str, addr: str) -> tuple[str, str, str]:
     """
     Natural key a record merges on, after resolving any published rename.
@@ -816,13 +822,13 @@ with open(OUT,"w",newline="",encoding="utf-8-sig") as f:
     w = csv.writer(f, lineterminator="\n")
     w.writerow(["restaurant_name_he","address_he","city_he","city_en","phone","business_type_he",
                 "diet_type","certifier_ids","corroboration_count","source_documents","source_date",
-                "record_state","needs_review","notes"])
+                "record_state","needs_review","notes","dedupe_hash_sha256"])
     for k in order:
         m = merged[k]
         w.writerow([m["name"], m["addr"], m["city"], CITY_EN.get(m["city"], m["city"]), m["phone"],
                     m["btype"], m["diet"], ";".join(m["certs"]), len(m["srcs"]), ";".join(m["srcs"]),
                     m["sdate"], "UNKNOWN_PENDING_VERIFICATION" if m["nr"]=="TRUE" else "LIST_VERIFIED",
-                    m["nr"], m["note"]])
+                    m["nr"], m["note"], dedupe_hash(m["name"], m["addr"], m["city"])])
 
 import collections
 

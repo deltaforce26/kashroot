@@ -16,6 +16,7 @@
 | `source_documents` / `source_date` | Provenance; dates are Hebrew-calendar list dates (Tamuz/Av/Elul 5786 = summer 2026). Freshest document first — the importer dates the certificate from it. Each document's own date lives in `SOURCE_DOCUMENT_SEED`, never inferred from whichever row cites it first |
 | `record_state` | `LIST_VERIFIED` (clean row from official list) or `UNKNOWN_PENDING_VERIFICATION` (56 rows) |
 | `needs_review` | TRUE where poster layout made city/phone/address assignment ambiguous (mostly the Eda Haredit north poster) |
+| `dedupe_hash_sha256` | `sha256(f"{restaurant_name_he}|{address_he}|{city_he}")` hex digest — exact-match duplicate detection on the published Hebrew fields. Not a substitute for `record_key()`'s fuzzy merge key in `build_seed.py`, which already tolerates naming/punctuation variants at build time; this hash only catches byte-identical repeats post-build. |
 
 ### Sources (`sources/`)
 | File | Certifier | Quality |
