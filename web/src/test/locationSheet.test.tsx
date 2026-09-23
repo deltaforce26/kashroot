@@ -457,6 +457,27 @@ describe("home location sheet", () => {
   });
 
   /**
+   * Home and map measure from the origin, but search is scoped by city. Pinning an
+   * address in another city has to move the city too, or search keeps looking in
+   * the city the app opened on while the header over it names the new address.
+   */
+  it("moves the search city to the pinned address", async () => {
+    const user = userEvent.setup();
+    const beitShemesh = { label: "נחל שורק 1, בית שמש", point: { lat: 31.7497, lon: 34.9887 } };
+    geocodeImpl = async () => [beitShemesh];
+    await reachHome(user);
+    await openSheet(user);
+    await user.type(screen.getByLabelText(he.origin.addressLabel), "נחל שורק 1");
+    await user.click(screen.getByRole("button", { name: he.origin.addressSubmit }));
+    await user.click(await screen.findByRole("button", { name: new RegExp(beitShemesh.label) }));
+    expect(await screen.findByText(beitShemesh.label)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: he.nav.search }));
+    expect(await screen.findByText("בית שמש")).toBeInTheDocument();
+    expect(localStorage.getItem("kashroot.city")).toBe("beit-shemesh");
+  });
+
+  /**
    * A refresh that silently returns to the city centre reports distances from a
    * place the user did not pick, which is the same lie as a wrong distance.
    */

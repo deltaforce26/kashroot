@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { CITIES, DEFAULT_CITY_SLUG, cityBySlug, type CityOption } from "../config";
+import { CITIES, DEFAULT_CITY_SLUG, cityBySlug, nearestCity, type CityOption } from "../config";
 import { clearOrigin } from "./useOrigin";
 
 const KEY = "kashroot.city";
@@ -24,6 +24,27 @@ function readStored(): string {
 
 /** Cross-component sync without a store: one event, one subscription per hook. */
 const CHANGED = "kashroot:city-changed";
+
+function writeSlug(next: string): void {
+  try {
+    localStorage.setItem(KEY, next);
+  } catch {
+    // non-fatal: the choice just won't survive a reload
+  }
+  window.dispatchEvent(new Event(CHANGED));
+}
+
+/**
+ * Move the city to wherever a point lands. Called by the origin hook whenever an
+ * address is pinned or the device answers, so that the one screen scoped by city
+ * (search) agrees with the two measured from the origin (home, map). Unlike
+ * `setSlug` this does *not* clear the origin: the origin is what is being followed.
+ */
+export function followPoint(point: { lat: number; lon: number }): void {
+  const next = nearestCity(point).slug;
+  if (next === readStored()) return;
+  writeSlug(next);
+}
 
 export function useCity(): {
   city: CityOption;
@@ -43,13 +64,8 @@ export function useCity(): {
     // position, so it replaces them rather than sitting behind them — otherwise the
     // header would name one place and the results would come from another.
     clearOrigin();
-    try {
-      localStorage.setItem(KEY, next);
-    } catch {
-      // non-fatal: the choice just won't survive a reload
-    }
     setSlugState(next);
-    window.dispatchEvent(new Event(CHANGED));
+    writeSlug(next);
   }, []);
 
   return { city: cityBySlug(slug), slug, setSlug };
