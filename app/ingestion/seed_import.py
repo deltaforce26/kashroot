@@ -15,6 +15,10 @@ What this pipeline does and does *not* establish (see data/README.md):
 
 The pipeline is idempotent: restaurants upsert on ``dedupe_key``, certificates on
 ``import_key``. Re-running after a corpus rebuild produces updates, not duplicates.
+
+``--prune`` (off by default) additionally hard-deletes seed-origin restaurants and
+certificates this run's CSV no longer names — see ``app.ingestion.seed_prune`` for the
+exact rule that decides what "seed-origin" means and what it refuses to touch.
 """
 
 from __future__ import annotations
@@ -39,6 +43,7 @@ from app.ingestion.normalize import (
     slugify_city,
     split_branch_addresses,
 )
+from app.ingestion.seed_prune import PruneStats, prune_seed_data
 from app.models import (
     AuditAction,
     AuditLog,
@@ -196,6 +201,8 @@ class SeedImportStats:
     pending_certificates: int = 0
     #: field name → count of rows whose value changed (the diff-review summary)
     changed_fields: dict[str, int] = field(default_factory=dict)
+    #: Set only when ``--prune`` ran.
+    prune: PruneStats | None = None
 
     def note_change(self, entity: str, field_name: str) -> None:
         key = f"{entity}.{field_name}"
@@ -331,12 +338,19 @@ def import_seed(
     *,
     dry_run: bool = False,
     actor: str = "cli",
+    prune: bool = False,
 ) -> SeedImportStats:
     """Import the seed corpus. Returns the diff summary.
 
     ``dry_run=True`` performs every read and write against the session, reports the
     diff, then rolls the data back — the diff-review step of a versioned pipeline. The
     ``IngestionRun`` row itself is kept either way, so reviews leave a trail.
+
+    ``prune=True`` additionally hard-deletes seed-origin restaurants and certificates
+    this run's CSV no longer names, after the upsert pass — see
+    ``app.ingestion.seed_prune`` for exactly which rows that is safe to touch. It
+    respects ``dry_run`` the same way every other write here does: rolled back, never
+    committed, on a plain dry run.
     """
     csv_path = Path(csv_path)
     if not csv_path.exists():
@@ -357,7 +371,7 @@ def import_seed(
 
     stats = SeedImportStats()
     try:
-        _run_import(session, csv_path, run_id, stats)
+        _run_import(session, csv_path, run_id, stats, actor=actor, prune=prune)
     except Exception as exc:
         session.rollback()
         _finish_run(session, run_id, IngestionRunState.FAILED, stats, error=str(exc))
@@ -389,7 +403,13 @@ def _finish_run(
 
 
 def _run_import(
-    session: Session, csv_path: Path, run_id: Any, stats: SeedImportStats
+    session: Session,
+    csv_path: Path,
+    run_id: Any,
+    stats: SeedImportStats,
+    *,
+    actor: str,
+    prune: bool,
 ) -> None:
     rows = list(read_rows(csv_path))
     stats.rows_read = len(rows)
@@ -403,10 +423,28 @@ def _run_import(
         for c in session.scalars(select(Certificate).where(Certificate.import_key.is_not(None)))
     }
 
+    #: Every dedupe/import key this run's CSV produced — the basis for ``--prune``.
+    csv_dedupe_keys: set[str] = set()
+    csv_import_keys: set[str] = set()
+
     for row in rows:
-        _import_row(session, row, certifiers, documents, restaurants, certificates, run_id, stats)
+        _import_row(
+            session,
+            row,
+            certifiers,
+            documents,
+            restaurants,
+            certificates,
+            run_id,
+            stats,
+            csv_dedupe_keys,
+            csv_import_keys,
+        )
 
     session.flush()
+
+    if prune:
+        stats.prune = prune_seed_data(session, csv_dedupe_keys, csv_import_keys, actor, run_id)
 
 
 def _primary_document(
@@ -444,6 +482,8 @@ def _import_row(
     certificates: dict[str, Certificate],
     run_id: Any,
     stats: SeedImportStats,
+    csv_dedupe_keys: set[str],
+    csv_import_keys: set[str],
 ) -> None:
     certifier_slugs = _row_certifier_slugs(row)
     source_slugs = _row_source_slugs(row)
@@ -464,6 +504,7 @@ def _import_row(
 
     for address in addresses:
         dedupe_key = restaurant_dedupe_key(name_he, city_he, address)
+        csv_dedupe_keys.add(dedupe_key)
         values: dict[str, Any] = {
             "name_he": name_he,
             "address_he": address,
@@ -527,6 +568,7 @@ def _import_row(
                 certificates,
                 run_id,
                 stats,
+                csv_import_keys,
             )
 
 
@@ -541,8 +583,10 @@ def _import_certificate(
     certificates: dict[str, Certificate],
     run_id: Any,
     stats: SeedImportStats,
+    csv_import_keys: set[str],
 ) -> None:
     import_key = f"seed:{restaurant.dedupe_key}:{certifier.slug}"
+    csv_import_keys.add(import_key)
     list_date = document.source_date if document else None
     verified_at = (
         dt.datetime.combine(list_date, dt.time.min, tzinfo=dt.UTC) if list_date else None

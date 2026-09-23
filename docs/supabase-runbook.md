@@ -159,6 +159,22 @@ uvicorn app.main:app --reload --port 8000
 
 Then `GET /health` → 200.
 
+**Rebuilding the corpus from scratch?** `seed-import` is upsert-only by default — a
+restaurant or certificate the new CSV drops is left in the database untouched. Pass
+`--prune` to also make the database match the file exactly:
+
+```powershell
+kashroot seed-import --dry-run --prune    # review what would be HARD DELETED
+kashroot seed-import --apply --prune      # apply, and delete it for real
+```
+
+**`--prune` hard-deletes rows.** It only ever touches restaurants and certificates the
+seed pipeline itself created and that carry no other data (no evidence photos, no
+flags, no owner claims, no saved-list entries, no restaurant photos or hours — see
+`app.ingestion.seed_prune` for the exact rule) — anything else is skipped and reported,
+never deleted. Always run `--dry-run --prune` first and read the deleted/skipped list
+before `--apply --prune`; there is no undo.
+
 ---
 
 ## Deeper verification
