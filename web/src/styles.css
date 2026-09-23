@@ -1793,13 +1793,23 @@ a {
   color: var(--sub);
 }
 
-/* A search that failed, said over the map rather than under it. */
+/* A search that failed, said over the map rather than under it. The map behind
+   is dense with street labels, so the notice needs an opaque card of its own:
+   glass would let the map bleed through the body text and leave it unreadable. */
 .map__notice {
   position: absolute;
   top: 50%;
   inset-inline: 24px;
   transform: translateY(-50%);
   z-index: 4;
+  background: var(--glass-solid);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-card);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18);
+}
+
+.map__notice .state {
+  padding: 28px 20px;
 }
 
 /* ── Install prompt ────────────────────────────────────────────────────── */

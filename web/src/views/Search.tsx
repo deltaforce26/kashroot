@@ -109,20 +109,6 @@ export function Search() {
         />
       </label>
 
-      <div className="chips" role="tablist" aria-label={t.search.searchingNear}>
-        {CITIES.map((entry) => (
-          <button
-            key={entry.slug}
-            type="button"
-            className="chip"
-            aria-pressed={city === entry.slug}
-            onClick={() => setCity(entry.slug)}
-          >
-            {lang === "en" ? entry.en : entry.he}
-          </button>
-        ))}
-      </div>
-
       <FilterBar exclude={NOT_ON_SEARCH} />
 
       <div className="shell__scroll" style={{ paddingTop: 10 }}>
