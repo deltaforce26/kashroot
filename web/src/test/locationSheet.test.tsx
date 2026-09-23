@@ -22,6 +22,7 @@ import { SavedProvider } from "../saved/SavedProvider";
 import { STRINGS } from "../i18n/strings";
 import { ThemeProvider } from "../theme/ThemeProvider";
 import { clearOrigin, resetOriginState } from "../location/useOrigin";
+import { useCity } from "../location/useCity";
 
 type Candidates = Array<{ label: string; point: { lat: number; lon: number } }>;
 
@@ -69,6 +70,21 @@ function renderApp() {
   return mount();
 }
 
+/**
+ * The app no longer draws a city switcher (the chips row came off search), but a
+ * city can still change under a pinned address — via a deep link, a future picker,
+ * or the empty-city recovery button. This stands in for that: a bare button that
+ * takes the same `setSlug` path any of them would.
+ */
+function CitySwitch({ slug, label }: { slug: string; label: string }) {
+  const { setSlug } = useCity();
+  return (
+    <button type="button" onClick={() => setSlug(slug)}>
+      {label}
+    </button>
+  );
+}
+
 /** A render that seeds nothing, so a reload sees exactly what the last one left. */
 function mount() {
   return render(
@@ -78,6 +94,7 @@ function mount() {
           <SavedProvider>
             <MemoryRouter initialEntries={["/"]}>
               <App />
+              <CitySwitch slug="haifa" label="חיפה" />
             </MemoryRouter>
           </SavedProvider>
         </ProfileProvider>
@@ -433,10 +450,7 @@ describe("home location sheet", () => {
     await pickAddress(user, "ביאליק 1");
     expect(await screen.findByText(CANDIDATE.label)).toBeInTheDocument();
 
-    // An empty search from home opens the search screen, where the city chips are.
-    await user.click(screen.getByRole("button", { name: he.nav.search }));
-    await user.click(await screen.findByRole("button", { name: "חיפה" }));
-    await user.click(screen.getByRole("link", { name: he.nav.home }));
+    await user.click(screen.getByRole("button", { name: "חיפה" }));
 
     expect(await screen.findByText("חיפה · הדר")).toBeInTheDocument();
     expect(screen.queryByText(CANDIDATE.label)).toBeNull();
@@ -468,8 +482,7 @@ describe("home location sheet", () => {
     await pickAddress(user, "ביאליק 1");
     expect(await screen.findByText(CANDIDATE.label)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: he.nav.search }));
-    await user.click(await screen.findByRole("button", { name: "חיפה" }));
+    await user.click(screen.getByRole("button", { name: "חיפה" }));
     await reload();
 
     expect(screen.getByText("חיפה · הדר")).toBeInTheDocument();
