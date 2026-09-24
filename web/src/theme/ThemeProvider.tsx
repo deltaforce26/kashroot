@@ -2,6 +2,10 @@
  * Light / dark. The design ships a full dark token set and 3h has the toggle, so
  * both are real modes rather than an afterthought.
  *
+ * Dark mode is currently hidden from users: `DARK_MODE_ENABLED` pins every visitor
+ * to light (ignoring any stored choice and the OS preference) and the Profile toggle
+ * is not rendered. Flip the flag to bring it back — tokens and strings are kept.
+ *
  * "system" is the default and leaves `data-theme` unset so the OS preference wins
  * through the media query; an explicit choice stamps the attribute and pins it.
  */
@@ -13,7 +17,11 @@ export type ThemeChoice = "system" | "light" | "dark";
 
 const KEY = "kashroot.theme";
 
+/** Off for now — see the header. Exported so the Profile toggle follows it. */
+export const DARK_MODE_ENABLED = false;
+
 function readStored(): ThemeChoice {
+  if (!DARK_MODE_ENABLED) return "light";
   try {
     const stored = localStorage.getItem(KEY);
     if (stored === "light" || stored === "dark" || stored === "system") return stored;
@@ -52,7 +60,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => query.removeEventListener("change", listener);
   }, []);
 
-  const isDark = choice === "system" ? systemDark : choice === "dark";
+  const isDark = DARK_MODE_ENABLED && (choice === "system" ? systemDark : choice === "dark");
 
   useEffect(() => {
     const root = document.documentElement;
@@ -61,6 +69,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [choice]);
 
   const setChoice = useCallback((next: ThemeChoice) => {
+    if (!DARK_MODE_ENABLED) return;
     setChoiceState(next);
     try {
       localStorage.setItem(KEY, next);
