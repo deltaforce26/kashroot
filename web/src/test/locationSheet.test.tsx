@@ -405,6 +405,21 @@ describe("home location sheet", () => {
     expect(screen.getByText(he.map.youAreHere)).toBeInTheDocument();
   });
 
+  /**
+   * The device is asked on first load too. A refusal there is not something the user
+   * did in this sheet, so the sheet opens clean; the note belongs to a tap here.
+   */
+  it("does not greet the user with a refusal note they never asked for", async () => {
+    const user = userEvent.setup();
+    stubGeolocation("deny");
+    // Nothing stored: the on-load request runs, and the stub refuses it.
+    await reachHome(user);
+    await openSheet(user);
+
+    expect(screen.queryByText(he.origin.denied)).toBeNull();
+    expect(screen.queryByText(he.origin.notRefreshed)).toBeNull();
+  });
+
   it("treats a refusal as an answer, not an error, and keeps searching everywhere", async () => {
     const user = userEvent.setup();
     stubGeolocation("deny");
