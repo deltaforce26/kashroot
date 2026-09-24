@@ -11,7 +11,7 @@ import { TabBar } from "../components/TabBar";
 import { useI18n } from "../i18n/I18nProvider";
 import { certifierName, sortCertifiersForDisplay } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
-import { useTheme } from "../theme/ThemeProvider";
+import { DARK_MODE_ENABLED, useTheme } from "../theme/ThemeProvider";
 
 export function Profile() {
   const { t, lang, setLang } = useI18n();
@@ -110,15 +110,17 @@ export function Profile() {
             <span className="row__value">{t.profile.notificationsValue}</span>
           </div>
 
-          <button type="button" className="row" role="switch" aria-checked={isDark} onClick={toggle}>
-            <span>
-              <span style={{ display: "block" }}>{t.profile.darkMode}</span>
-              <span style={{ fontSize: 11.5, color: "var(--sub)" }}>{t.profile.darkModeSub}</span>
-            </span>
-            <span className="toggle" aria-checked={isDark} aria-hidden="true">
-              <span className="toggle__knob" />
-            </span>
-          </button>
+          {DARK_MODE_ENABLED && (
+            <button type="button" className="row" role="switch" aria-checked={isDark} onClick={toggle}>
+              <span>
+                <span style={{ display: "block" }}>{t.profile.darkMode}</span>
+                <span style={{ fontSize: 11.5, color: "var(--sub)" }}>{t.profile.darkModeSub}</span>
+              </span>
+              <span className="toggle" aria-checked={isDark} aria-hidden="true">
+                <span className="toggle__knob" />
+              </span>
+            </button>
+          )}
         </section>
 
         <p className="hint">{t.profile.neutrality}</p>
