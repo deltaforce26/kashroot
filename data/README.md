@@ -1,7 +1,12 @@
 # Seed Data
 
 ## `seed/kashroot_seed_corpus.csv`
-375 unique records, deduplicated from 570 raw rows across 7 certifier source documents (142 Landa records were dropped by the Elul 5786 refresh — see below). Built by `scripts/build_seed.py` (data is embedded in the script as transcribed from sources; re-run to regenerate — it writes this file in place). Encoding: UTF-8 with BOM.
+457 records across 8 source documents, following the Tishrei 5787 refresh described
+below (previously 375 records / 7 documents; 142 Landa records had been dropped by the
+Elul 5786 refresh — see that section). The corpus now includes rows added directly from
+the supplied Tishrei 5787 CSV rather than exclusively through `scripts/build_seed.py`,
+so the script is currently **not guaranteed to reproduce this file** — see the Tishrei
+5787 section before re-running it. Encoding: UTF-8 with BOM.
 
 ### Columns
 | Column | Meaning |
@@ -11,11 +16,12 @@
 | `phone` | Normalized (digits, leading 0, or `*` short codes) |
 | `business_type_he` | As published (מסעדה, קייטרינג, מאפייה, חנות מזון…) |
 | `diet_type` | meat / dairy / pareve / fish / mixed / dairy_pareve — **inferred** from business type, blank if indeterminable |
-| `certifier_ids` | `;`-separated: `badatz_mehadrin_rubin`, `badatz_eda_haredit`, `landa_bnei_brak` |
-| `corroboration_count` | # of distinct source documents listing this business (35 have 2, 6 have 3) |
-| `source_documents` / `source_date` | Provenance; dates are Hebrew-calendar list dates (Tamuz/Av/Elul 5786 = summer 2026). Freshest document first — the importer dates the certificate from it. Each document's own date lives in `SOURCE_DOCUMENT_SEED`, never inferred from whichever row cites it first |
-| `record_state` | `LIST_VERIFIED` (clean row from official list) or `UNKNOWN_PENDING_VERIFICATION` (56 rows) |
-| `needs_review` | TRUE where poster layout made city/phone/address assignment ambiguous (mostly the Eda Haredit north poster) |
+| `certifier_ids` | `;`-separated. 23 known slugs as of the Tishrei 5787 refresh — see `CERTIFIER_SEED` in `app/ingestion/seed_import.py` for the full, current list |
+| `corroboration_count` | # of distinct source documents listing this business (36 have 2, 6 have 3) |
+| `source_documents` / `source_date` | Provenance; dates are Hebrew-calendar list dates. Freshest document first — the importer dates the certificate from it. Each document's own date lives in `SOURCE_DOCUMENT_SEED`, never inferred from whichever row cites it first |
+| `record_state` | `LIST_VERIFIED` (clean row from official list, 393 rows) or `UNKNOWN_PENDING_VERIFICATION` (64 rows) |
+| `needs_review` | TRUE where poster layout (or, for the Tishrei 5787 rows, an unresolved certifier attribution) made city/phone/address/certifier assignment ambiguous (64 rows) |
+| `dedupe_hash_sha256` | Present in the Tishrei 5787 corpus; not read by the importer (dedupe keys are derived at import time by `restaurant_dedupe_key`, not from this column) |
 
 ### Sources (`sources/`)
 | File | Certifier | Quality |
@@ -27,6 +33,7 @@
 | `eda_haredit_north.pdf` | Badatz Eda Haredit | Poster layout, heavy OCR noise → most needs_review rows |
 | `landa_vacation_cities_poster.jpg` | Landa (Bnei Brak) | Poster, readable |
 | `landa_restaurants_elul_5786.csv` | Landa (Bnei Brak) | Clean table, supplied as CSV |
+| `misadot_mehadrin_restaurants.csv` | ~20 certifiers (consolidated directory, no single certifier) | **File missing** — see Tishrei 5787 section below |
 
 ### Certifier merges
 - **`rabbanut_bnei_brak` → `landa_bnei_brak`** (Aug 2026, product decision). The Bnei Brak
@@ -93,8 +100,48 @@ records the refresh drops (`הרימון`, `אולמי דונולו`, `אולמ�
 verdicts `DEMO_RUNSHEET.md` walks through. Re-point the demo slice at surviving
 certificates first if the demo still matters.
 
+### Tishrei 5787 refresh — 82 rows added, 20 new certifiers, one open gap
+
+The Tishrei 5787 corpus (2026-09, supplied directly as the new
+`seed/kashroot_seed_corpus.csv`, 457 rows) adds 145 rows sourced from a new document,
+`misadot_mehadrin_restaurants_csv` ("Misadot Mehadrin"), on top of the prior 375-row
+corpus (one prior row also gained this document as a second citation, so net +82 rows
+after dedupe/branch-splitting effects — see `git log` on this file for the exact prior
+state).
+
+**This document is unlike every other source in this repo: it is a consolidated
+directory spanning ~20 different certifiers** (13 local Rabbanut councils, several named
+private rabbis, and one additional badatz), not one certifier's own published list. It
+is modeled in `SOURCE_DOCUMENT_SEED` with `certifier_slug: None` rather than attributed
+to any single certifier it was never published by.
+
+20 certifiers were added to `CERTIFIER_SEED` to cover this document's `certifier_ids`
+values. **Every name/type for these 20 is derived from the slug and general place-name
+knowledge, not published by any list in this repo** — no source here states a local
+rabbinate's official name, a private rabbi's honorific spelling, or which organizational
+type some of them are. Flagged for human review, particularly:
+- `beit_yosef` — could plausibly be a local-rabbinate-administered standard or a private
+  body; modeled as `PRIVATE`, unconfirmed.
+- `kehilot_unidentified` — a placeholder for 4 rows whose community-level hechsher
+  the source itself could not name. Never guess a real certifier onto it.
+- `rav_landa_variant_unverified` — 4 rows carrying a Landa-like label the source could
+  not confirm is `landa_bnei_brak`. Deliberately modeled as a separate, unmerged
+  certifier so an unverified badge never inherits Landa's standing.
+- All 3 above, plus every Tishrei 5787 row whose certifier is genuinely uncertain,
+  already carry `record_state=UNKNOWN_PENDING_VERIFICATION` and `needs_review=TRUE` in
+  the corpus — the fail-safe rule is doing its job on these rows already.
+
+**Known gap — missing raw evidence file.** No file for `misadot_mehadrin_restaurants_csv`
+exists under `data/sources/` — the 145 citing rows have no corresponding source document
+checked into this repo. `data/sources/` is immutable raw evidence, and its absence is not
+something to paper over: `tests/test_seed_corpus_contract.py::test_source_documents_point_at_files_that_exist`
+fails on this and should keep failing until the actual source file is supplied and added
+under `data/sources/misadot_mehadrin_restaurants.csv`.
+
 ### Known gaps — important
 - **No certificate-level attributes** (glatt, pas yisrael…) and **no expiry dates** — none exist in these sources. These lists establish *status + certifier* only (source-hierarchy level 1 per PRD §13). Certificate photos / field verification required for attributes.
 - List dates are snapshots with no validity window → a per-certifier freshness/staleness rule is needed (configured: stale after 365 days without re-scrape, see `KASHROOT_DEFAULT_FRESHNESS_DAYS`).
 - Records with `needs_review=TRUE` must be manually verified before serving.
 - No geocoding yet — `geo point` population via Google Places is the next pipeline step.
+- **Missing raw source file**: `data/sources/misadot_mehadrin_restaurants.csv` does not exist — see the Tishrei 5787 section above.
+- **20 certifier names/types are unverified guesses** derived from slug + general knowledge, not from any published source in this repo — see the Tishrei 5787 section above for the full list and reasoning.

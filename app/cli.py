@@ -2,6 +2,8 @@
 
     kashroot seed-import --dry-run     # diff review, writes nothing
     kashroot seed-import               # apply
+    kashroot seed-import --dry-run --prune   # diff review incl. planned deletions
+    kashroot seed-import --apply --prune     # apply, and HARD-DELETE stale seed rows
     kashroot geocode                   # dry run: free, no API calls
     kashroot geocode --apply           # geocode + write, cache-first
 """
@@ -32,17 +34,32 @@ def seed_import(
     actor: Annotated[
         str, typer.Option("--actor", help="Who is running this, for the audit log.")
     ] = "cli",
+    prune: Annotated[
+        bool,
+        typer.Option(
+            "--prune/--no-prune",
+            help=(
+                "HARD-DELETE seed-origin restaurants/certificates this CSV no longer "
+                "lists, after the upsert pass. Off by default. Restaurants carrying "
+                "any non-seed data (owner/moderator activity) are never touched — see "
+                "app.ingestion.seed_prune. Respects --dry-run like every other write "
+                "here."
+            ),
+        ),
+    ] = False,
 ) -> None:
     """Import `data/seed/kashroot_seed_corpus.csv` into the database.
 
     Establishes certifier + status only — no attributes, no expiry dates (data/README.md).
-    Defaults to --dry-run; pass --apply to write.
+    Defaults to --dry-run; pass --apply to write. Pass --prune to also hard-delete
+    seed-origin rows the CSV no longer names — review with --dry-run --prune first,
+    since deletion cannot be undone.
     """
     from app.db.session import session_scope
 
     try:
         with session_scope() as session:
-            stats = import_seed(session, csv_path, dry_run=dry_run, actor=actor)
+            stats = import_seed(session, csv_path, dry_run=dry_run, actor=actor, prune=prune)
     except SeedImportError as exc:
         typer.secho(f"seed import failed: {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from exc
@@ -67,6 +84,19 @@ def seed_import(
         typer.echo("  changed fields:")
         for name, count in sorted(stats.changed_fields.items(), key=lambda kv: -kv[1]):
             typer.echo(f"    {name:<34} {count}")
+    if stats.prune is not None:
+        typer.secho("\n  prune (HARD DELETE)", fg=typer.colors.RED, bold=True)
+        typer.echo(f"    restaurants deleted    {stats.prune.restaurants_deleted}")
+        typer.echo(f"    certificates deleted   {stats.prune.certificates_deleted}")
+        typer.echo(f"    skipped (kept)         {stats.prune.prune_skipped}")
+        if stats.prune.deleted_restaurant_names:
+            typer.echo("    deleted restaurants:")
+            for name in stats.prune.deleted_restaurant_names:
+                typer.echo(f"      - {name}")
+        if stats.prune.skipped_restaurants:
+            typer.echo("    skipped (not seed-origin — review):")
+            for entry in stats.prune.skipped_restaurants:
+                typer.echo(f"      - {entry['name']}: {entry['reason']}")
     if dry_run:
         typer.secho("\n  nothing written — re-run with --apply to commit", fg=typer.colors.YELLOW)
 

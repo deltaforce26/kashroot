@@ -87,7 +87,10 @@ def test_row_dates_agree_with_the_documents_they_cite(rows):
 def test_source_documents_point_at_files_that_exist():
     for slug, spec in SOURCE_DOCUMENT_SEED.items():
         assert (SOURCES_DIR / spec["file"]).exists(), f"{slug} → missing {spec['file']}"
-        assert spec["certifier_slug"] in CERTIFIER_SEED
+        certifier_slug = spec.get("certifier_slug")
+        # A document may cite no single certifier (a consolidated multi-certifier
+        # directory) — ``None`` is a deliberate value, not an omission.
+        assert certifier_slug is None or certifier_slug in CERTIFIER_SEED
 
 
 def test_dedupe_keys_are_unique_after_branch_split(rows):
