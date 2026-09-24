@@ -38,6 +38,7 @@ from app.models import (
     Restaurant,
     RestaurantStatus,
 )
+from app.services.rate_limit import InMemoryRateLimitBackend, get_rate_limit_backend
 from app.storage import InMemoryMediaStorage
 
 TOKENS = {"tok-alice": "alice"}
@@ -71,6 +72,13 @@ def client(session, monkeypatch, storage):
 
     app.dependency_overrides[get_session] = _override_session
     app.dependency_overrides[get_media_storage] = lambda: storage
+    # A fresh, unshared backend per test — these tests exercise the upload endpoint
+    # many times each, well past the real per-IP defaults, and share a TestClient
+    # host across the whole suite; this isolates each test from every other's count
+    # instead of loosening the limiter itself. See tests/test_rate_limit.py for
+    # dedicated coverage of the limiter's own behavior.
+    rate_limit_backend = InMemoryRateLimitBackend()
+    app.dependency_overrides[get_rate_limit_backend] = lambda: rate_limit_backend
     with TestClient(app) as test_client:
         yield test_client
 
@@ -388,6 +396,28 @@ def test_public_flag_certificate_from_another_restaurant_404(client, session) ->
         json={"type": "other", "certificate_id": str(other_certificate.id)},
     )
     assert response.status_code == 404
+
+
+def test_public_flag_and_upload_use_separate_rate_limit_counters(
+    client, session, monkeypatch
+) -> None:
+    """Sanity check that the two endpoints don't share a counter identity even
+    though they share the same client IP and the same test's in-memory backend.
+    Exhaustive limit-boundary coverage lives in tests/test_rate_limit.py.
+    """
+    monkeypatch.setattr(settings, "photo_upload_rate_limit_per_hour", 1)
+    monkeypatch.setattr(settings, "flag_report_rate_limit_per_hour", 1)
+
+    restaurant, certificate = make_cert_chain(session)
+
+    upload_response = upload(client, restaurant.id, certificate.id)
+    assert upload_response.status_code == 201
+
+    flag_response = client.post(
+        f"/v1/restaurants/{restaurant.id}/flags",
+        json={"type": "other"},
+    )
+    assert flag_response.status_code == 201
 
 
 def test_public_flag_message_too_long_422(client, session) -> None:

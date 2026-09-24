@@ -126,6 +126,16 @@ export function photoConflict(error: unknown): "photo_exists" | "photo_pending" 
     : null;
 }
 
+/**
+ * Whether `error` is a 429 from the rate limiter (`app.services.rate_limit`),
+ * shared by the anonymous photo-upload and flag-report endpoints. Both surface it
+ * the same way to the person — a generic "try again later" — so callers don't need
+ * to read `error.message` (there's nothing endpoint-specific in it to show).
+ */
+export function isRateLimited(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 429;
+}
+
 export { ApiError } from "./client";
 export { FLAG_MESSAGE_MAX, FLAG_TYPES, PHOTO_MAX_BYTES, PHOTO_MIME_TYPES } from "./types";
 export type * from "./types";

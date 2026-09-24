@@ -38,6 +38,7 @@ from app.services.notifications import (
     notify_flag_created,
     parse_recipients,
 )
+from app.services.rate_limit import InMemoryRateLimitBackend, get_rate_limit_backend
 from app.storage import InMemoryMediaStorage
 
 # ------------------------------------------------------------------------ fixtures
@@ -79,6 +80,10 @@ def client(session, monkeypatch, recording_sender):
     app.dependency_overrides[get_session] = _override_session
     app.dependency_overrides[get_media_storage] = lambda: InMemoryMediaStorage()
     app.dependency_overrides[get_email_sender] = lambda: recording_sender
+    # A fresh, unshared backend per test — see tests/test_public_photo_flow.py's
+    # client fixture for why (this module's tests share a TestClient host too and
+    # would otherwise trip the real per-IP flag-report defaults across tests).
+    app.dependency_overrides[get_rate_limit_backend] = lambda: InMemoryRateLimitBackend()
     with TestClient(app) as test_client:
         yield test_client
 

@@ -80,6 +80,10 @@ IMAGE_ONLY_PHOTO_EXTENSIONS: dict[str, str] = {
     if content_type != "application/pdf"
 }
 
+#: ``app.services.rate_limit`` — every rate-limited public endpoint returns this same
+#: 429 detail regardless of which window (hourly/daily) was exceeded.
+ERROR_RATE_LIMITED = "rate_limited"
+
 ERROR_PHOTO_EXISTS = "photo_exists"
 ERROR_PHOTO_PENDING = "photo_pending"
 

@@ -15,6 +15,12 @@ from app.core.consts import (
     UNKNOWN_STORAGE_BACKEND_ERROR,
     StorageBackend,
 )
+from app.services.rate_limit_consts import (
+    DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_DAY,
+    DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_HOUR,
+    DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_DAY,
+    DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_HOUR,
+)
 
 
 class Settings(BaseSettings):
@@ -44,6 +50,27 @@ class Settings(BaseSettings):
     db_pool_size: int = DEFAULT_DB_POOL_SIZE
     db_max_overflow: int = DEFAULT_DB_MAX_OVERFLOW
     redis_url: str = "redis://localhost:6379/0"
+
+    # Whether to trust a reverse proxy's X-Forwarded-For header for rate-limit
+    # client identity (app.services.rate_limit.get_client_identifier). Only the
+    # first hop is read, and only when this is true — otherwise a client could set
+    # its own header and spoof a fresh IP on every request. Enable this only when
+    # the app is actually deployed behind a proxy that sets/overwrites this header
+    # itself (e.g. a load balancer); leave it false for local dev and for any
+    # deployment reachable directly.
+    trust_proxy_headers: bool = False
+
+    # Per-IP fixed-window limits on the anonymous certificate-photo upload
+    # (POST /v1/restaurants/{id}/certificate-photo). Both windows apply together;
+    # see app.services.rate_limit and .env.example.
+    photo_upload_rate_limit_per_hour: int = DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_HOUR
+    photo_upload_rate_limit_per_day: int = DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_DAY
+
+    # Per-IP fixed-window limits on the anonymous community-flag report
+    # (POST /v1/restaurants/{id}/flags). Separate scope/counters from the photo
+    # upload limits above; see app.services.rate_limit and .env.example.
+    flag_report_rate_limit_per_hour: int = DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_HOUR
+    flag_report_rate_limit_per_day: int = DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_DAY
 
     # Which MediaStorage backend serves certificate evidence photos. "auto" resolves
     # to Supabase when the credentials below are set and to S3/MinIO otherwise, so
