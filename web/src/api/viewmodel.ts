@@ -17,6 +17,9 @@ import type {
   CertifierChip,
   CertifierListItem,
   DietType,
+  DirectoryCityOut,
+  DirectoryOut,
+  DirectoryRestaurantOut,
   FitScoreOut,
   GeoPointOut,
   KashrutVerdictOut,
@@ -196,6 +199,63 @@ export function toPublicView(response: RestaurantPublicOut): PublicRestaurantVie
     amenities: response.amenities,
     certificates: response.certificates.map(toPublicCertificateView),
     updatedAt: response.updated_at,
+  };
+}
+
+/** A certifier's two names as the directory hands them over — no id, no type. */
+export interface DirectoryCertifierView {
+  nameHe: string;
+  nameEn: string | null;
+}
+
+/** One landing-page row: a name, an address and who certifies it. Nothing decided. */
+export interface DirectoryRestaurantView {
+  id: string;
+  nameHe: string;
+  nameEn: string | null;
+  addressHe: string | null;
+  /** In the API's order — alphabetical, which is not a ranking. */
+  certifiers: DirectoryCertifierView[];
+}
+
+export interface DirectoryCityView {
+  cityHe: string;
+  restaurantCount: number;
+  restaurants: DirectoryRestaurantView[];
+}
+
+export interface DirectoryView {
+  totalRestaurants: number;
+  cities: DirectoryCityView[];
+}
+
+function toDirectoryRestaurantView(item: DirectoryRestaurantOut): DirectoryRestaurantView {
+  return {
+    id: item.restaurant_id,
+    nameHe: item.name_he,
+    nameEn: item.name_en,
+    addressHe: item.address_he,
+    // The wire carries two parallel lists. They are zipped here so a view prints one
+    // name per certifier and never lines the two lists up by index itself.
+    certifiers: item.certifier_names_he.map((nameHe, index) => ({
+      nameHe,
+      nameEn: item.certifier_names_en[index] ?? null,
+    })),
+  };
+}
+
+function toDirectoryCityView(city: DirectoryCityOut): DirectoryCityView {
+  return {
+    cityHe: city.city_he,
+    restaurantCount: city.restaurant_count,
+    restaurants: city.restaurants.map(toDirectoryRestaurantView),
+  };
+}
+
+export function toDirectoryView(response: DirectoryOut): DirectoryView {
+  return {
+    totalRestaurants: response.total_restaurants,
+    cities: response.cities.map(toDirectoryCityView),
   };
 }
 

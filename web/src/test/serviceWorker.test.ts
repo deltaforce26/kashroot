@@ -62,6 +62,17 @@ describe("service worker runtime caching", () => {
     expect(ruleFor("/v1/certifiers", "GET")?.handler).toBe("NetworkFirst");
   });
 
+  /**
+   * The landing page's directory is the other cacheable GET: restaurant names,
+   * addresses and certifier names, with no certificate state in it. It falls under
+   * the generic GET rule rather than a rule of its own — asserted so that stays a
+   * decision, and so a future path-scoped exclusion cannot catch it by accident.
+   */
+  it("serves the landing directory from the short-lived GET cache, like the certifier list", () => {
+    expect(ruleFor("/v1/directory", "GET")?.handler).toBe("NetworkFirst");
+    expect(ruleFor("/v1/directory", "GET")).toBe(ruleFor("/v1/certifiers", "GET"));
+  });
+
   it("declares the POST rule explicitly rather than relying on Workbox's GET default", () => {
     const post = API_RUNTIME_CACHING.find((rule) => rule.method === "POST");
     expect(post, "POST must be routed explicitly, not left to a default").toBeDefined();

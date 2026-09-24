@@ -215,8 +215,10 @@ describe("the public restaurant page", () => {
     expect(document.head.querySelector('link[rel="canonical"]')).toBeNull();
   });
 
-  it("marks the onboarding screen a first-time crawler of `/` lands on as noindex", async () => {
-    renderApp("/");
+  it("marks the onboarding screen as noindex — it is an app flow, not content", async () => {
+    // `/` itself is the landing page now (landing.test.tsx); onboarding is one tap
+    // beyond it, and is still a page to keep out of the index.
+    renderApp("/onboarding/preset");
     await screen.findByText(he.onboarding.presetTitle);
     await waitFor(() => expect(document.title).toBe(`${he.seo.onboardingTitle} · Kashroot`));
     expect(document.head.querySelector('meta[name="robots"]')?.getAttribute("content")).toBe(

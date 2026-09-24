@@ -53,8 +53,9 @@ function renderApp(route = "/") {
 
 type User = ReturnType<typeof userEvent.setup>;
 
-/** Onboarding, the shortest way through it, then the saved tab. */
+/** The landing's call to action, onboarding the shortest way through, then the saved tab. */
 async function openSaved(user: User) {
+  await user.click(await screen.findByRole("link", { name: he.landing.cta }));
   await screen.findByText(he.presets.any.title);
   await user.click(screen.getByText(he.presets.any.title));
   await user.click(screen.getByRole("button", { name: he.onboarding.continue }));

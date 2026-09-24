@@ -23,9 +23,10 @@ import { useState } from "react";
 export function OnboardingPreset() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  // An anonymous visit to `/` is redirected here, so this head is what a first-time
-  // crawler of the front page actually reads: it carries the product one-liner, but
-  // asks not to be indexed — the page itself is an app flow, not content.
+  // Reached from the landing page's call to action, or from a gated route a shared
+  // link hit. Either way it is an app flow, not content: the head carries the
+  // product one-liner but asks not to be indexed. The front page a crawler reads
+  // is the landing itself (views/Landing.tsx).
   useDocumentHead({ title: t.seo.onboardingTitle, description: t.seo.siteDescription, noindex: true });
   // A shared restaurant link that hit the gate; `/` for everyone else.
   const returnTo = useReturnTo();

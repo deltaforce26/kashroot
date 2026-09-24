@@ -365,3 +365,39 @@ export interface RestaurantPublicOut
   /** ISO 8601 UTC datetime. */
   updated_at: string;
 }
+
+/**
+ * schemas_public_seo.py :: DirectoryRestaurantOut — identity only: enough for a
+ * landing-page row and its link to `/r/<id>`. No certificate state, no attributes,
+ * no verdict.
+ */
+export interface DirectoryRestaurantOut {
+  restaurant_id: string;
+  name_he: string;
+  name_en: string | null;
+  address_he: string | null;
+  /** Active certifiers, deduplicated, alphabetical by `name_he` — never by type. */
+  certifier_names_he: string[];
+  /** Parallel to `certifier_names_he`; `null` where a certifier has no English name. */
+  certifier_names_en: (string | null)[];
+}
+
+/** schemas_public_seo.py :: DirectoryCityOut */
+export interface DirectoryCityOut {
+  city_he: string;
+  /** The full count for the city, however many rows `restaurants` samples. */
+  restaurant_count: number;
+  /** A sample of at most twelve, alphabetical by `name_he`. */
+  restaurants: DirectoryRestaurantOut[];
+}
+
+/**
+ * `GET /v1/directory` — every public restaurant grouped by city, facts only, for
+ * the landing page a visitor without a profile (and every crawler) sees at `/`.
+ * Cities are ordered by `restaurant_count` descending. Nothing in the tree is a
+ * verdict, and nothing in it is ordered by anything but size and the alphabet.
+ */
+export interface DirectoryOut {
+  total_restaurants: number;
+  cities: DirectoryCityOut[];
+}

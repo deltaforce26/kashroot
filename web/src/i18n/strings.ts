@@ -473,6 +473,28 @@ const he = {
     updatedAt: (date: string) => `הרשומה עודכנה ${date}`,
   },
 
+  // The front door for a visitor with no profile (views/Landing.tsx) — and for every
+  // crawler. It says what the app does and lists what is in the records, city by
+  // city. It names no verdict, because there is no profile here to produce one, and
+  // it names no certifier as an example, because an example reads as an endorsement.
+  landing: {
+    tagline: "כשרות לפי הסטנדרט שלך",
+    body:
+      "אתם קובעים פעם אחת על אילו גופי כשרות אתם סומכים ומה חייב להופיע בתעודה. מאותו רגע כל מסעדה מוצגת מול הסטנדרט שלכם — מתאימה, לא מתאימה, או שאין עדיין ראיה מספקת — ולצד כל תשובה עובדות התעודה שמאחוריה. האפליקציה לא מחליטה מה כשר: אתם מחליטים, והיא מציגה את הראיות.",
+    cta: "הגדרת פרופיל כשרות",
+    browse: "או לעיין במסעדות שלמטה",
+    citiesTitle: "מסעדות לפי עיר",
+    restaurantCount: (n: number) => (n === 1 ? "מסעדה אחת" : `${n} מסעדות`),
+    // The English UI's names for the launch cities, keyed by the records' own
+    // `city_he`. A city not listed is shown as the records spell it. Empty in
+    // Hebrew: the records are already in Hebrew.
+    cityNames: {} as Record<string, string>,
+    noCertificate: "לא רשומה תעודת כשרות",
+    loading: "טוענים את רשימת המסעדות…",
+    footer:
+      "העובדות כפי שנרשמו בכל תעודה. הגדירו פרופיל כדי לראות אם מקום מתאים לסטנדרט שלכם.",
+  },
+
   photoPlaceholder: "צילום מנה",
   mockBanner: "נתוני הדגמה — ה־API הציבורי עדיין לא מחובר.",
   units: { km: "ק״מ", m: "מ׳", closesAt: (time: string) => `עד ${time}` },
@@ -903,6 +925,28 @@ const en: Strings = {
     nothingListed: "The certificate lists no specific requirements.",
     website: "Website",
     updatedAt: (date: string) => `Record updated ${date}`,
+  },
+
+  landing: {
+    tagline: "Kashrut by your own standard",
+    body:
+      "You decide once which certifiers you rely on and what must appear on the certificate. From then on every restaurant is shown against your standard — a match, not a match, or not yet enough evidence to say — with the certificate facts behind each answer. The app never decides what is kosher: you decide, and it shows the evidence.",
+    cta: "Set up your kashrut profile",
+    browse: "or browse the restaurants below",
+    citiesTitle: "Restaurants by city",
+    restaurantCount: (n: number) => (n === 1 ? "1 restaurant" : `${n} restaurants`),
+    cityNames: {
+      "תל אביב": "Tel Aviv",
+      "תל אביב-יפו": "Tel Aviv-Yafo",
+      "ירושלים": "Jerusalem",
+      "בני ברק": "Bnei Brak",
+      "חיפה": "Haifa",
+      "באר שבע": "Beer Sheva",
+    },
+    noCertificate: "No kashrut certificate on record",
+    loading: "Loading the restaurant list…",
+    footer:
+      "Facts as recorded on each certificate. Set your profile to see whether a place matches your standard.",
   },
 
   photoPlaceholder: "dish photo",

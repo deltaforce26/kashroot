@@ -40,10 +40,29 @@ function renderApp(route = "/") {
 
 const he = STRINGS.he;
 
+type User = ReturnType<typeof userEvent.setup>;
+
+/**
+ * `/` without a profile is the landing page now, not a redirect; its call to action
+ * is the one way into onboarding. Every walk below starts by taking it.
+ */
+async function enterOnboarding(user: User) {
+  await user.click(await screen.findByRole("link", { name: he.landing.cta }));
+  await screen.findByText(he.presets.any.title);
+}
+
 describe("demo flow", () => {
-  it("sends a profileless visitor to onboarding rather than showing verdicts", async () => {
-    renderApp("/");
-    expect(await screen.findByText(he.onboarding.presetTitle)).toBeInTheDocument();
+  it("shows a profileless visitor the landing page — never a verdict — and onboarding beyond it", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp("/");
+
+    expect(await screen.findByRole("link", { name: he.landing.cta })).toBeInTheDocument();
+    expect(screen.queryByText(he.onboarding.presetTitle)).toBeNull();
+    expect(container.querySelector(".verdict")).toBeNull();
+
+    await enterOnboarding(user);
+    expect(screen.getByText(he.onboarding.presetTitle)).toBeInTheDocument();
+    expect(container.querySelector(".verdict")).toBeNull();
   });
 
   /**
@@ -53,8 +72,9 @@ describe("demo flow", () => {
    * Rabbanut data". A coverage decision, not a product opinion — see `PRESET_ORDER`.
    */
   it("does not offer the withdrawn Local Rabbanut preset", async () => {
+    const user = userEvent.setup();
     renderApp("/");
-    await screen.findByText(he.presets.any.title);
+    await enterOnboarding(user);
 
     expect(screen.queryByText("רבנות מקומית")).toBeNull();
     expect(screen.queryByText("Local Rabbanut")).toBeNull();
@@ -64,11 +84,11 @@ describe("demo flow", () => {
     expect(screen.getAllByRole("button", { pressed: false }).length).toBeGreaterThanOrEqual(4);
   });
 
-  it("walks preset → home list, and persists the profile", async () => {
+  it("walks landing → preset → home list, and persists the profile", async () => {
     const user = userEvent.setup();
     renderApp("/");
 
-    await screen.findByText(he.presets.any.title);
+    await enterOnboarding(user);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
@@ -83,7 +103,7 @@ describe("demo flow", () => {
     const user = userEvent.setup();
     const { container } = renderApp("/");
 
-    await screen.findByText(he.presets.any.title);
+    await enterOnboarding(user);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
@@ -99,7 +119,7 @@ describe("demo flow", () => {
     const user = userEvent.setup();
     renderApp("/");
 
-    await screen.findByText(he.presets.any.title);
+    await enterOnboarding(user);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
@@ -163,7 +183,7 @@ describe("demo flow", () => {
     const user = userEvent.setup();
     renderApp("/");
 
-    await screen.findByText(he.presets.mehadrin.title);
+    await enterOnboarding(user);
     await user.click(screen.getByText(he.presets.mehadrin.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
@@ -200,15 +220,20 @@ describe("demo flow", () => {
         completedOnboarding: true,
       }),
     );
+    const user = userEvent.setup();
     renderApp("/");
-    // Straight back to onboarding — no error screen, no retry loop.
-    expect(await screen.findByText(he.onboarding.presetTitle)).toBeInTheDocument();
+    // Straight back to the front door — no error screen, no retry loop — and
+    // onboarding one tap beyond it, exactly as for a visitor who never had a profile.
+    expect(await screen.findByRole("link", { name: he.landing.cta })).toBeInTheDocument();
+    expect(screen.queryByText(he.states.errorTitle)).toBeNull();
+    await enterOnboarding(user);
+    expect(screen.getByText(he.onboarding.presetTitle)).toBeInTheDocument();
   });
 
   it("keeps a stored profile whose certifiers do resolve", async () => {
     const user = userEvent.setup();
     renderApp("/");
-    await screen.findByText(he.presets.any.title);
+    await enterOnboarding(user);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
     await screen.findByText(he.states.coverageNoteEverywhere);
@@ -231,7 +256,7 @@ describe("demo flow", () => {
   it("falls back to an explained placeholder when there is no maps key", async () => {
     const user = userEvent.setup();
     renderApp("/");
-    await screen.findByText(he.presets.any.title);
+    await enterOnboarding(user);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
@@ -248,7 +273,7 @@ describe("demo flow", () => {
     const user = userEvent.setup();
     renderApp("/");
 
-    await screen.findByText(he.presets.any.title);
+    await enterOnboarding(user);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
@@ -263,7 +288,7 @@ describe("demo flow", () => {
     const user = userEvent.setup();
     const { container } = renderApp("/");
 
-    await screen.findByText(he.presets.any.title);
+    await enterOnboarding(user);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
@@ -291,7 +316,7 @@ describe("demo flow", () => {
     const user = userEvent.setup();
     const { container } = renderApp("/");
 
-    await screen.findByText(he.presets.any.title);
+    await enterOnboarding(user);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
@@ -316,7 +341,7 @@ describe("demo flow", () => {
     const user = userEvent.setup();
     renderApp("/");
 
-    await screen.findByText(he.presets.any.title);
+    await enterOnboarding(user);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
@@ -344,7 +369,7 @@ describe("demo flow", () => {
     const user = userEvent.setup();
     renderApp("/");
 
-    await screen.findByText(he.presets.any.title);
+    await enterOnboarding(user);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
@@ -374,7 +399,7 @@ describe("demo flow", () => {
     const user = userEvent.setup();
     const { container } = renderApp("/");
 
-    await screen.findByText(he.presets.any.title);
+    await enterOnboarding(user);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
@@ -397,7 +422,7 @@ describe("demo flow", () => {
     const user = userEvent.setup();
     const { container } = renderApp("/");
 
-    await screen.findByText(he.presets.any.title);
+    await enterOnboarding(user);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
@@ -415,7 +440,7 @@ describe("demo flow", () => {
     const user = userEvent.setup();
     renderApp("/");
 
-    await screen.findByText(he.presets.any.title);
+    await enterOnboarding(user);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 

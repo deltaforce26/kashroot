@@ -61,8 +61,10 @@ export const API_RUNTIME_CACHING: RuntimeCachingRule[] = [
   },
   {
     // GET traffic only, which today is `GET /v1/certifiers` — a list of certifier
-    // names and ids used to build the whitelist picker. It carries no verdict and
-    // no kashrut status, so a short-lived copy is safe and keeps the profile screen
+    // names and ids used to build the whitelist picker — and `GET /v1/directory`,
+    // the landing page's city-grouped list of restaurant names, addresses and
+    // certifier names. Neither carries a verdict or any certificate state, so a
+    // short-lived copy is safe and keeps the profile screen and the front door
     // usable offline. The one other GET, the restaurant facts, is excluded above.
     urlPattern: API_URL_PATTERN,
     handler: "NetworkFirst",

@@ -32,6 +32,8 @@ import {
   type CertifierListItem,
   type CertificationLevel,
   type Confidence,
+  type DirectoryOut,
+  type DirectoryRestaurantOut,
   type FlagCreatedOut,
   type FlagRequest,
   type FitComponentOut,
@@ -572,6 +574,59 @@ export function mockRestaurantPublic(id: string, now = new Date()): Promise<Rest
     }),
     updated_at: now.toISOString(),
   });
+}
+
+/**
+ * Mirrors `DIRECTORY_SAMPLE_PER_CITY` (app/api/consts.py): how many of a city's rows
+ * the landing page is handed. The city's `restaurant_count` is the full count.
+ */
+export const DIRECTORY_SAMPLE_PER_CITY = 12;
+
+const byHebrewName = (a: string, b: string): number => a.localeCompare(b, "he");
+
+function toDirectoryRow(restaurant: FixtureRestaurant): DirectoryRestaurantOut {
+  // Identity only, deduplicated by certifier and sorted by name — the same rule the
+  // API applies. A certificate's state is deliberately not read here.
+  const certifiers = restaurantChips(restaurant).sort((a, b) => byHebrewName(a.name_he, b.name_he));
+  return {
+    restaurant_id: restaurant.id,
+    name_he: restaurant.name_he,
+    name_en: restaurant.name_en,
+    address_he: restaurant.address_he,
+    certifier_names_he: certifiers.map((certifier) => certifier.name_he),
+    certifier_names_en: certifiers.map((certifier) => certifier.name_en),
+  };
+}
+
+/**
+ * GET /v1/directory, replayed (app/api/public_seo.py): every fixture grouped by
+ * `city_he`, cities from largest to smallest (ties alphabetical), each city's rows
+ * alphabetical by name and capped at the sample size. `evaluateRestaurant` is not
+ * called on this path — there is no profile, so there is nothing to evaluate — and
+ * every ordering is alphabetical because the app never ranks.
+ */
+export function mockDirectory(): Promise<DirectoryOut> {
+  const byCity = new Map<string, FixtureRestaurant[]>();
+  for (const restaurant of RESTAURANTS) {
+    const group = byCity.get(restaurant.city_he) ?? [];
+    group.push(restaurant);
+    byCity.set(restaurant.city_he, group);
+  }
+
+  const cities = [...byCity.entries()]
+    .sort(([cityA, groupA], [cityB, groupB]) =>
+      groupB.length - groupA.length || byHebrewName(cityA, cityB),
+    )
+    .map(([city_he, group]) => ({
+      city_he,
+      restaurant_count: group.length,
+      restaurants: [...group]
+        .sort((a, b) => byHebrewName(a.name_he, b.name_he))
+        .slice(0, DIRECTORY_SAMPLE_PER_CITY)
+        .map(toDirectoryRow),
+    }));
+
+  return delay({ total_restaurants: RESTAURANTS.length, cities });
 }
 
 /**

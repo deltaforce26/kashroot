@@ -8,7 +8,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, kashrootApi } from "../api";
 import type { GeoPoint, ProfileRequest, SearchRequest } from "../api/types";
-import type { DetailView, PublicRestaurantView, ResultView, SearchView } from "../api/viewmodel";
+import type {
+  DetailView,
+  DirectoryView,
+  PublicRestaurantView,
+  ResultView,
+  SearchView,
+} from "../api/viewmodel";
 
 interface QueryState<T> {
   data: T | null;
@@ -112,6 +118,14 @@ export function useRestaurantPublic(id: string | undefined): QueryState<PublicRe
         : Promise.reject(new Error("missing restaurant id")),
     [id],
   );
+}
+
+/**
+ * The city-grouped directory behind the landing page. No inputs at all: there is no
+ * profile and no centre on this path, so the question is always the same one.
+ */
+export function useDirectory(): QueryState<DirectoryView> {
+  return useQuery<DirectoryView>((signal) => kashrootApi.getDirectory(signal), []);
 }
 
 export function isNetworkError(error: Error | null): boolean {

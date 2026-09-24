@@ -12,6 +12,7 @@
 import { ApiError, api, postForm } from "./client";
 import {
   mockCertifiers,
+  mockDirectory,
   mockReportRestaurant,
   mockRestaurant,
   mockRestaurantPublic,
@@ -20,6 +21,7 @@ import {
 } from "./mock/server";
 import type {
   CertifierListItem,
+  DirectoryOut,
   FlagCreatedOut,
   FlagRequest,
   GeoPoint,
@@ -33,10 +35,12 @@ import type {
 import {
   toCertifierView,
   toDetailView,
+  toDirectoryView,
   toPublicView,
   toSearchView,
   type CertifierView,
   type DetailView,
+  type DirectoryView,
   type PublicRestaurantView,
   type SearchView,
 } from "./viewmodel";
@@ -61,6 +65,13 @@ export interface KashrootApi {
    * crawler — or a first-time visitor who has not set a profile — gets at `/r/:id`.
    */
   getRestaurantPublic(id: string, signal?: AbortSignal): Promise<PublicRestaurantView>;
+  /**
+   * The landing page's directory: every public restaurant grouped by city, with a
+   * sample of each city's rows. Names, addresses and certifier names only — no
+   * profile goes out and no verdict comes back. Cache-friendly by design: the API
+   * sets `Cache-Control`, and there is nothing to invalidate on this side.
+   */
+  getDirectory(signal?: AbortSignal): Promise<DirectoryView>;
   /**
    * Anonymous certificate photo upload for the specific certificate card the user is
    * looking at (chosen by their own profile on the client — the server only checks
@@ -101,6 +112,8 @@ const liveApi: KashrootApi = {
     api<RestaurantPublicOut>(`/v1/restaurants/${encodeURIComponent(id)}`, {
       ...(signal ? { signal } : {}),
     }).then(toPublicView),
+  getDirectory: (signal) =>
+    api<DirectoryOut>("/v1/directory", { ...(signal ? { signal } : {}) }).then(toDirectoryView),
   uploadCertificatePhoto: (restaurantId, certificateId, file) => {
     const form = new FormData();
     form.append("certificate_id", certificateId);
@@ -123,6 +136,7 @@ const mockApi: KashrootApi = {
   getRestaurant: (id, profile, center) =>
     mockRestaurant(id, profile, undefined, center).then(toDetailView),
   getRestaurantPublic: (id) => mockRestaurantPublic(id).then(toPublicView),
+  getDirectory: () => mockDirectory().then(toDirectoryView),
   uploadCertificatePhoto: (restaurantId, certificateId, file) =>
     mockUploadCertificatePhoto(restaurantId, certificateId, file),
   reportRestaurant: (restaurantId, body) => mockReportRestaurant(restaurantId, body),
@@ -147,6 +161,9 @@ export type * from "./types";
 export type {
   CertifierView,
   DetailView,
+  DirectoryCityView,
+  DirectoryRestaurantView,
+  DirectoryView,
   PublicCertificateView,
   PublicRestaurantView,
   ResultView,

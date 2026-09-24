@@ -6,12 +6,14 @@
  * against. Users without one are sent to onboarding rather than shown a list of
  * verdicts derived from an empty profile.
  *
- * The one exception is `/r/:id`. A restaurant page is the address search engines
- * and shared links land on, and behind the gate it was a redirect — invisible to
- * Googlebot and to the person who tapped the link. Without a profile it now renders
- * the facts on record and an invitation to set one (`RestaurantPublic`); with a
- * profile it is the verdict screen it always was. The gate is not weakened: no
- * verdict is shown without a profile, because the profile-free page has none.
+ * Two exceptions, for the same reason. `/r/:id` is the address search engines and
+ * shared links land on, and `/` is the site's root; behind the gate both were
+ * redirects — invisible to Googlebot and to the person who tapped the link. Without
+ * a profile each now renders a profile-free page: the facts on record
+ * (`RestaurantPublic`), or the landing page with a call to action and a city-by-city
+ * directory of links to those facts pages (`Landing`). With a profile they are the
+ * verdict screen and Home, as they always were. The gate is not weakened: no
+ * verdict is shown without a profile, because neither profile-free page has one.
  */
 
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
@@ -23,6 +25,7 @@ import { isProfileUsable } from "./profile/profile";
 import { SaveTargetProvider } from "./saved/SaveTargetProvider";
 import { useProfile } from "./profile/ProfileProvider";
 import { Home } from "./views/Home";
+import { Landing } from "./views/Landing";
 import { MapView } from "./views/MapView";
 import { NotFound } from "./views/NotFound";
 import { OnboardingCertifiers } from "./views/OnboardingCertifiers";
@@ -54,6 +57,12 @@ function RestaurantRoute() {
   return hasUsableProfile(profile) ? <Restaurant /> : <RestaurantPublic />;
 }
 
+/** `/` — Home with a profile, the landing page without one. Never a redirect. */
+function HomeRoute() {
+  const { profile } = useProfile();
+  return hasUsableProfile(profile) ? <Home /> : <Landing />;
+}
+
 /** Visible while the fixtures stand in for Track B — so no one demos it unknowingly. */
 function MockRibbon() {
   const { t } = useI18n();
@@ -73,14 +82,8 @@ export default function App() {
         <Routes>
           <Route path="/onboarding/preset" element={<OnboardingPreset />} />
           <Route path="/onboarding/certifiers" element={<OnboardingCertifiers />} />
-          <Route
-            path="/"
-            element={
-              <RequireProfile>
-                <Home />
-              </RequireProfile>
-            }
-          />
+          {/* Deliberately not behind RequireProfile — see the header comment. */}
+          <Route path="/" element={<HomeRoute />} />
           {/* The filters screen became the filter bar's bottom sheet, which opens in
               place over home and search. The old address still lands somewhere real. */}
           <Route path="/filters" element={<Navigate to="/" replace />} />
