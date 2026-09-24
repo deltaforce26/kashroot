@@ -115,7 +115,22 @@ WEB_ROUTE_RESTAURANT_TEMPLATE = "/r/{restaurant_id}"
 #: Vercel sets these on an external rewrite — how the web app proxies /v1/* to this
 #: API — used to recover the web app's own origin for absolute sitemap URLs when
 #: ``settings.public_web_origin`` is unset. See
-#: app.api.public_seo.resolve_public_web_origin.
+#: app.api.public_seo.resolve_public_web_origin. Lowercase here only for readability —
+#: Starlette's header lookup (``request.headers.get(...)``) is case-insensitive.
 FORWARDED_HOST_HEADER = "x-forwarded-host"
 FORWARDED_PROTO_HEADER = "x-forwarded-proto"
 DEFAULT_FORWARDED_PROTO = "https"
+
+#: The sitemap response varies its ``<loc>`` origin on the (now suffix-checked)
+#: ``X-Forwarded-Host`` header, so a shared cache must key on it too.
+VARY_HEADER = "Vary"
+VARY_FORWARDED_HOST = "X-Forwarded-Host"
+
+#: ``X-Forwarded-Host`` is trusted only when it ends with one of these suffixes — an
+#: unauthenticated caller can set this header to anything, and a spoofed host would
+#: otherwise poison the sitemap's shared cache (``SITEMAP_CACHE_CONTROL`` is
+#: ``public``). The web app's Vercel deployments are the only proxy that legitimately
+#: forwards to this API; a custom production domain must be set explicitly via
+#: ``KASHROOT_PUBLIC_WEB_ORIGIN`` (``settings.public_web_origin``) rather than trusted
+#: from a header. See app.api.public_seo.resolve_public_web_origin.
+TRUSTED_FORWARDED_HOST_SUFFIXES = (".vercel.app",)

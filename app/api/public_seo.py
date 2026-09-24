@@ -38,6 +38,9 @@ from app.api.consts import (
     SITEMAP_CONTENT_TYPE,
     SITEMAP_MAX_URLS,
     SITEMAP_XML_NAMESPACE,
+    TRUSTED_FORWARDED_HOST_SUFFIXES,
+    VARY_FORWARDED_HOST,
+    VARY_HEADER,
     WEB_ROUTE_HOME,
     WEB_ROUTE_RESTAURANT_TEMPLATE,
 )
@@ -53,10 +56,18 @@ router = APIRouter(prefix="/v1", tags=["public"])
 def resolve_public_web_origin(request: Request) -> str:
     """The public web app's origin, for absolute sitemap URLs.
 
-    Resolution order: an explicit ``settings.public_web_origin`` override; else the
-    ``X-Forwarded-Host``/``X-Forwarded-Proto`` request headers (Vercel sets these on
-    the external rewrite that proxies ``/v1/*`` from the web app to this API); else
-    this request's own base URL. Always returned with no trailing slash.
+    Resolution order: an explicit ``settings.public_web_origin`` override always wins;
+    else the ``X-Forwarded-Host``/``X-Forwarded-Proto`` request headers, but only when
+    ``X-Forwarded-Host`` ends with one of ``TRUSTED_FORWARDED_HOST_SUFFIXES`` (Vercel
+    sets these on the external rewrite that proxies ``/v1/*`` from the web app to this
+    API, and a ``*.vercel.app`` deployment host is the only proxy that legitimately
+    does so); else this request's own base URL. An untrusted forwarded host is not a
+    fallback trigger by itself — it is ignored outright and treated the same as no
+    header at all, falling through to the base URL. This is fail-closed on purpose:
+    the header is attacker-controlled on any unauthenticated request, and the sitemap
+    response is cached by shared/CDN caches (``SITEMAP_CACHE_CONTROL`` is ``public``),
+    so trusting an arbitrary host would let a spoofed request poison that cache with
+    wrong ``<loc>`` URLs for other callers. Always returned with no trailing slash.
 
     Parameters:
         request (Request): the incoming request, used for its forwarded headers and
@@ -69,7 +80,7 @@ def resolve_public_web_origin(request: Request) -> str:
         return settings.public_web_origin.rstrip("/")
 
     forwarded_host = request.headers.get(FORWARDED_HOST_HEADER)
-    if forwarded_host:
+    if forwarded_host and forwarded_host.endswith(TRUSTED_FORWARDED_HOST_SUFFIXES):
         forwarded_proto = request.headers.get(FORWARDED_PROTO_HEADER, DEFAULT_FORWARDED_PROTO)
 
         return f"{forwarded_proto}://{forwarded_host}".rstrip("/")
@@ -214,5 +225,8 @@ def get_sitemap(request: Request, session: Session = Depends(get_session)) -> Re
     return Response(
         content=xml_body,
         media_type=SITEMAP_CONTENT_TYPE,
-        headers={CACHE_CONTROL_HEADER: SITEMAP_CACHE_CONTROL},
+        headers={
+            CACHE_CONTROL_HEADER: SITEMAP_CACHE_CONTROL,
+            VARY_HEADER: VARY_FORWARDED_HOST,
+        },
     )

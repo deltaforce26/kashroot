@@ -103,16 +103,35 @@ def test_sitemap_lastmod_is_date_only(client, session) -> None:
     assert f"/r/{restaurant.id}" in response.text
 
 
-def test_sitemap_origin_falls_back_to_forwarded_headers(client, session) -> None:
+def test_sitemap_origin_honours_trusted_vercel_forwarded_host(client, session) -> None:
     restaurant = make_restaurant(session)
     session.commit()
 
     response = client.get(
         "/v1/sitemap.xml",
-        headers={"X-Forwarded-Host": "kashroot.example", "X-Forwarded-Proto": "https"},
+        headers={"X-Forwarded-Host": "kashroot.vercel.app", "X-Forwarded-Proto": "https"},
     )
 
-    assert f"https://kashroot.example/r/{restaurant.id}" in response.text
+    assert f"https://kashroot.vercel.app/r/{restaurant.id}" in response.text
+
+
+def test_sitemap_origin_ignores_spoofed_forwarded_host(client, session) -> None:
+    """A forwarded host that does not end with a trusted suffix is ignored outright
+    (fail closed) — the response falls back to the request's own base URL rather than
+    trusting an attacker-controlled header, since the sitemap is cached by shared
+    caches (see app.api.public_seo.resolve_public_web_origin).
+    """
+    restaurant = make_restaurant(session)
+    session.commit()
+
+    response = client.get(
+        "/v1/sitemap.xml",
+        headers={"X-Forwarded-Host": "evil.example", "X-Forwarded-Proto": "https"},
+    )
+
+    assert "evil.example" not in response.text
+    assert f"/r/{restaurant.id}" in response.text
+    assert "<loc>http" in response.text
 
 
 def test_sitemap_origin_honours_setting_override(client, session, monkeypatch) -> None:
@@ -127,6 +146,24 @@ def test_sitemap_origin_honours_setting_override(client, session, monkeypatch) -
 
     assert f"https://configured.example/r/{restaurant.id}" in response.text
     assert "should-be-ignored.example" not in response.text
+
+
+def test_sitemap_origin_setting_wins_over_trusted_forwarded_host(
+    client, session, monkeypatch
+) -> None:
+    """``settings.public_web_origin`` wins even over an otherwise-trusted
+    ``*.vercel.app`` forwarded host."""
+    monkeypatch.setattr(settings, "public_web_origin", "https://configured.example")
+    restaurant = make_restaurant(session)
+    session.commit()
+
+    response = client.get(
+        "/v1/sitemap.xml",
+        headers={"X-Forwarded-Host": "kashroot.vercel.app", "X-Forwarded-Proto": "https"},
+    )
+
+    assert f"https://configured.example/r/{restaurant.id}" in response.text
+    assert "kashroot.vercel.app" not in response.text
 
 
 def test_sitemap_origin_falls_back_to_request_base_url_with_no_headers(client, session) -> None:
@@ -146,3 +183,12 @@ def test_sitemap_cache_control_header(client, session) -> None:
     response = client.get("/v1/sitemap.xml")
 
     assert response.headers["cache-control"] == "public, max-age=3600"
+
+
+def test_sitemap_vary_header_on_forwarded_host(client, session) -> None:
+    make_restaurant(session)
+    session.commit()
+
+    response = client.get("/v1/sitemap.xml")
+
+    assert response.headers["vary"] == "X-Forwarded-Host"

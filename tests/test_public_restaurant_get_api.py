@@ -162,6 +162,35 @@ def test_get_returns_facts_with_no_verdict_keys(client, session) -> None:
     assert "confidence" not in fact
 
 
+def test_get_returns_expired_and_revoked_certificates_with_their_stored_status(
+    client, session
+) -> None:
+    """Fail-safe rule (CLAUDE.md): an expired/revoked certificate is still a fact
+    about the restaurant, so it is still returned — with its own stored ``state`` and
+    still no verdict keys — rather than degraded or filtered out. Degrading a stale
+    certificate to UNKNOWN is the match engine's job against a profile, not this
+    profile-free path's.
+    """
+    certifier = make_certifier(session)
+    restaurant = make_restaurant(session)
+    make_certificate(session, restaurant, certifier, state=CertificateState.EXPIRED)
+    make_certificate(session, restaurant, certifier, state=CertificateState.REVOKED)
+    session.commit()
+
+    response = client.get(f"/v1/restaurants/{restaurant.id}")
+
+    assert response.status_code == 200
+    body = response.json()
+
+    statuses = {fact["status"] for fact in body["certificates"]}
+    assert statuses == {"expired", "revoked"}
+
+    for fact in body["certificates"]:
+        assert "outcome" not in fact
+        assert "reasons" not in fact
+        assert "confidence" not in fact
+
+
 def test_get_omits_certificates_from_inactive_certifier(client, session) -> None:
     active_certifier = make_certifier(session)
     inactive_certifier = make_certifier(session, is_active=False)
