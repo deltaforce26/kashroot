@@ -46,6 +46,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { GeoPoint } from "../api/types";
 import type { CityOption } from "../config";
+import { followPoint } from "./useCity";
 
 export type OriginSource = "device" | "city" | "address";
 
@@ -86,6 +87,10 @@ let geoState: GeoState = "idle";
 function publish(nextOverride: Override | null, nextState: GeoState): void {
   override = nextOverride;
   geoState = nextState;
+  // A pinned address or a device fix says where the user is, so the city follows
+  // it — otherwise home and map would measure from Beit Shemesh while search kept
+  // looking inside Jerusalem. Idempotent, so republishing the same origin is free.
+  if (nextOverride) followPoint(nextOverride.point);
   window.dispatchEvent(new Event(CHANGED));
 }
 

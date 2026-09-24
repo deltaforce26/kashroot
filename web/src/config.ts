@@ -92,6 +92,28 @@ export function cityBySlug(slug: string): CityOption {
   return CITIES.find((city) => city.slug === slug) ?? (CITIES[0] as CityOption);
 }
 
+/**
+ * The covered city whose centre is closest to a point. Used to keep the city in step
+ * with a pinned address or the device position: a user standing in Beit Shemesh is
+ * "in" Beit Shemesh for search too, not still in whichever city they opened on.
+ * Equirectangular distance is plenty at the scale of one small country.
+ */
+export function nearestCity(point: { lat: number; lon: number }): CityOption {
+  const cosLat = Math.cos((point.lat * Math.PI) / 180);
+  let best = CITIES[0] as CityOption;
+  let bestD = Number.POSITIVE_INFINITY;
+  for (const city of CITIES) {
+    const dLat = city.center.lat - point.lat;
+    const dLon = (city.center.lon - point.lon) * cosLat;
+    const d = dLat * dLat + dLon * dLon;
+    if (d < bestD) {
+      bestD = d;
+      best = city;
+    }
+  }
+  return best;
+}
+
 /** Comfortable walking/driving radius for the home list. */
 export const NEARBY_RADIUS_KM = 12;
 
