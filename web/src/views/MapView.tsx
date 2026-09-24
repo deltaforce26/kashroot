@@ -61,6 +61,7 @@ import { anyFilterActive, type FilterId } from "../filters/registry";
 import { useFilters } from "../filters/useFilters";
 import { isNetworkError, useSearch } from "../hooks/useApi";
 import { formatDistance, pickName, useI18n } from "../i18n/I18nProvider";
+import { googleMapsUrl, wazeUrl } from "../location/directions";
 import { useOrigin } from "../location/useOrigin";
 import { createPin, createPopupAnchor, SELECTED_PIN_HEIGHT, type Pin } from "../map/pins";
 import { MAP_ID, useGoogleMaps } from "../map/useGoogleMaps";
@@ -157,15 +158,20 @@ function MapPopupCard({ item, onClose }: { item: ResultView; onClose: () => void
           <a
             className="cta card__above"
             style={{ flex: 1, padding: 9, fontSize: 13 }}
-            href={
-              item.geo
-                ? `https://www.google.com/maps/dir/?api=1&destination=${item.geo.lat},${item.geo.lon}`
-                : "#"
-            }
+            href={item.geo ? wazeUrl(item.geo) : "#"}
             target="_blank"
             rel="noreferrer"
           >
-            {t.restaurant.navigate}
+            {t.restaurant.navigateWaze}
+          </a>
+          <a
+            className="cta cta--ghost card__above"
+            style={{ flex: 1, padding: 9, fontSize: 13 }}
+            href={item.geo ? googleMapsUrl(item.geo) : "#"}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t.restaurant.navigateGoogle}
           </a>
         </div>
       </article>
@@ -422,7 +428,6 @@ export function MapView() {
         <input
           type="search"
           className="searchbar__input"
-          dir="auto"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder={t.search.placeholder}
