@@ -135,10 +135,57 @@ def test_list_certifiers_reports_published_levels_excluding_unknown(client, sess
 # ------------------------------------------------------------------------- search
 
 
-def test_search_requires_center_or_city(client) -> None:
+def test_search_with_neither_center_nor_city_returns_all_cities(client, session) -> None:
+    """An unscoped search (no ``center``, no ``city``) returns restaurants from every
+    city, not just one — ``distance_km`` is None since there is no reference point.
+    """
+    make_restaurant(session, name_he="ירושלים א", city_slug="jerusalem", city_he="ירושלים")
+    make_restaurant(session, name_he="תל אביב א", city_slug="tel_aviv", city_he="תל אביב")
+    session.commit()
+
     response = client.post("/v1/search", json={"profile": {}})
 
-    assert response.status_code == 422
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    city_slugs = set()
+    for item in body["items"]:
+        assert item["distance_km"] is None
+        city_slugs.add(item["city_he"])
+    assert len(city_slugs) > 1
+
+
+def test_search_with_neither_center_nor_city_paginates(client, session) -> None:
+    """Pagination (``page``/``page_size``) works the same as the city-scoped path over
+    the unscoped, all-cities result set.
+    """
+    make_restaurant(session, name_he="א ראשונה", city_slug="jerusalem")
+    make_restaurant(session, name_he="ב שנייה", city_slug="tel_aviv")
+    session.commit()
+
+    response = client.post("/v1/search", json={"profile": {}, "page": 2, "page_size": 1})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    assert body["page"] == 2
+    assert body["page_size"] == 1
+    assert len(body["items"]) == 1
+    assert body["items"][0]["name_he"] == "ב שנייה"
+
+
+def test_search_with_neither_center_nor_city_applies_query(client, session) -> None:
+    """``query`` still narrows the unscoped candidate set."""
+    make_restaurant(session, name_he="פיצה טובה", city_slug="jerusalem")
+    make_restaurant(session, name_he="סושי מעולה", city_slug="haifa")
+    session.commit()
+
+    response = client.post("/v1/search", json={"profile": {}, "query": "פיצה"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["name_he"] == "פיצה טובה"
 
 
 def test_search_rejects_duplicate_whitelist_certifier(client) -> None:

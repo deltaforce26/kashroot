@@ -247,8 +247,9 @@ def build_search_statement(request: SearchRequest) -> Select[Any]:
     Python, over the fetched rows.
 
     Every row is a ``(Restaurant, distance_m)`` pair; ``distance_m`` is a SQL NULL
-    literal when the request has no ``center`` — a plain city/filters search has no
-    reference point to measure distance from. When a ``center`` is supplied, the
+    literal when the request has no ``center`` — a plain city/filters search, or an
+    unscoped search with neither ``center`` nor ``city``, has no reference point to
+    measure distance from. When a ``center`` is supplied, the
     radius filter (``ST_DWithin``) and the ordering both use the geography index on
     ``Restaurant.geo`` (``ix_restaurant_geo``, migration 0001) — no new index is
     needed for this query shape.

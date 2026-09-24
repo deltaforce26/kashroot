@@ -54,6 +54,5 @@ MAX_CERTIFIER_IDS = 200
 MIN_RATING = 0.0
 MAX_RATING = 5.0
 
-ERROR_CENTER_OR_CITY_REQUIRED = "at least one of 'center' or 'city' must be provided"
 ERROR_DUPLICATE_WHITELIST_CERTIFIER = "duplicate whitelist entry for certifier_id {certifier_id}"
 ERROR_RESTAURANT_NOT_FOUND = "restaurant not found"

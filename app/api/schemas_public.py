@@ -17,12 +17,11 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.api.consts import (
     DEFAULT_PAGE_SIZE,
     DEFAULT_RADIUS_KM,
-    ERROR_CENTER_OR_CITY_REQUIRED,
     ERROR_DUPLICATE_WHITELIST_CERTIFIER,
     MAX_CERTIFIER_IDS,
     MAX_DIET_TYPES,
@@ -188,6 +187,12 @@ class SearchRequest(BaseModel):
     ``name_he`` / ``name_en`` / ``address_he`` that only narrows the candidate set. It
     never changes result ordering (still gate-then-fit, PRD FR3) and never influences
     the kashrut verdict.
+
+    Both ``center`` and ``city`` are optional. When neither is supplied, the search is
+    unscoped: every OPEN restaurant across all cities is a candidate, ``distance_km``
+    is None on every result, and ordering falls back to the same verdict-then-fit path
+    the city-scoped search uses, with restaurant name as the final tiebreak (see
+    ``build_search_statement`` / ``search_restaurants`` in ``app.api.public``).
     """
 
     profile: ProfileRequest
@@ -219,13 +224,6 @@ class SearchRequest(BaseModel):
         value = value.strip()
 
         return value or None
-
-    @model_validator(mode="after")
-    def _center_or_city_required(self) -> SearchRequest:
-        if self.center is None and self.city is None:
-            raise ValueError(ERROR_CENTER_OR_CITY_REQUIRED)
-
-        return self
 
 
 # --------------------------------------------------------- Layer 1 / Layer 2 output
@@ -331,7 +329,7 @@ class SearchResultItem(BaseModel):
     city_he: str | None
     address_he: str | None
     geo: GeoPointOut | None
-    #: None when the search had no ``center`` (city-only search).
+    #: None when the search had no ``center`` (city-only or fully unscoped search).
     distance_km: float | None
     #: Same field/semantics as ``RestaurantDetailResponse.diet_type`` (Change 1).
     diet_type: DietType | None
