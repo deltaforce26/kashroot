@@ -38,6 +38,7 @@ from app.models import (
     Restaurant,
     RestaurantStatus,
 )
+from app.services.rate_limit import InMemoryRateLimitBackend, get_rate_limit_backend
 from app.storage import InMemoryMediaStorage
 
 TOKENS = {"tok-alice": "alice"}
@@ -71,6 +72,13 @@ def client(session, monkeypatch, storage):
 
     app.dependency_overrides[get_session] = _override_session
     app.dependency_overrides[get_media_storage] = lambda: storage
+    # A fresh, unshared backend per test — these tests exercise the upload endpoint
+    # many times each, well past the real per-IP defaults, and share a TestClient
+    # host across the whole suite; this isolates each test from every other's count
+    # instead of loosening the limiter itself. See tests/test_rate_limit.py for
+    # dedicated coverage of the limiter's own behavior.
+    rate_limit_backend = InMemoryRateLimitBackend()
+    app.dependency_overrides[get_rate_limit_backend] = lambda: rate_limit_backend
     with TestClient(app) as test_client:
         yield test_client
 
