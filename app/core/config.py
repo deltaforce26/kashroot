@@ -99,6 +99,13 @@ class Settings(BaseSettings):
     # in the notification email, e.g. "https://admin.kashroot.example".
     admin_base_url: str | None = None
 
+    # Origin of the public web app (the Vite SPA on Vercel), for absolute URLs in
+    # GET /v1/sitemap.xml, e.g. "https://kashroot.example" (no trailing slash needed —
+    # it is stripped). When unset, the origin is recovered from the X-Forwarded-Host /
+    # X-Forwarded-Proto request headers Vercel sets on its /v1/* rewrite, and failing
+    # that from the request's own base URL (app.api.public_seo.resolve_public_web_origin).
+    public_web_origin: str | None = None
+
     @field_validator("storage_backend", mode="before")
     @classmethod
     def _parse_storage_backend(cls, value: Any) -> Any:
