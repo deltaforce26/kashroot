@@ -38,7 +38,6 @@ function seedProfile() {
 }
 
 function renderApp(route: string) {
-  localStorage.setItem("kashroot.city", "jerusalem");
   return render(
     <ThemeProvider>
       <I18nProvider>
@@ -60,7 +59,7 @@ describe("the not-found page", () => {
     renderApp("/no-such-screen");
 
     expect(await screen.findByText(he.notFoundPage.title)).toBeInTheDocument();
-    expect(screen.queryByText(he.home.nearYou)).toBeNull();
+    expect(screen.queryByRole("button", { name: he.home.changeLocation })).toBeNull();
   });
 
   it("names the address that was asked for", async () => {

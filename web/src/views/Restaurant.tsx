@@ -24,7 +24,7 @@ import { VerdictPill } from "../components/VerdictPill";
 import { BookmarkIcon, ChevronIcon, PhoneIcon, ShareIcon } from "../components/icons";
 import { ErrorState, LoadingList, NotFoundState, OfflineBanner } from "../components/states";
 import { useGoBack } from "../hooks/useReturnTo";
-import { useCity } from "../location/useCity";
+import { useOrigin } from "../location/useOrigin";
 import { isNetworkError, useRestaurant } from "../hooks/useApi";
 import { formatDate, formatDistance, pickName, useI18n } from "../i18n/I18nProvider";
 import { toPayload } from "../profile/profile";
@@ -62,7 +62,8 @@ export function Restaurant() {
   const { t, lang } = useI18n();
   const { profile } = useProfile();
   const { toggle, isSaved } = useSaveToggle();
-  const { city } = useCity();
+  // The same origin the list measured from — or none, in which case no distance.
+  const { origin } = useOrigin();
   // Landing here from a shared link leaves onboarding behind us, not a list.
   const goBack = useGoBack();
 
@@ -70,7 +71,7 @@ export function Restaurant() {
 
   const payload = useMemo(() => toPayload(profile), [profile]);
   // Same centre the list used, so the distance shown here is the same number.
-  const { data, loading, error, reload } = useRestaurant(id, payload, city.center);
+  const { data, loading, error, reload } = useRestaurant(id, payload, origin ?? undefined);
 
   if (loading) {
     return (

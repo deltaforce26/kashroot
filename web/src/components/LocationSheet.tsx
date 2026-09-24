@@ -3,9 +3,9 @@
  *
  * Opened from the pin or the address in the home header, which are two halves of the
  * same control. It offers the two origins a person names for themselves, in the order
- * they cost effort: the device position (one tap) and a typed address. Cities are not
- * repeated here — they are a filter, and they live on the filters and search screens
- * where the rest of the filtering does.
+ * they cost effort: the device position (one tap) and a typed address — and the way
+ * out of both, "all of Israel", which drops the pin and shows every place we hold.
+ * There is no city to pick: the app has no such concept.
  *
  * Every branch says something true. Address lookup needs the Google geocoder, so
  * without a browser key the field is not drawn at all rather than drawn dead — and
@@ -24,7 +24,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CloseIcon, CrosshairIcon, PinIcon, SearchIcon } from "./icons";
 import { useI18n } from "../i18n/I18nProvider";
-import { useCity } from "../location/useCity";
 import { useOrigin } from "../location/useOrigin";
 import {
   geocodeAddress,
@@ -70,8 +69,8 @@ function exitDuration(): number {
 
 export function LocationSheet({ onClose }: { onClose: () => void }) {
   const { t, lang } = useI18n();
-  const { city } = useCity();
-  const { source, state, requestDeviceLocation, setAddressOrigin } = useOrigin(city);
+  const { source, state, requestDeviceLocation, setAddressOrigin } =
+    useOrigin();
 
   const [address, setAddress] = useState("");
   const [lookup, setLookup] = useState<Lookup>({ state: "idle" });
@@ -137,7 +136,7 @@ export function LocationSheet({ onClose }: { onClose: () => void }) {
       setLookup({ state: "done", candidates: await geocodeAddress(query, lang) });
     } catch {
       // No key, blocked script, offline, quota. The user does not need to know
-      // which; they need to know the field cannot answer and the cities can.
+      // which; they need to know the field cannot answer and the other ways can.
       setLookup({ state: "failed" });
     }
   }
@@ -200,20 +199,6 @@ export function LocationSheet({ onClose }: { onClose: () => void }) {
           <CrosshairIcon size={16} />
           {locating ? t.origin.locating : t.origin.useMyLocation}
         </button>
-        {/* Two different truths, and they call for different next moves: with no
-            position at all the address field is the way forward, while a failed
-            refresh leaves the user exactly where they were and needs no action. */}
-        {state === "unavailable" && (
-          <p className="hint sheet__note" role="status">
-            {t.origin.denied}
-          </p>
-        )}
-        {state === "stale" && (
-          <p className="hint sheet__note" role="status">
-            {t.origin.notRefreshed}
-          </p>
-        )}
-
         {hasMapsKey() && (
           <form
             className="searchbar glass sheet__address"

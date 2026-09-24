@@ -113,12 +113,14 @@ export interface SearchFilters {
   amenities?: AmenityKey[];
 }
 
-/** schemas_public.py :: SearchRequest. `center` or `city` is required. */
+/**
+ * schemas_public.py :: SearchRequest. `center` is optional: without one the server
+ * returns every row, ordered by verdict class then fit score, with `distance_km`
+ * null. The client never scopes a search by city.
+ */
 export interface SearchRequest {
   profile: ProfileRequest;
   center?: GeoPoint;
-  /** `Restaurant.city_slug`, e.g. "jerusalem". */
-  city?: string;
   /**
    * Case-insensitive `ILIKE` substring over `name_he` / `name_en` / `address_he`.
    * Exact substring only — no fuzzy matching, no Hebrew normalization (niqqud,
@@ -215,7 +217,7 @@ export interface SearchResultItemOut {
   city_he: string | null;
   address_he: string | null;
   geo: GeoPointOut | null;
-  /** Null when the search had no `center` (city-only search). */
+  /** Null when the search had no `center` (an unscoped, everywhere search). */
   distance_km: number | null;
   diet_type: DietType | null;
   kashrut: KashrutVerdictOut;

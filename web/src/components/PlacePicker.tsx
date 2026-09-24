@@ -15,7 +15,6 @@ import { MAX_QUERY_LENGTH, type SearchRequest } from "../api/types";
 import type { ResultView } from "../api/viewmodel";
 import { isNetworkError, useSearch } from "../hooks/useApi";
 import { useI18n } from "../i18n/I18nProvider";
-import { useCity } from "../location/useCity";
 import { toPayload } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
 import { CheckIcon, SearchIcon } from "./icons";
@@ -35,7 +34,6 @@ export function PlacePicker({
 }) {
   const { t, lang } = useI18n();
   const { profile } = useProfile();
-  const { slug: city } = useCity();
   const [query, setQuery] = useState("");
 
   const trimmedQuery = useDeferredValue(query).trim();
@@ -46,11 +44,12 @@ export function PlacePicker({
         ? null
         : {
             profile: toPayload(profile),
-            city,
+            // No centre and no city: a place being added to a list is looked up by
+            // name across everything we hold, wherever the user happens to be.
             page_size: PICKER_PAGE_SIZE,
             query: trimmedQuery.slice(0, MAX_QUERY_LENGTH),
           },
-    [profile, city, trimmedQuery],
+    [profile, trimmedQuery],
   );
 
   const { data, loading, error } = useSearch(request);

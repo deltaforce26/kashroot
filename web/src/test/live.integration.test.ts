@@ -152,11 +152,22 @@ describe.skipIf(!LIVE)("live API", () => {
     expect(detail.distanceKm).toBeCloseTo(first.distanceKm as number, 6);
   });
 
-  it("omits distance entirely for a city-only search rather than inventing one", async () => {
+  it("omits distance entirely for an unscoped search rather than inventing one", async () => {
     const profile = await anyProfile();
-    const search = await api.search({ profile, city: "jerusalem", page_size: 20 });
+    // No `center`: every row in the database, paged. Distance has no meaning here.
+    const search = await api.search({ profile, page_size: 20 });
     expect(search.items.length).toBeGreaterThan(0);
     for (const item of search.items) expect(item.distanceKm).toBeNull();
+  });
+
+  it("pages an unscoped search without repeating or dropping rows", async () => {
+    const profile = await anyProfile();
+    const first = await api.search({ profile, page: 1, page_size: 5 });
+    const second = await api.search({ profile, page: 2, page_size: 5 });
+    expect(first.total).toBe(second.total);
+    expect(first.items.length).toBeLessThanOrEqual(5);
+    const seen = new Set(first.items.map((item) => item.id));
+    for (const item of second.items) expect(seen.has(item.id)).toBe(false);
   });
 
   it("returns full provenance on the deciding certificate", async () => {
@@ -211,7 +222,7 @@ describe.skipIf(!LIVE)("live API", () => {
 
   it("finds Hebrew text by exact substring, and misses a different spelling", async () => {
     const profile = await anyProfile();
-    const hit = await api.search({ profile, city: "jerusalem", query: "פיצה", page_size: 10 });
+    const hit = await api.search({ profile, query: "פיצה", page_size: 10 });
     expect(hit.items.length).toBeGreaterThan(0);
     for (const item of hit.items) {
       expect(`${item.nameHe} ${item.addressHe ?? ""}`).toContain("פיצה");
@@ -219,12 +230,7 @@ describe.skipIf(!LIVE)("live API", () => {
 
     // The limitation the search copy is written around: no normalization, so a
     // spelling the corpus does not use returns nothing rather than a near match.
-    const miss = await api.search({
-      profile,
-      city: "jerusalem",
-      query: "זזזזזזאיןכזה",
-      page_size: 10,
-    });
+    const miss = await api.search({ profile, query: "זזזזזזאיןכזה", page_size: 10 });
     expect(miss.items).toHaveLength(0);
   });
 
@@ -270,13 +276,6 @@ describe.skipIf(!LIVE)("live API", () => {
       });
       expect(search.total).toBeGreaterThanOrEqual(0);
     }
-  });
-
-  it("degrades a nonexistent city to an empty result, not an error", async () => {
-    const profile = await anyProfile();
-    const search = await api.search({ profile, city: "no-such-city", page_size: 10 });
-    expect(search.total).toBe(0);
-    expect(search.items).toHaveLength(0);
   });
 
   it("surfaces a missing restaurant as a clean 404 through ApiError", async () => {

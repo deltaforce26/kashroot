@@ -35,6 +35,12 @@
  * the bar's radius rather than a fixed sweep of the server's ceiling. There is no
  * separate list screen to drift from: home is the list, and the tab bar is on screen,
  * so the map needs no back button of its own.
+ *
+ * With no origin — no device fix and no pinned address — the map asks for every
+ * place in the database, exactly as home does, and plots the first hundred. The
+ * camera then opens on `MAP_DEFAULT_VIEW` (Jerusalem), a starting viewport and nothing
+ * more: it is never sent to the API and never used for a distance, and the pins are
+ * not fitted to the whole country. The user pans to where they care about.
  */
 
 import { LocateFixed } from "lucide-react";
@@ -46,14 +52,15 @@ import { certifierLabel, type ResultView } from "../api/viewmodel";
 import { FilterBar } from "../components/filters/FilterBar";
 import { CloseIcon, PinIcon, SearchIcon } from "../components/icons";
 import { tintClass } from "../components/RestaurantCard";
-import { EmptyQuery, EmptyResults, ErrorState } from "../components/states";
+import { EmptyQuery, EmptyResults, ErrorState, NothingHere } from "../components/states";
 import { TabBar } from "../components/TabBar";
 import { VERDICT_GLYPH, verdictLabel } from "../components/VerdictPill";
+import { MAP_DEFAULT_VIEW } from "../config";
 import { toSearchFilters } from "../filters/model";
+import { anyFilterActive, type FilterId } from "../filters/registry";
 import { useFilters } from "../filters/useFilters";
 import { isNetworkError, useSearch } from "../hooks/useApi";
 import { formatDistance, pickName, useI18n } from "../i18n/I18nProvider";
-import { useCity } from "../location/useCity";
 import { useOrigin } from "../location/useOrigin";
 import { createPin, createPopupAnchor, SELECTED_PIN_HEIGHT, type Pin } from "../map/pins";
 import { MAP_ID, useGoogleMaps } from "../map/useGoogleMaps";
@@ -95,6 +102,9 @@ export function nextOpenId(current: string | null, tapped: string): string | nul
 
 /** Close enough to read a street, which is what a pinned origin is worth looking at. */
 const ORIGIN_ZOOM = 14;
+
+/** A radius needs a centre; with nothing pinned the chip would measure from nowhere. */
+const WITHOUT_ORIGIN: readonly FilterId[] = ["radius"];
 
 /**
  * What the zoom becomes when the camera moves to a new origin, or null to leave it be.
@@ -168,11 +178,14 @@ export function MapView() {
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const { profile } = useProfile();
-  const { city } = useCity();
   // The one filter store, shared with home and search, so a chip tapped here is the
   // chip tapped there and the map cannot become a third, differently-filtered answer.
   const { filters } = useFilters();
-  const { origin, source, state: originState, requestDeviceLocation } = useOrigin(city);
+  const { origin, source, state: originState, requestDeviceLocation, addressLabel, resolving } =
+    useOrigin();
+  // What the placeholder and the empty state call the place we search from.
+  const placeLabel =
+    source === "device" ? t.map.youAreHere : (addressLabel ?? t.origin.everywhere);
   const { status: mapsStatus, libs } = useGoogleMaps(lang);
 
   // The open card, by restaurant id. Nothing is open on arrival.
@@ -194,15 +207,17 @@ export function MapView() {
   const deferredQuery = useDeferredValue(query);
   const trimmedQuery = deferredQuery.trim();
 
-  const request = useMemo<SearchRequest>(() => {
+  // Null while the device is still being asked on first load — see `useOrigin`.
+  const request = useMemo<SearchRequest | null>(() => {
+    if (resolving) return null;
     const facets = toSearchFilters(filters);
     return {
       profile: toPayload(profile),
-      center: origin,
-      // The bar's radius, not the server's ceiling: the map is a distance search with
-      // a centre, so it reaches exactly as far as home reaches. `toSearchFilters`
+      // The bar's radius, not the server's ceiling: with a centre the map is a
+      // distance search and reaches exactly as far as home reaches. Without one
+      // neither goes out and the server answers with everything. `toSearchFilters`
       // leaves the radius out on purpose — it is top-level, not a facet.
-      radius_km: filters.radiusKm,
+      ...(origin ? { center: origin, radius_km: filters.radiusKm } : {}),
       // Deliberately larger than home's PAGE_SIZE. A map is read at a glance rather
       // than paged, so it plots the whole radius where home shows its first page of
       // it — which makes the map a superset of home's cards by distance, never a
@@ -211,8 +226,10 @@ export function MapView() {
       ...(trimmedQuery ? { query: trimmedQuery.slice(0, MAX_QUERY_LENGTH) } : {}),
       ...(facets ? { filters: facets } : {}),
     };
-  }, [profile, origin, filters, trimmedQuery]);
-  const { data, loading, error, reload } = useSearch(request);
+  }, [profile, origin, resolving, filters, trimmedQuery]);
+  const { data, loading: searching, error, reload } = useSearch(request);
+  // `useSearch(null)` answers at once with nothing; the device is still the question.
+  const loading = resolving || searching;
 
   // Only geocoded records can be plotted; the rest still exist in the list.
   const plotted = useMemo(() => (data?.items ?? []).filter((item) => item.geo !== null), [data]);
@@ -221,7 +238,7 @@ export function MapView() {
     [plotted, openId],
   );
 
-  useEffect(() => setOpenId(null), [city.slug, source]);
+  useEffect(() => setOpenId(null), [source]);
 
   // A reload can drop the place whose card is open — a different profile, a different
   // origin — and a card for something no longer on the map would be a lie.
@@ -232,9 +249,12 @@ export function MapView() {
   // Create the map once the script is ready and the container is mounted.
   useEffect(() => {
     if (mapsStatus !== "ready" || !libs || !containerRef.current || mapRef.current) return;
+    // The starting viewport: the origin when there is one, otherwise the map-only
+    // default. Neither is a search parameter — the request above decides that.
+    const start = origin ?? MAP_DEFAULT_VIEW.center;
     const map = new libs.maps.Map(containerRef.current, {
-      center: { lat: origin.lat, lng: origin.lon },
-      zoom: 14,
+      center: { lat: start.lat, lng: start.lon },
+      zoom: MAP_DEFAULT_VIEW.zoom,
       mapId: MAP_ID,
       disableDefaultUI: true,
       gestureHandling: "greedy",
@@ -327,7 +347,7 @@ export function MapView() {
     if (!map || !libs) return;
     if (meMarkerRef.current) meMarkerRef.current.remove();
     meMarkerRef.current = null;
-    if (source !== "device") return;
+    if (source !== "device" || !origin) return;
     meMarkerRef.current = createPin(libs.marker, {
       map,
       position: { lat: origin.lat, lng: origin.lon },
@@ -352,16 +372,17 @@ export function MapView() {
 
   // The camera follows the origin. The map is built once, with its centre fixed at
   // construction, so without this the locate button silently changes what is searched
-  // and where "you are here" sits while leaving the viewport on the old city centre —
-  // which reads as a button that does nothing. Declared after the card effect on
-  // purpose: when both want the camera in one commit, the origin is the explicit ask.
+  // and where "you are here" sits while leaving the viewport where it was — which
+  // reads as a button that does nothing. Declared after the card effect on purpose:
+  // when both want the camera in one commit, the origin is the explicit ask.
   //
   // `origin` is reference-stable — a point object written once per publish in
-  // `useOrigin`, or the city's own `center` from config — so this fires on a real
-  // change and never on a re-render, and the user's own panning is left alone.
+  // `useOrigin` — so this fires on a real change and never on a re-render, and the
+  // user's own panning is left alone. Dropping the pin moves nothing: with no origin
+  // there is nowhere to go, and the viewport stays where the user left it.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !origin) return;
     map.panTo({ lat: origin.lat, lng: origin.lon });
     const zoom = nextZoom(map.getZoom());
     if (zoom !== null) map.setZoom(zoom);
@@ -410,16 +431,16 @@ export function MapView() {
         />
       </label>
 
-      {/* Bare, like home's: the map is a distance search with a centre, so the radius
-          belongs in its sheet. (Search excludes it — a city search has no centre.) */}
-      <FilterBar />
+      {/* The radius belongs in the sheet only while there is a centre to measure it
+          from — the same rule home and search follow. */}
+      <FilterBar exclude={origin ? [] : WITHOUT_ORIGIN} />
 
       {mapsStatus === "ready" ? (
         <div className="map" ref={containerRef} aria-label={t.map.map} role="application" />
       ) : (
         <div className="map">
           <div className="map__grid" aria-hidden="true">
-            {t.map.placeholder(lang === "en" ? city.areaEn : city.areaHe)}
+            {t.map.placeholder(placeLabel)}
           </div>
           {mapUnavailable && (
             <div className="map__fallback">
@@ -469,6 +490,8 @@ export function MapView() {
             <ErrorState isNetwork={isNetworkError(error)} onRetry={reload} />
           ) : trimmedQuery ? (
             <EmptyQuery query={trimmedQuery} onClear={() => setQuery("")} />
+          ) : (data?.total ?? 0) === 0 && !anyFilterActive(filters) ? (
+            <NothingHere place={origin ? placeLabel : null} onChangePlace={() => navigate("/")} />
           ) : (
             <EmptyResults onWidenProfile={() => navigate("/profile")} />
           )}

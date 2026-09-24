@@ -5,7 +5,7 @@
  * is not in our records": that one is a statement about the corpus, this one is a
  * statement about the URL. Conflating them would tell someone who mistyped a path
  * that our database is missing a restaurant, which is a lie about the product's
- * core promise — the same reason `EmptyCity` is kept apart from `EmptyResults`.
+ * core promise — the same reason `NothingHere` is kept apart from `EmptyResults`.
  *
  * The onboarding gate deliberately does not wrap this route. A wrong address is
  * wrong whether or not a profile exists, and bouncing a bad link into onboarding

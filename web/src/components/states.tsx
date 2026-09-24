@@ -161,25 +161,31 @@ export function EmptyQuery({ query, onClear }: { query: string; onClear: () => v
 }
 
 /**
- * A city that returned nothing at all, before any filter was applied.
- *
- * Kept separate from `EmptyResults` on purpose. "Nothing matches your profile" is a
- * claim about kashrut evidence; an empty city is a hole in our corpus — or a
- * `city_slug` that does not exist in the database. Saying the former when the truth
- * is the latter blames the product's core promise for a data problem, which is the
- * worst way for this to fail in front of an audience.
+ * A search that returned no rows at all, before any filter or the profile was
+ * applied. Kept separate from `EmptyResults` on purpose: "nothing matches your
+ * profile" is a claim about kashrut evidence, while an empty answer here is a hole
+ * in our corpus — around the pinned origin, or, with no origin, an empty database.
+ * Saying the former when the truth is the latter blames the product's core promise
+ * for a data problem, which is the worst way for this to fail in front of an
+ * audience. `place` is null when nothing is pinned; the copy changes with it.
  */
-export function EmptyCity({ city, onPickAnother }: { city: string; onPickAnother?: () => void }) {
+export function NothingHere({
+  place,
+  onChangePlace,
+}: {
+  place: string | null;
+  onChangePlace?: () => void;
+}) {
   const { t } = useI18n();
   return (
     <StateBlock
-      title={t.states.emptyCityTitle(city)}
-      body={t.states.emptyCityBody}
+      title={t.states.nothingHereTitle(place)}
+      body={t.states.nothingHereBody(place)}
       mark={<PinIcon size={26} />}
       actions={
-        onPickAnother ? (
-          <button type="button" className="cta cta--ghost" onClick={onPickAnother}>
-            {t.states.emptyCityAction}
+        onChangePlace ? (
+          <button type="button" className="cta cta--ghost" onClick={onChangePlace}>
+            {t.states.nothingHereAction}
           </button>
         ) : null
       }

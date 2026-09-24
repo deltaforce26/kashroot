@@ -45,7 +45,6 @@ const he = {
 
   home: {
     nearYou: "מחפשים ליד",
-    changeCity: "שינוי עיר",
     changeLocation: "שינוי מיקום החיפוש",
     searchPlaceholder: "חיפוש מקום, עיר או מסעדה…",
     openFilters: "סינון תוצאות",
@@ -275,7 +274,7 @@ const he = {
 
   map: {
     map: "מפה",
-    placeholder: (city: string) => `מפה — ${city}`,
+    placeholder: (place: string) => `מפה — ${place}`,
     note: "מוצגים רק עסקים שיש להם מיקום ממופה במאגר.",
     // The map has a real design for having no map — see useGoogleMaps.
     unavailableTitle: "המפה לא זמינה כרגע",
@@ -289,11 +288,12 @@ const he = {
 
   origin: {
     fromDevice: "מהמיקום שלך",
-    fromCity: (city: string) => `ממרכז ${city}`,
     useMyLocation: "השתמשו במיקום שלי",
     locating: "מאתרים…",
-    unavailable: "מודדים ממרכז העיר",
-    backToCity: "מדידה ממרכז העיר",
+    // No pin and no device position: every place in the database, paginated. The
+    // header names the scope; the second line explains it where there is room.
+    everywhere: "כל הארץ",
+    searchingEverywhere: "מציגים את כל המקומות במאגר",
     privacy: "המיקום נשלח רק לשרת שלנו, לא נשמר במכשיר ולא משותף.",
     title: "מאיפה לחפש?",
     close: "סגירה",
@@ -305,8 +305,6 @@ const he = {
     suggestions: "הצעות לכתובת",
     noResults: "לא מצאנו כתובת כזו בישראל. נסו לנסח אחרת.",
     lookupFailed: "לא הצלחנו לחפש את הכתובת. בדקו את החיבור ונסו שוב.",
-    denied: "לא קיבלנו את המיקום שלכם. אפשר להקליד כתובת במקום.",
-    notRefreshed: "לא הצלחנו לקבל מיקום מעודכן. ממשיכים מהמיקום האחרון שלכם.",
   },
 
   // Shown on the launch screen only once the wait is long enough to need words —
@@ -334,8 +332,9 @@ const he = {
     // rest. The count above a list must never read as "this is everything here".
     coverageNoteNearby:
       "לא לכל עסק במאגר יש עדיין מיקום ממופה. עסקים בלי מיקום אינם מופיעים בחיפוש לפי מרחק, כך שהרשימה הזו חלקית.",
-    coverageNoteCity:
-      "המאגר שלנו עדיין לא מכסה את כל העסקים בעיר. מה שמוצג כאן הוא מה שאימתנו — לא כל מה שקיים.",
+    coverageNoteEverywhere:
+      "המאגר שלנו עדיין לא מכסה את כל העסקים בארץ. מה שמוצג כאן הוא מה שאימתנו — לא כל מה שקיים.",
+    loadMore: "הצגת עוד",
     // The API matches an exact case-insensitive substring — no fuzzy matching and no
     // Hebrew normalization. The corpus really does contain both פתח תקווה and פתח
     // תקוה, so a miss usually means a spelling difference, not a missing business.
@@ -344,10 +343,16 @@ const he = {
     emptyQueryBody:
       "החיפוש מחפש את הטקסט בדיוק כפי שהוקלד, בשם או בכתובת. כתיב שונה לא יימצא — למשל ״תקוה״ מול ״תקווה״. נסו חלק מהשם, או איות אחר.",
     emptyQueryAction: "ניקוי החיפוש",
-    emptyCityTitle: (city: string) => `אין לנו עדיין מקומות ב${city}`,
-    emptyCityBody:
-      "המאגר לא מכסה עדיין את כל הערים בארץ. זו חסר בנתונים שלנו — לא אמירה על העיר.",
-    emptyCityAction: "מעבר לעיר אחרת",
+    // The search came back with no rows at all — before any profile or filter was
+    // applied. Around a pinned origin that is a hole in our coverage; with no origin
+    // it is an empty database. Named as our gap, not theirs, either way.
+    nothingHereTitle: (place: string | null): string =>
+      place === null ? "אין עדיין מקומות במאגר" : `אין לנו עדיין מקומות ליד ${place}`,
+    nothingHereBody: (place: string | null): string =>
+      place === null
+        ? "המאגר שלנו עדיין ריק. זה חסר בנתונים שלנו — לא אמירה על שום מקום."
+        : "המאגר עדיין לא מכסה את כל הארץ, ובטווח שנבחר סביב המיקום הזה אין לנו אף עסק. זה חסר בנתונים שלנו — לא אמירה על המקום. אפשר להגדיל את הטווח או לשנות מיקום.",
+    nothingHereAction: "שינוי מיקום החיפוש",
     noVerifiedTitle: "אין כאן מקום שעומד בפרופיל שלך על סמך ראיה מאומתת",
     noVerifiedBody:
       "המקומות מוצגים כמו שהם, עם מה שידוע לנו על כל אחד. ״לא מאומת״ אינו ״לא כשר״ — פשוט אין בידינו ראיה שעונה על מה שהגדרתם.",
@@ -446,7 +451,6 @@ const en: Strings = {
 
   home: {
     nearYou: "Searching near",
-    changeCity: "Change city",
     changeLocation: "Change where we search from",
     searchPlaceholder: "Search a place, city or restaurant…",
     openFilters: "Filter results",
@@ -663,7 +667,7 @@ const en: Strings = {
 
   map: {
     map: "Map",
-    placeholder: (city: string) => `map — ${city}`,
+    placeholder: (place: string) => `map — ${place}`,
     note: "Only businesses with a mapped location in our records appear here.",
     unavailableTitle: "The map isn't available right now",
     unavailableNoKey: "No maps key is configured for this build. The list works as usual.",
@@ -677,11 +681,10 @@ const en: Strings = {
 
   origin: {
     fromDevice: "from your location",
-    fromCity: (city: string) => `from the centre of ${city}`,
     useMyLocation: "Use my location",
     locating: "Locating…",
-    unavailable: "Measuring from the city centre",
-    backToCity: "Measure from the city centre",
+    everywhere: "All of Israel",
+    searchingEverywhere: "Showing every place in our records",
     privacy: "Your location goes only to our own server. It is never stored or shared.",
     title: "Where should we search from?",
     close: "Close",
@@ -693,8 +696,6 @@ const en: Strings = {
     suggestions: "Address suggestions",
     noResults: "We couldn't find that address in Israel. Try wording it differently.",
     lookupFailed: "We couldn't look that address up. Check your connection and try again.",
-    denied: "We didn't get your location. You can type an address instead.",
-    notRefreshed: "We couldn't get a new reading. Still measuring from where you were.",
   },
 
   launch: {
@@ -718,16 +719,20 @@ const en: Strings = {
     emptyActionAll: "Show every place here, unverified included",
     coverageNoteNearby:
       "Not every business in our records has a mapped location yet. Those without one don't appear in a distance search, so this list is partial.",
-    coverageNoteCity:
-      "Our records don't cover every business in this city yet. What you see here is what we have verified — not everything that exists.",
+    coverageNoteEverywhere:
+      "Our records don't cover every business in Israel yet. What you see here is what we have verified — not everything that exists.",
+    loadMore: "Show more",
     emptyQueryTitle: (query: string) => `No results for “${query}”`,
     emptyQueryBody:
       "We match the text exactly as typed, against the name and the address. A different spelling won't be found — Hebrew place names often have two. Try part of the name, or another spelling.",
     emptyQueryAction: "Clear the search",
-    emptyCityTitle: (city: string) => `We have no places in ${city} yet`,
-    emptyCityBody:
-      "Our corpus does not cover every city yet. That is a gap in our data — not a statement about the city.",
-    emptyCityAction: "Try another city",
+    nothingHereTitle: (place: string | null): string =>
+      place === null ? "No places in our records yet" : `We have no places near ${place} yet`,
+    nothingHereBody: (place: string | null): string =>
+      place === null
+        ? "Our records are still empty. That is a gap in our data — not a statement about any place."
+        : "Our corpus does not cover the whole country yet, and within the chosen radius of this location we have no business at all. That is a gap in our data — not a statement about the place. Widen the radius or change the location.",
+    nothingHereAction: "Change where we search from",
     noVerifiedTitle: "Nothing here meets your profile on verified evidence",
     noVerifiedBody:
       "The places below are shown as they are, with whatever we know about each. “Not verified” is not “not kosher” — we simply hold no evidence meeting what you set.",

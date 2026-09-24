@@ -35,8 +35,7 @@ import { ThemeProvider } from "../theme/ThemeProvider";
 
 const he = STRINGS.he;
 
-function renderApp(route = "/", city = "jerusalem") {
-  localStorage.setItem("kashroot.city", city);
+function renderApp(route = "/") {
   return render(
     <ThemeProvider>
       <I18nProvider>

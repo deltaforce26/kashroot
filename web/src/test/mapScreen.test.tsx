@@ -43,8 +43,7 @@ const he = STRINGS.he;
 
 type User = ReturnType<typeof userEvent.setup>;
 
-function renderApp(route = "/", city = "jerusalem") {
-  localStorage.setItem("kashroot.city", city);
+function renderApp(route = "/") {
   return render(
     <ThemeProvider>
       <I18nProvider>
@@ -100,15 +99,14 @@ async function pickFacet(user: User, chip: string, option: string) {
 }
 
 /**
- * What a 10 km default radius round the Jerusalem centre reaches: eight fixtures, the
- * furthest 3.5 km out, three of them meat. Bnei Brak is 48 km away and Tiberias 119,
- * so both sit outside the bar's widest option (25 km) and are never in play here.
- * Every fixture is geocoded, so "plotted" and "returned" are the same number.
+ * jsdom has no geolocation and nothing is pinned, so the map asks for everything: all
+ * eleven fixtures — Jerusalem, Bnei Brak and Tiberias — five of them meat. Every
+ * fixture is geocoded, so "plotted" and "returned" are the same number.
  */
-const JERUSALEM_PINS = 8;
-const JERUSALEM_MEAT = 3;
+const ALL_PINS = 11;
+const ALL_MEAT = 5;
 
-/** Held by exactly one Jerusalem fixture, and that one a pareve bakery. */
+/** Held by exactly one fixture, and that one a pareve bakery. */
 const EDA = "בד״ץ העדה החרדית";
 const EDA_PINS = 1;
 
@@ -116,7 +114,7 @@ describe("map screen", () => {
   it("offers a search field and the filter bar, and no back button or list toggle", async () => {
     const user = userEvent.setup();
     const { container } = await reachMap(user);
-    await expectPins(JERUSALEM_PINS);
+    await expectPins(ALL_PINS);
 
     // Its own search field, filtering in place — not home's, which navigates away.
     expect(screen.getByRole("searchbox", { name: he.search.placeholder })).toBeInTheDocument();
@@ -140,22 +138,22 @@ describe("map screen", () => {
 
   /**
    * The whole point of the change: before it, this filter moved home's list and left
-   * the map plotting all eight.
+   * the map plotting everything.
    */
   it("honours a filter set on the map itself", async () => {
     const user = userEvent.setup();
     await reachMap(user);
-    await expectPins(JERUSALEM_PINS);
+    await expectPins(ALL_PINS);
 
     await pickFacet(user, he.filters.diet, he.diet.meat);
 
-    await expectPins(JERUSALEM_MEAT);
+    await expectPins(ALL_MEAT);
   });
 
   /**
    * The same filter, set on the other screen. The two requests differ only in
    * `page_size` (100 against home's 20), which cannot separate them here: the whole
-   * Jerusalem fixture is eight places, well under either cap, and every one of them is
+   * fixture is eleven places, under either cap, and every one of them is
    * geocoded — so the map's `geo !== null` filter drops nothing and the counts are
    * exactly equal rather than merely related. The cap is asserted too, so a fixture
    * that grew past a page would fail here loudly instead of quietly proving nothing.
@@ -165,14 +163,14 @@ describe("map screen", () => {
     const { container } = await onboard(user);
 
     await waitFor(() =>
-      expect(container.querySelectorAll(".card--grid").length).toBe(JERUSALEM_PINS),
+      expect(container.querySelectorAll(".card--grid").length).toBe(ALL_PINS),
     );
     await pickFacet(user, he.filters.diet, he.diet.meat);
     await waitFor(() =>
-      expect(container.querySelectorAll(".card--grid").length).toBe(JERUSALEM_MEAT),
+      expect(container.querySelectorAll(".card--grid").length).toBe(ALL_MEAT),
     );
     const onHome = container.querySelectorAll(".card--grid").length;
-    // Home pages at 20; this set is nowhere near it, so the agreement below is real.
+    // Home pages at 20; this set is under it, so the agreement below is real.
     expect(onHome).toBeLessThan(20);
 
     await user.click(await screen.findByRole("link", { name: he.nav.map }));
@@ -183,7 +181,7 @@ describe("map screen", () => {
   it("narrows the pins to a typed query", async () => {
     const user = userEvent.setup();
     await reachMap(user);
-    await expectPins(JERUSALEM_PINS);
+    await expectPins(ALL_PINS);
 
     // Matches one fixture by name — the API does a case-insensitive substring over
     // name and address and nothing cleverer, which is all the UI promises.
@@ -195,7 +193,7 @@ describe("map screen", () => {
   it("explains an empty map as a spelling difference when a query caused it", async () => {
     const user = userEvent.setup();
     await reachMap(user);
-    await expectPins(JERUSALEM_PINS);
+    await expectPins(ALL_PINS);
 
     await user.type(screen.getByRole("searchbox", { name: he.search.placeholder }), "זזזזזז");
 
@@ -207,20 +205,20 @@ describe("map screen", () => {
 
     // And it clears back to a full map from the state's own button.
     await user.click(screen.getByRole("button", { name: he.states.emptyQueryAction }));
-    await expectPins(JERUSALEM_PINS);
+    await expectPins(ALL_PINS);
   });
 
   /**
    * A filter can empty the map legitimately, and an empty map with nothing said over
    * it reads as a broken screen. This is the other branch of that slot: the one
-   * Jerusalem fixture holding this certifier is a pareve bakery, so the two facets
+   * fixture holding this certifier is a pareve bakery, so the two facets
    * together leave nothing — while each on its own still finds something, which is
    * what makes the empty map the filters' doing rather than an empty corpus.
    */
   it("explains an empty map as a profile question when a filter caused it", async () => {
     const user = userEvent.setup();
     await reachMap(user);
-    await expectPins(JERUSALEM_PINS);
+    await expectPins(ALL_PINS);
 
     await pickFacet(user, he.filters.kashrut, EDA);
     await expectPins(EDA_PINS);
@@ -234,7 +232,7 @@ describe("map screen", () => {
   it("redirects the deleted list route back to the map", async () => {
     const user = userEvent.setup();
     await onboard(user);
-    await screen.findByText(he.home.nearYou);
+    await screen.findAllByRole("button", { name: he.home.changeLocation });
 
     // Remount at the dead address with the profile onboarding just wrote.
     cleanup();
@@ -243,7 +241,7 @@ describe("map screen", () => {
     expect(
       await screen.findByRole("searchbox", { name: he.search.placeholder }),
     ).toBeInTheDocument();
-    await expectPins(JERUSALEM_PINS);
+    await expectPins(ALL_PINS);
     expect(screen.queryByRole("button", { name: he.states.back })).toBeNull();
   });
 
@@ -259,7 +257,7 @@ describe("map screen", () => {
   it("hangs the filter sheet off the shell, not off a wrapper round the controls", async () => {
     const user = userEvent.setup();
     const { container } = await reachMap(user);
-    await expectPins(JERUSALEM_PINS);
+    await expectPins(ALL_PINS);
 
     await user.click(screen.getByRole("button", { name: he.home.openFilters }));
 
@@ -283,7 +281,7 @@ describe("map screen", () => {
   it("keeps the coverage caveat, and out of the live region", async () => {
     const user = userEvent.setup();
     const { container } = await reachMap(user);
-    await expectPins(JERUSALEM_PINS);
+    await expectPins(ALL_PINS);
 
     const note = screen.getByText(he.map.note);
     expect(note).toHaveClass("sr-only");
@@ -291,6 +289,6 @@ describe("map screen", () => {
 
     // And the screen has a real heading, which a picture cannot otherwise give.
     const heading = within(container).getByRole("heading", { level: 1 });
-    expect(heading).toHaveTextContent(he.home.resultsTitle(JERUSALEM_PINS));
+    expect(heading).toHaveTextContent(he.home.resultsTitle(ALL_PINS));
   });
 });
