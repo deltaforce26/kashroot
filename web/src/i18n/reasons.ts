@@ -48,15 +48,27 @@ export const POLARITY_GLYPH: Record<Polarity, string> = {
 };
 
 /**
+ * Reasons the API sends that the client does not show. The verification-age line
+ * ("verified in the last year") was dropped from the UI; the reason still gates the
+ * verdict server-side, and its absence never hides why a verdict is not MATCH.
+ */
+const HIDDEN_REASONS = new Set<ReasonCode>(["evidence_fresh"]);
+
+export function visibleReasons<T extends { code: ReasonCode }>(reasons: T[]): T[] {
+  return reasons.filter((reason) => !HIDDEN_REASONS.has(reason.code));
+}
+
+/**
  * The single reason a compact card has room for.
  *
  * Reason lists arrive in the backend's canonical order — positive evidence first —
  * which reads correctly in the full panel but would make a NO_MATCH card lead with
- * "verified 6 days ago". So a card leads with the first reason that actually moved
+ * "certifier — on your list". So a card leads with the first reason that actually moved
  * the verdict, falling back to the first reason when everything is positive. This
  * only *selects* among reasons the API sent; it never invents or reweighs one.
  */
-export function primaryReason<T extends { code: ReasonCode }>(reasons: T[]): T | undefined {
+export function primaryReason<T extends { code: ReasonCode }>(all: T[]): T | undefined {
+  const reasons = visibleReasons(all);
   const deciding = reasons.find((reason) => {
     const polarity = reasonPolarity(reason.code);
     return polarity === "negative" || polarity === "doubt";
@@ -87,7 +99,6 @@ export interface ReasonContext {
   certifierName?: string | null;
   /** Already formatted for the active language. */
   validUntil?: string | null;
-  evidenceAgeDays?: number | null;
   daysUntilExpiry?: number | null;
 }
 
@@ -144,11 +155,8 @@ export function reasonText(
           ? "תעודה פעילה"
           : "Certificate active";
     case "evidence_fresh":
-      return context.evidenceAgeDays === null || context.evidenceAgeDays === undefined
-        ? he
-          ? "אומת לאחרונה"
-          : "Recently verified"
-        : strings.restaurant.verifiedAgo(context.evidenceAgeDays);
+      // Not shown (see HIDDEN_REASONS); kept so the switch stays exhaustive.
+      return "";
     case "certificate_expires_soon":
       return context.daysUntilExpiry === null || context.daysUntilExpiry === undefined
         ? he
@@ -200,13 +208,7 @@ export function reasonText(
         ? "מצב התעודה לא מזוהה — ולכן לא נחשב כראיה"
         : "The certificate state is unrecognized — so it is not treated as evidence";
     case "evidence_stale":
-      return context.evidenceAgeDays === null || context.evidenceAgeDays === undefined
-        ? he
-          ? "האימות האחרון ישן מדי"
-          : "The last verification is too old"
-        : he
-          ? `האימות האחרון היה לפני ${context.evidenceAgeDays} ימים — ישן מדי`
-          : `Last verified ${context.evidenceAgeDays} days ago — too old to rely on`;
+      return he ? "האימות האחרון ישן מדי" : "The last verification is too old";
     case "no_freshness_evidence":
       return he
         ? "לא אימתנו את הרשומה הזו מעולם"

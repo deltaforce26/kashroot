@@ -39,7 +39,6 @@ export function DegradationBanner({
             : deciding.certifier.name_he
           : place.certifierLabel,
         validUntil: formatDate(detail.kashrut.freshness?.valid_until ?? null),
-        evidenceAgeDays: detail.kashrut.freshness?.evidence_age_days ?? null,
         daysUntilExpiry: detail.kashrut.freshness?.days_until_expiry ?? null,
       })
     : "";
