@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app import __version__
 from app.api.admin import router as admin_router
 from app.api.public import router as public_router
+from app.api.public_photos import router as public_photos_router
 from app.core.config import settings
 from app.db.session import get_session
 
@@ -55,6 +56,7 @@ def create_app() -> FastAPI:
     application.include_router(router)
     application.include_router(admin_router)
     application.include_router(public_router)
+    application.include_router(public_photos_router)
 
     return application
 

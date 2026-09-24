@@ -111,8 +111,7 @@ const RANKING_WORDS: Record<Lang, RegExp> = {
  * `saved.matchCount(n)`, `degradeBody(name, why, verdict)` and friends. They used to
  * be skipped outright, which meant a whole class of user-visible sentence was never
  * scanned for ranking language at all. Every arity is called with each sample so the
- * branchy ones (`verifiedAgo` reads differently at 0, 1, n, over 100 days and over
- * a year) are all covered.
+ * branchy ones are all covered.
  */
 const SAMPLES: unknown[] = [0, 1, 7, 200, 400, "ירושלים", "Jerusalem"];
 
@@ -196,12 +195,6 @@ describe("certifier neutrality in the string table", () => {
     expect(scanned).toContain(table.restaurant.verifiedBy("Jerusalem"));
     expect(scanned).toContain(table.states.nothingHereTitle("Jerusalem"));
     expect(scanned).toContain(table.saved.degradeBody("Jerusalem", "Jerusalem", "Jerusalem"));
-    // …including every branch of the branchy ones.
-    expect(scanned).toContain(table.restaurant.verifiedAgo(0));
-    expect(scanned).toContain(table.restaurant.verifiedAgo(1));
-    expect(scanned).toContain(table.restaurant.verifiedAgo(7));
-    expect(scanned).toContain(table.restaurant.verifiedAgo(200));
-    expect(scanned).toContain(table.restaurant.verifiedAgo(400));
   });
 
   it("would catch ranking language hiding inside a parameterized string", () => {

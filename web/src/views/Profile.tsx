@@ -89,11 +89,6 @@ export function Profile() {
 
         <section className="panel glass rows">
           <div className="row">
-            <span>{t.profile.diet}</span>
-            <span className="row__value">{t.profile.dietValue}</span>
-          </div>
-
-          <div className="row">
             <span>{t.profile.language}</span>
             <span className="segmented">
               <button type="button" aria-pressed={lang === "he"} onClick={() => setLang("he")}>

@@ -12,14 +12,17 @@
  * would be the one fabricated thing on the screen that matters most.
  */
 
-import { useMemo, useState } from "react";
+import { Flag } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import type { CertificateEvidenceOut } from "../api/types";
 import { decidingCertificate } from "../api/viewmodel";
+import { CertificatePhotoSlot } from "../components/CertificatePhotoSlot";
 import { EvidencePanel } from "../components/EvidencePanel";
 import { FitScoreBar } from "../components/FitScoreBar";
 import { tintClass } from "../components/RestaurantCard";
 import { SaveToListHost } from "../components/SaveToListSheet";
+import { ReportSheet } from "../components/ReportSheet";
 import { VerdictPill } from "../components/VerdictPill";
 import { BookmarkIcon, ChevronIcon, PhoneIcon, ShareIcon } from "../components/icons";
 import { ErrorState, LoadingList, NotFoundState, OfflineBanner } from "../components/states";
@@ -32,7 +35,17 @@ import { toPayload } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
 import { useSaveToggle } from "../saved/useSaveToggle";
 
-function CertificateCard({ evidence }: { evidence: CertificateEvidenceOut }) {
+function CertificateCard({
+  restaurantId,
+  evidence,
+  onReport,
+  onStale,
+}: {
+  restaurantId: string;
+  evidence: CertificateEvidenceOut;
+  onReport: () => void;
+  onStale: () => void;
+}) {
   const { t, lang } = useI18n();
   const validUntil = formatDate(evidence.valid_until);
   const certifierName =
@@ -43,9 +56,12 @@ function CertificateCard({ evidence }: { evidence: CertificateEvidenceOut }) {
   // certificate record came from.
   return (
     <section className="panel glass cert-card" aria-label={t.restaurant.certificate}>
-      <div className="cert-card__photo stripe-flat" aria-hidden="true">
-        {t.restaurant.certificatePhoto}
-      </div>
+      <CertificatePhotoSlot
+        restaurantId={restaurantId}
+        evidence={evidence}
+        onReport={onReport}
+        onStale={onStale}
+      />
       <div className="cert-card__body">
         <div className="cert-card__title">{t.restaurant.certificate}</div>
         <span>{certifierName}</span>
@@ -69,6 +85,9 @@ export function Restaurant() {
   const goBack = useGoBack();
 
   const [copied, setCopied] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const openReport = useCallback(() => setReporting(true), []);
+  const closeReport = useCallback(() => setReporting(false), []);
 
   const payload = useMemo(() => toPayload(profile), [profile]);
   // Same centre the list used, so the distance shown here is the same number.
@@ -105,6 +124,9 @@ export function Restaurant() {
   }
 
   const deciding = decidingCertificate(data);
+  // With an approved photo on screen, the report button sits beside it and is the
+  // card's only action; otherwise it lives at the foot of the page. Never both.
+  const reportBesidePhoto = deciding?.photo_status === "accepted" && Boolean(deciding.photo_url);
   const others = data.certificates.filter((certificate) => certificate !== deciding);
 
   const name = pickName(lang, data.nameHe, data.nameEn);
@@ -199,7 +221,12 @@ export function Restaurant() {
         </div>
 
         {deciding ? (
-          <CertificateCard evidence={deciding} />
+          <CertificateCard
+            restaurantId={data.id}
+            evidence={deciding}
+            onReport={openReport}
+            onStale={reload}
+          />
         ) : (
           <section className="panel glass" aria-label={t.restaurant.certificate}>
             <div className="cert-card__title">{t.restaurant.certificate}</div>
@@ -265,11 +292,21 @@ export function Restaurant() {
           )}
         </div>
 
-        <p className="hint" style={{ paddingBottom: 12 }}>
-          {t.restaurant.report}
-        </p>
+        {!reportBesidePhoto && (
+          <button type="button" className="report-link" onClick={openReport}>
+            <Flag size={12} aria-hidden="true" />
+            <span>{t.restaurant.report.open}</span>
+          </button>
+        )}
       </div>
 
+      {reporting && (
+        <ReportSheet
+          restaurantId={data.id}
+          {...(deciding ? { certificateId: deciding.certificate_id } : {})}
+          onClose={closeReport}
+        />
+      )}
       <SaveToListHost />
     </div>
   );

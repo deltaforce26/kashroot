@@ -89,3 +89,43 @@ alembic downgrade -1
 ```
 
 The URL comes from `KASHROOT_DATABASE_URL` via `app.core.config`, not from `alembic.ini`.
+
+## Report notification email
+
+Every public community report (`POST /v1/restaurants/{id}/flags`) sends one email
+through [Resend](https://resend.com) after the flag is committed (`app.services.notifications`),
+via a background task so a slow or failing send never delays or fails the response.
+
+| Variable | Purpose |
+| --- | --- |
+| `KASHROOT_RESEND_API_KEY` | Resend API key (secret). |
+| `KASHROOT_REPORT_EMAIL_FROM` | Verified Resend "from" address. |
+| `KASHROOT_REPORT_EMAIL_TO` | Comma-separated recipient list. |
+| `KASHROOT_ADMIN_BASE_URL` | Optional — base URL of the admin console, linked in the email to its flag queue. |
+
+Unset key or recipients is a silent no-op (`NullSender`), so local dev and the test
+suite need none of this configured. See `.env.example`.
+
+## Anonymous upload rate limiting
+
+`POST /v1/restaurants/{id}/certificate-photo` and `POST /v1/restaurants/{id}/flags`
+are both rate-limited per client IP (`app.services.rate_limit`), reused as a FastAPI
+dependency with a distinct scope per endpoint (`"photo_upload"`, `"flag_report"`) so
+their counters never collide, even for the same IP.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `KASHROOT_TRUST_PROXY_HEADERS` | `false` | Trust `X-Forwarded-For`'s first hop as the client IP. Enable only behind a proxy that itself sets/overwrites the header. |
+| `KASHROOT_PHOTO_UPLOAD_RATE_LIMIT_PER_HOUR` | `5` | Uploads per IP per rolling-hour fixed window. |
+| `KASHROOT_PHOTO_UPLOAD_RATE_LIMIT_PER_DAY` | `20` | Uploads per IP per rolling-day fixed window. |
+| `KASHROOT_FLAG_REPORT_RATE_LIMIT_PER_HOUR` | `5` | Flag reports per IP per rolling-hour fixed window. |
+| `KASHROOT_FLAG_REPORT_RATE_LIMIT_PER_DAY` | `20` | Flag reports per IP per rolling-day fixed window. |
+
+Counts are kept in Redis (`KASHROOT_REDIS_URL`) so they're shared across worker
+processes; if Redis is unset or errors at request time, the limiter falls back to an
+in-process in-memory counter and logs the error, so local dev and the test suite need
+no Redis daemon. The attempt is counted before the endpoint does any further
+processing, so a rejected oversized upload still counts, and a rate-limited flag
+report is rejected before a `Flag` row is created or a notification email is queued.
+Over the limit, the response is `429` with a `Retry-After` header and
+`detail: "rate_limited"`.

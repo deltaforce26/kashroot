@@ -15,7 +15,9 @@ Fail-safe rules (PRD §13, CLAUDE.md — locked):
   state still says ACTIVE.
 * The staleness clock always runs from ``verified_at`` — an unexpired validity window
   is not proof we would have noticed a revocation, so stale or missing verification
-  evidence degrades to UNKNOWN even when ``valid_until`` lies in the future.
+  evidence degrades to UNKNOWN even when ``valid_until`` lies in the future. This check
+  is switchable via ``enforce_freshness`` (default ``True``); the logic stays in place
+  for later re-enabling even when a caller turns it off.
 * Any certificate state this engine does not recognize is doubt → UNKNOWN; only the
   known non-active states (REVOKED) may be definitive.
 * A required attribute that a certificate does not mention is *unknown*, not false:
@@ -82,6 +84,7 @@ def evaluate_kashrut(
     now: dt.datetime,
     freshness_days: int = DEFAULT_FRESHNESS_DAYS,
     expires_soon_days: int = DEFAULT_EXPIRES_SOON_DAYS,
+    enforce_freshness: bool = True,
 ) -> MatchResult:
     """Evaluate one restaurant's certificates against one kashrut profile.
 
@@ -108,6 +111,7 @@ def evaluate_kashrut(
             now=now,
             freshness_days=freshness_days,
             expires_soon_days=expires_soon_days,
+            enforce_freshness=enforce_freshness,
         )
         for certificate in certificates
     ]
@@ -163,6 +167,7 @@ def _evaluate_certificate(
     now: dt.datetime,
     freshness_days: int,
     expires_soon_days: int,
+    enforce_freshness: bool,
 ) -> CertificateEvaluation:
     """Evaluate one certificate. Definitive failures → NO_MATCH; any doubt → UNKNOWN."""
     today = now.date()
@@ -221,17 +226,20 @@ def _evaluate_certificate(
     # Freshness. The staleness clock *always* runs from verified_at: an unexpired
     # validity window records what the document says, but it is not proof we would
     # have noticed a revocation — stale or missing verification evidence is doubt,
-    # and doubt → UNKNOWN, never → MATCH.
+    # and doubt → UNKNOWN, never → MATCH. Switchable via enforce_freshness (locked
+    # decision override, current stage only): when off, this block contributes no
+    # reasons at all — no doubt, no positive. Expiry (valid_until) still applies.
     if certificate.valid_until is not None:
         positives.append(Reason(ReasonCode.CERTIFICATE_VALID))
         if freshness.expires_soon:
             positives.append(Reason(ReasonCode.CERTIFICATE_EXPIRES_SOON))
-    if freshness.verified_at is None:
-        doubts.append(Reason(ReasonCode.NO_FRESHNESS_EVIDENCE))
-    elif freshness.is_stale:
-        doubts.append(Reason(ReasonCode.EVIDENCE_STALE))
-    else:
-        positives.append(Reason(ReasonCode.EVIDENCE_FRESH))
+    if enforce_freshness:
+        if freshness.verified_at is None:
+            doubts.append(Reason(ReasonCode.NO_FRESHNESS_EVIDENCE))
+        elif freshness.is_stale:
+            doubts.append(Reason(ReasonCode.EVIDENCE_STALE))
+        else:
+            positives.append(Reason(ReasonCode.EVIDENCE_FRESH))
 
     if failures:
         outcome = Verdict.NO_MATCH

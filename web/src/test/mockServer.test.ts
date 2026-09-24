@@ -36,19 +36,23 @@ describe("fail-safe verdicts", () => {
     expect(detail.kashrut.verdict).toBe("match");
   });
 
-  it("treats a 328-day-old published list as fresh inside the 365-day window", async () => {
+  it("matches Rubin's 328-day-old published list (inside the 365-day window)", async () => {
     // The design's flagship restaurant, and the live database's dominant case:
     // Rubin's list is dated 2025-09-23, which is inside the window, so it matches.
+    // Verification-age is off (ENFORCE_FRESHNESS = false) for the current app stage,
+    // so this reads MATCH with no freshness reason either way.
     const detail = await mockRestaurant("r-nougatine", ALL_CERTIFIERS, NOW);
     expect(detail.kashrut.verdict).toBe("match");
-    expect(detail.kashrut.reasons.map((reason) => reason.code)).toContain("evidence_fresh");
+    expect(detail.kashrut.reasons.map((reason) => reason.code)).not.toContain("evidence_fresh");
   });
 
-  it("still degrades evidence that is genuinely past the window", async () => {
-    // Rare in this corpus but not dead: the cause recurs as data ages.
+  it("matches despite evidence that is genuinely past the freshness window", async () => {
+    // Product decision override (current app stage): verification-age staleness no
+    // longer affects the verdict, so this restaurant — UNKNOWN only because its
+    // evidence was stale — now reads MATCH with no freshness reason.
     const detail = await mockRestaurant("r-cafe-alit", ALL_CERTIFIERS, NOW);
-    expect(detail.kashrut.verdict).toBe("unknown");
-    expect(detail.kashrut.reasons.map((reason) => reason.code)).toContain("evidence_stale");
+    expect(detail.kashrut.verdict).toBe("match");
+    expect(detail.kashrut.reasons.map((reason) => reason.code)).not.toContain("evidence_stale");
   });
 
   it("needs a moderator-reviewed certificate before an attribute requirement can pass", async () => {
@@ -85,10 +89,10 @@ describe("fail-safe verdicts", () => {
     expect(detail.kashrut.reasons.map((reason) => reason.code)).toContain("certificate_expired");
   });
 
-  it("auto-degrades stale evidence past the freshness window", async () => {
+  it("does not degrade evidence past the freshness window (enforce_freshness off)", async () => {
     const detail = await mockRestaurant("r-cafe-alit", ALL_CERTIFIERS, NOW);
-    expect(detail.kashrut.verdict).toBe("unknown");
-    expect(detail.kashrut.reasons.map((reason) => reason.code)).toContain("evidence_stale");
+    expect(detail.kashrut.verdict).toBe("match");
+    expect(detail.kashrut.reasons.map((reason) => reason.code)).not.toContain("evidence_stale");
   });
 
   it("reserves NO_MATCH for definitive published facts", async () => {

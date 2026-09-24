@@ -22,32 +22,39 @@
  *   - Combining certificates: MATCH beats UNKNOWN beats NO_MATCH.
  */
 
-import type {
-  CertificateAttribute,
-  CertificateEvidenceOut,
-  CertifierChip,
-  CertifierListItem,
-  CertificationLevel,
-  Confidence,
-  FitComponentOut,
-  FitScoreOut,
-  FreshnessOut,
-  GeoPoint,
-  KashrutVerdictOut,
-  ProfileRequest,
-  ReasonCode,
-  ReasonOut,
-  RestaurantDetailResponseOut,
-  SearchRequest,
-  SearchResponseOut,
-  SearchResultItemOut,
-  Verdict,
-  WhitelistEntryRequest,
+import { ApiError } from "../client";
+import {
+  PHOTO_MAX_BYTES,
+  PHOTO_MIME_TYPES,
+  type CertificateAttribute,
+  type CertificateEvidenceOut,
+  type CertifierChip,
+  type CertifierListItem,
+  type CertificationLevel,
+  type Confidence,
+  type FlagCreatedOut,
+  type FlagRequest,
+  type FitComponentOut,
+  type FitScoreOut,
+  type FreshnessOut,
+  type GeoPoint,
+  type KashrutVerdictOut,
+  type PhotoUploadOut,
+  type ProfileRequest,
+  type ReasonCode,
+  type ReasonOut,
+  type RestaurantDetailResponseOut,
+  type SearchRequest,
+  type SearchResponseOut,
+  type SearchResultItemOut,
+  type Verdict,
+  type WhitelistEntryRequest,
 } from "../types";
 import {
   CERTIFIERS,
   RESTAURANTS,
   type FixtureCertificate,
+  type FixturePhoto,
   type FixtureRestaurant,
 } from "./fixtures";
 
@@ -70,6 +77,15 @@ export const FRESHNESS_WINDOW_DAYS = 365;
 
 /** Inside this many days of expiry, the engine adds an informational reason. */
 export const EXPIRES_SOON_DAYS = 30;
+
+/**
+ * Mirrors `Settings.enforce_freshness` (app/core/config.py). Verification-age
+ * staleness is a user decision override for the current app stage: it must not
+ * affect the verdict. The staleness logic itself stays in `freshnessOf` and
+ * `evaluateCertificate` below (switchable), just as it does on the backend — only
+ * the reason emission is gated off. Expiry (`valid_until` past) is unaffected.
+ */
+export const ENFORCE_FRESHNESS = false;
 
 const REASON_ORDER: ReasonCode[] = [
   "certifier_in_whitelist",
@@ -191,9 +207,11 @@ function evaluateCertificate(
     else doubts.push(reason("attribute_unknown", attribute));
   }
 
-  if (freshness.evidence_age_days === null) doubts.push(reason("no_freshness_evidence"));
-  else if (freshness.is_stale) doubts.push(reason("evidence_stale"));
-  else positives.push(reason("evidence_fresh"));
+  if (ENFORCE_FRESHNESS) {
+    if (freshness.evidence_age_days === null) doubts.push(reason("no_freshness_evidence"));
+    else if (freshness.is_stale) doubts.push(reason("evidence_stale"));
+    else positives.push(reason("evidence_fresh"));
+  }
 
   if (freshness.expires_soon) positives.push(reason("certificate_expires_soon"));
 
@@ -313,6 +331,7 @@ function toEvidence(
   cert: FixtureCertificate,
   evaluation: CertOutcome,
   now: Date,
+  photo: FixturePhoto | null,
 ): CertificateEvidenceOut {
   return {
     certificate_id: cert.certificate_id,
@@ -332,7 +351,36 @@ function toEvidence(
     reasons: evaluation.reasons,
     confidence: evaluation.confidence,
     freshness: evaluation.freshness,
+    photo_status: photo ? photo.status : "none",
+    photo_url: photo?.status === "accepted" ? photo.url : null,
   };
+}
+
+/* ── Photo and report state, mutable like the server's tables ────────────── */
+
+/** Keyed by certificate id — a fixture's `photo` is assigned to its first certificate. */
+let photoState = new Map<string, FixturePhoto>();
+let flagLog: Array<{ restaurant_id: string; body: FlagRequest }> = [];
+let nextId = 1;
+
+/** Back to the fixtures' own photo states, with no reports. For tests. */
+export function resetMockSubmissions(): void {
+  photoState = new Map(
+    RESTAURANTS.flatMap((restaurant) => {
+      const certificate = restaurant.certificates[0];
+      return restaurant.photo && certificate
+        ? [[certificate.certificate_id, { ...restaurant.photo }] as const]
+        : [];
+    }),
+  );
+  flagLog = [];
+  nextId = 1;
+}
+resetMockSubmissions();
+
+/** Every report the mock has taken since the last reset. For tests. */
+export function mockFlags(): ReadonlyArray<{ restaurant_id: string; body: FlagRequest }> {
+  return flagLog;
 }
 
 /* ── The three endpoints ─────────────────────────────────────────────────── */
@@ -340,6 +388,8 @@ function toEvidence(
 const LATENCY_MS = 260;
 const delay = <T,>(value: T): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), LATENCY_MS));
+const delayReject = <T,>(error: Error): Promise<T> =>
+  new Promise((_, reject) => setTimeout(() => reject(error), LATENCY_MS));
 
 export function mockCertifiers(): Promise<CertifierListItem[]> {
   const items: CertifierListItem[] = CERTIFIERS.map((certifier) => {
@@ -482,7 +532,52 @@ export function mockRestaurant(
     certificates: restaurant.certificates.map((cert, index) => {
       const evaluation = evaluations[index];
       if (!evaluation) throw new Error("unreachable: evaluation per certificate");
-      return toEvidence(cert, evaluation, now);
+      const photo = photoState.get(cert.certificate_id) ?? null;
+      return toEvidence(cert, evaluation, now, photo);
     }),
   });
+}
+
+/**
+ * POST /v1/restaurants/{id}/certificate-photo, replayed: the same refusals in the
+ * same order as the API — unknown restaurant or a `certificate_id` that is not one
+ * of its own certificates 404, an accepted photo 409 `photo_exists`, one already
+ * waiting 409 `photo_pending`, then 415 and 413.
+ */
+export function mockUploadCertificatePhoto(
+  restaurantId: string,
+  certificateId: string,
+  file: File,
+): Promise<PhotoUploadOut> {
+  const restaurant = RESTAURANTS.find((candidate) => candidate.id === restaurantId);
+  if (!restaurant) return delayReject(new ApiError(404, "not_found"));
+  const certificate = restaurant.certificates.find(
+    (candidate) => candidate.certificate_id === certificateId,
+  );
+  if (!certificate) return delayReject(new ApiError(404, "not_found"));
+
+  const current = photoState.get(certificateId);
+  if (current?.status === "accepted") return delayReject(new ApiError(409, "photo_exists"));
+  if (current?.status === "pending") return delayReject(new ApiError(409, "photo_pending"));
+  if (!PHOTO_MIME_TYPES.includes(file.type)) {
+    return delayReject(new ApiError(415, "unsupported_media_type"));
+  }
+  if (file.size > PHOTO_MAX_BYTES) return delayReject(new ApiError(413, "file_too_large"));
+
+  photoState.set(certificateId, { status: "pending", url: null });
+  return delay({ photo_id: `mock-photo-${nextId++}`, status: "pending" as const });
+}
+
+/** POST /v1/restaurants/{id}/flags, replayed. A report never touches a verdict. */
+export function mockReportRestaurant(restaurantId: string, body: FlagRequest): Promise<FlagCreatedOut> {
+  const restaurant = RESTAURANTS.find((candidate) => candidate.id === restaurantId);
+  if (!restaurant) return delayReject(new ApiError(404, "not_found"));
+  if (
+    body.certificate_id &&
+    !restaurant.certificates.some((candidate) => candidate.certificate_id === body.certificate_id)
+  ) {
+    return delayReject(new ApiError(404, "not_found"));
+  }
+  flagLog.push({ restaurant_id: restaurantId, body });
+  return delay({ flag_id: `mock-flag-${nextId++}`, state: "open" as const });
 }

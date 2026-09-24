@@ -15,6 +15,12 @@ from app.core.consts import (
     UNKNOWN_STORAGE_BACKEND_ERROR,
     StorageBackend,
 )
+from app.services.rate_limit_consts import (
+    DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_DAY,
+    DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_HOUR,
+    DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_DAY,
+    DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_HOUR,
+)
 
 
 class Settings(BaseSettings):
@@ -44,6 +50,27 @@ class Settings(BaseSettings):
     db_pool_size: int = DEFAULT_DB_POOL_SIZE
     db_max_overflow: int = DEFAULT_DB_MAX_OVERFLOW
     redis_url: str = "redis://localhost:6379/0"
+
+    # Whether to trust a reverse proxy's X-Forwarded-For header for rate-limit
+    # client identity (app.services.rate_limit.get_client_identifier). Only the
+    # first hop is read, and only when this is true — otherwise a client could set
+    # its own header and spoof a fresh IP on every request. Enable this only when
+    # the app is actually deployed behind a proxy that sets/overwrites this header
+    # itself (e.g. a load balancer); leave it false for local dev and for any
+    # deployment reachable directly.
+    trust_proxy_headers: bool = False
+
+    # Per-IP fixed-window limits on the anonymous certificate-photo upload
+    # (POST /v1/restaurants/{id}/certificate-photo). Both windows apply together;
+    # see app.services.rate_limit and .env.example.
+    photo_upload_rate_limit_per_hour: int = DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_HOUR
+    photo_upload_rate_limit_per_day: int = DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_DAY
+
+    # Per-IP fixed-window limits on the anonymous community-flag report
+    # (POST /v1/restaurants/{id}/flags). Separate scope/counters from the photo
+    # upload limits above; see app.services.rate_limit and .env.example.
+    flag_report_rate_limit_per_hour: int = DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_HOUR
+    flag_report_rate_limit_per_day: int = DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_DAY
 
     # Which MediaStorage backend serves certificate evidence photos. "auto" resolves
     # to Supabase when the credentials below are set and to S3/MinIO otherwise, so
@@ -76,12 +103,28 @@ class Settings(BaseSettings):
     # certifier overrides it. Staleness degrades to UNKNOWN — never to MATCH.
     default_freshness_days: int = 365
 
+    # Verification-age gate is off for the current app stage (explicit product
+    # decision, overrides the engine's documented staleness fail-safe); the engine
+    # logic stays in place, switchable, for later re-enabling.
+    enforce_freshness: bool = False
+
     # TEMPORARY moderator auth for the admin/moderation API, until real moderator
     # accounts exist (PRD FR8). Maps bearer token -> moderator actor name; the actor
     # name flows into every AuditLog entry the moderator writes. Configure via
     # KASHROOT_ADMIN_API_TOKENS='{"some-long-token": "alice"}' (JSON). Empty = the
     # admin API rejects everything. Tokens are secrets: never log them.
     admin_api_tokens: dict[str, str] | str = {}
+
+    # Resend (https://resend.com) email notifications for public community reports
+    # (POST /v1/restaurants/{id}/flags). Unset key or recipients -> silent no-op, so
+    # dev/tests work with no email credentials at all (app.services.notifications).
+    resend_api_key: str | None = None
+    report_email_from: str | None = None
+    # Comma-separated recipient list, e.g. "alice@example.com,bob@example.com".
+    report_email_to: str | None = None
+    # Optional base URL of the admin console, for a link to its flag queue (/flags)
+    # in the notification email, e.g. "https://admin.kashroot.example".
+    admin_base_url: str | None = None
 
     @field_validator("storage_backend", mode="before")
     @classmethod
