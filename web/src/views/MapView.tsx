@@ -428,7 +428,6 @@ export function MapView() {
         <input
           type="search"
           className="searchbar__input"
-          dir="auto"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder={t.search.placeholder}
