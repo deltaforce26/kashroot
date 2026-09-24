@@ -275,7 +275,6 @@ export function useOrigin(): {
   /** Measure from a point the user chose by name. */
   setAddressOrigin: (label: string, point: GeoPoint) => void;
   /** Drop the pin and show every place in the database. Remembered across reloads. */
-  searchEverywhere: () => void;
 } {
   // Restored in the initialiser, not an effect: the first render must already be
   // measuring from the stored origin, or the list paints once unscoped and then
@@ -299,11 +298,6 @@ export function useOrigin(): {
     publish({ source: "address", point, label }, "idle");
   }, []);
 
-  const searchEverywhere = useCallback(() => {
-    persist({ source: "none" });
-    publish(null, "idle");
-  }, []);
-
   return {
     origin: override?.point ?? null,
     source: override?.source ?? "none",
@@ -312,6 +306,5 @@ export function useOrigin(): {
     resolving: override === null && geoState === "requesting",
     requestDeviceLocation,
     setAddressOrigin,
-    searchEverywhere,
   };
 }

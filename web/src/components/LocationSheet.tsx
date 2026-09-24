@@ -21,7 +21,6 @@
  * The sheet does not filter or rank anything. It moves the origin; the API re-answers.
  */
 
-import { Globe } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CloseIcon, CrosshairIcon, PinIcon, SearchIcon } from "./icons";
 import { useI18n } from "../i18n/I18nProvider";
@@ -70,18 +69,14 @@ function exitDuration(): number {
 
 export function LocationSheet({ onClose }: { onClose: () => void }) {
   const { t, lang } = useI18n();
-  const { source, state, requestDeviceLocation, setAddressOrigin, searchEverywhere } =
+  const { source, state, requestDeviceLocation, setAddressOrigin } =
     useOrigin();
 
   const [address, setAddress] = useState("");
   const [lookup, setLookup] = useState<Lookup>({ state: "idle" });
   // Only a permission answer that arrives while the sheet is open should close it;
   // a refusal recorded on an earlier screen must not slam the sheet shut on open.
-  // Set by the button below. The notes under it answer *that* tap only: the device
-  // is also asked on first load, and a refusal there must not greet the user with a
-  // "we didn't get your location" they never asked for.
   const askedRef = useRef(false);
-  const [asked, setAsked] = useState(false);
 
   // Every way out runs through `close`, so the sheet cannot be unmounted from under
   // its own exit: the scrim, the X, Escape and a granted permission all ask to leave
@@ -198,41 +193,12 @@ export function LocationSheet({ onClose }: { onClose: () => void }) {
           disabled={locating}
           onClick={() => {
             askedRef.current = true;
-            setAsked(true);
             requestDeviceLocation();
           }}
         >
           <CrosshairIcon size={16} />
           {locating ? t.origin.locating : t.origin.useMyLocation}
         </button>
-        {/* Two different truths, and they call for different next moves: with no
-            position at all the address field is the way forward, while a failed
-            refresh leaves the user exactly where they were and needs no action. */}
-        {asked && state === "unavailable" && (
-          <p className="hint sheet__note" role="status">
-            {t.origin.denied}
-          </p>
-        )}
-        {asked && state === "stale" && (
-          <p className="hint sheet__note" role="status">
-            {t.origin.notRefreshed}
-          </p>
-        )}
-
-        {/* The last resort, offered plainly: no pin, every place in the database. */}
-        <button
-          type="button"
-          className="cta cta--ghost sheet__locate"
-          aria-pressed={source === "none"}
-          onClick={() => {
-            searchEverywhere();
-            close();
-          }}
-        >
-          <Globe size={16} strokeWidth={2} aria-hidden />
-          {t.origin.everywhere}
-        </button>
-
         {hasMapsKey() && (
           <form
             className="searchbar glass sheet__address"

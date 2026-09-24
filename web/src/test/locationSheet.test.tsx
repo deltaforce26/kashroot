@@ -184,8 +184,7 @@ describe("home location sheet", () => {
       within(sheet).getByRole("button", { name: he.origin.useMyLocation }),
     ).toBeInTheDocument();
     expect(within(sheet).getByLabelText(he.origin.addressLabel)).toBeInTheDocument();
-    // …and the way out of both. There is no city to pick: the app has none.
-    expect(within(sheet).getByRole("button", { name: he.origin.everywhere })).toBeInTheDocument();
+    // There is no city to pick: the app has none.
     expect(within(sheet).queryByRole("button", { name: "ירושלים" })).toBeNull();
     // It drops from the top rather than rising from the bottom, so it lands on the
     // header control that asked. jsdom lays nothing out; the modifier is the guarantee.
@@ -387,8 +386,6 @@ describe("home location sheet", () => {
     expect(await screen.findByText(he.origin.everywhere)).toBeInTheDocument();
     expect(screen.getByText(he.origin.searchingEverywhere)).toBeInTheDocument();
     expect(positionRequests).toBe(1);
-    // The header does not nag: the refusal is said in the sheet, where the button is.
-    expect(screen.queryByText(he.origin.denied)).toBeNull();
   });
 
   it("measures from the device when the user allows it", async () => {
@@ -405,21 +402,6 @@ describe("home location sheet", () => {
     expect(screen.getByText(he.map.youAreHere)).toBeInTheDocument();
   });
 
-  /**
-   * The device is asked on first load too. A refusal there is not something the user
-   * did in this sheet, so the sheet opens clean; the note belongs to a tap here.
-   */
-  it("does not greet the user with a refusal note they never asked for", async () => {
-    const user = userEvent.setup();
-    stubGeolocation("deny");
-    // Nothing stored: the on-load request runs, and the stub refuses it.
-    await reachHome(user);
-    await openSheet(user);
-
-    expect(screen.queryByText(he.origin.denied)).toBeNull();
-    expect(screen.queryByText(he.origin.notRefreshed)).toBeNull();
-  });
-
   it("treats a refusal as an answer, not an error, and keeps searching everywhere", async () => {
     const user = userEvent.setup();
     stubGeolocation("deny");
@@ -429,7 +411,6 @@ describe("home location sheet", () => {
 
     await user.click(screen.getByRole("button", { name: he.origin.useMyLocation }));
 
-    expect(await screen.findByText(he.origin.denied)).toBeInTheDocument();
     // Still unscoped, and the sheet stayed open so another way can be chosen.
     expect(screen.getByRole("dialog", { name: he.origin.title })).toBeInTheDocument();
     expect(screen.getAllByText(he.origin.everywhere).length).toBeGreaterThan(0);
@@ -451,8 +432,6 @@ describe("home location sheet", () => {
     await user.click(screen.getByRole("button", { name: he.origin.useMyLocation }));
 
     // Said out loud — a refresh that did not happen is not the same as no position.
-    expect(await screen.findByText(he.origin.notRefreshed)).toBeInTheDocument();
-    expect(screen.queryByText(he.origin.denied)).toBeNull();
     // Still measuring from the device, in memory and in storage.
     expect(screen.getByText(he.map.youAreHere)).toBeInTheDocument();
     expect(localStorage.getItem("kashroot.origin.v1")).toContain("device");
@@ -472,33 +451,8 @@ describe("home location sheet", () => {
     await openSheet(user);
     await user.click(screen.getByRole("button", { name: he.origin.useMyLocation }));
 
-    expect(await screen.findByText(he.origin.denied)).toBeInTheDocument();
     expect(screen.getByText(CANDIDATE.label)).toBeInTheDocument();
     expect(localStorage.getItem("kashroot.origin.v1")).toContain(CANDIDATE.label);
-  });
-
-  /**
-   * "All of Israel" is the way out of a pin. Two answers cannot both be live: the
-   * header would name one place and the results come from another — so picking it
-   * drops the address, and the list becomes the whole database.
-   */
-  it("drops a pinned address when all of Israel is picked", async () => {
-    const user = userEvent.setup();
-    geocodeImpl = async () => [CANDIDATE];
-    await reachHome(user);
-    await openSheet(user);
-    await pickAddress(user, "ביאליק 1");
-    expect(await screen.findByText(CANDIDATE.label)).toBeInTheDocument();
-
-    await openSheet(user);
-    await user.click(screen.getByRole("button", { name: he.origin.everywhere }));
-
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(screen.getByText(he.origin.everywhere)).toBeInTheDocument();
-    expect(screen.queryByText(CANDIDATE.label)).toBeNull();
-    // Unscoped: rows from more than one city on the one list.
-    expect(await screen.findByText("מסעדת האגם")).toBeInTheDocument();
-    expect(screen.getByText("נוגטין")).toBeInTheDocument();
   });
 
   /**
@@ -588,31 +542,6 @@ describe("home location sheet", () => {
   });
 
   /**
-   * An explicit "all of Israel" is a choice like any other, so a reload honours it:
-   * the address stays gone, and the device is not asked for a position the user
-   * just declined to search from.
-   */
-  it("drops the pinned address for good once all of Israel is picked", async () => {
-    const user = userEvent.setup();
-    geocodeImpl = async () => [CANDIDATE];
-    stubGeolocation("grant");
-    await reachHome(user);
-    await openSheet(user);
-    await pickAddress(user, "ביאליק 1");
-    expect(await screen.findByText(CANDIDATE.label)).toBeInTheDocument();
-
-    await openSheet(user);
-    await user.click(screen.getByRole("button", { name: he.origin.everywhere }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    positionRequests = 0;
-    await reload();
-
-    expect(screen.getByText(he.origin.everywhere)).toBeInTheDocument();
-    expect(screen.queryByText(CANDIDATE.label)).toBeNull();
-    expect(positionRequests).toBe(0);
-  });
-
-  /**
    * The device is remembered as a *choice*, never as a position: coordinates are
    * not written to storage, and the reload re-acquires them from a permission that
    * is already standing — so the header comes back right without a prompt.
@@ -656,7 +585,6 @@ describe("home location sheet", () => {
     expect(await screen.findByText(he.origin.everywhere)).toBeInTheDocument();
     expect(positionRequests).toBe(0);
     // Nobody asked, so nobody is told it failed.
-    expect(screen.queryByText(he.origin.denied)).toBeNull();
     // The marker is dropped rather than left to fail the same way every load.
     await waitFor(() => expect(localStorage.getItem("kashroot.origin.v1")).toBeNull());
   });
