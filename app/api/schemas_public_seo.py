@@ -77,3 +77,54 @@ class RestaurantPublicOut(BaseModel):
     #: is no gate here.
     certificates: list[CertificateFactOut]
     updated_at: UTCDateTime
+
+
+class DirectoryRestaurantOut(BaseModel):
+    """One restaurant's identity-only facts within a ``GET /v1/directory`` city group
+    — enough for a landing-page chip and a link through to the full profile-free
+    detail (``GET /v1/restaurants/{id}``). No certificate state, no attributes, no
+    verdict: see ``app.api.public_seo.get_directory`` for why.
+    """
+
+    restaurant_id: uuid.UUID
+    name_he: str
+    name_en: str | None
+    address_he: str | None
+    #: Active certifiers only (``Certifier.is_active``), de-duplicated, sorted
+    #: alphabetically by ``name_he`` — never by certifier type. Certificate state is
+    #: deliberately not exposed here; that is evaluation-shaped, and this path is
+    #: facts-only.
+    certifier_names_he: list[str]
+    #: Parallel to ``certifier_names_he`` (same order, same length); an entry is
+    #: ``None`` when that certifier has no English name.
+    certifier_names_en: list[str | None]
+
+
+class DirectoryCityOut(BaseModel):
+    """One city's group within the ``GET /v1/directory`` landing-page response."""
+
+    city_he: str
+    #: The full count of public restaurants in this city — independent of how many
+    #: of them ``restaurants`` samples.
+    restaurant_count: int
+    #: A sample of at most ``DIRECTORY_SAMPLE_PER_CITY``, ordered alphabetically by
+    #: ``name_he`` — never by certifier or certificate state.
+    restaurants: list[DirectoryRestaurantOut]
+
+
+class DirectoryResponse(BaseModel):
+    """``GET /v1/directory`` (200) — the web app's landing-page directory: every
+    public restaurant grouped by city, facts only, no verdict anywhere in the tree.
+
+    See ``app.api.public_seo.get_directory`` for why it carries no verdict and why
+    every ordering in this response (cities on a ``restaurant_count`` tie,
+    restaurants within a city, certifiers per restaurant) is alphabetical rather than
+    ranked.
+    """
+
+    #: Every public restaurant, including ones with no ``city_he`` (those appear in
+    #: no city group below).
+    total_restaurants: int
+    #: One entry per distinct non-null ``city_he``, ordered by ``restaurant_count``
+    #: descending, ties broken alphabetically by ``city_he``.
+    cities: list[DirectoryCityOut]

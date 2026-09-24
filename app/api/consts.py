@@ -107,6 +107,11 @@ SITEMAP_XML_NAMESPACE = "http://www.sitemaps.org/schemas/sitemap/0.9"
 #: *index* file instead (out of scope here — see app.api.public_seo.build_sitemap_xml).
 SITEMAP_MAX_URLS = 50000
 
+#: ``GET /v1/directory`` (app.api.public_seo.get_directory) — the web landing page's
+#: profile-free, city-grouped directory. A sample, not the full per-city listing;
+#: ``restaurant_count`` on each city is always the full count regardless of this cap.
+DIRECTORY_SAMPLE_PER_CITY = 12
+
 #: The web app's (Vite SPA) own client-side routes the sitemap points at — not this
 #: API's paths.
 WEB_ROUTE_HOME = "/"

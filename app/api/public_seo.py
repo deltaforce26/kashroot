@@ -30,6 +30,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.consts import (
     CACHE_CONTROL_HEADER,
     DEFAULT_FORWARDED_PROTO,
+    DIRECTORY_SAMPLE_PER_CITY,
     ERROR_RESTAURANT_NOT_FOUND,
     FORWARDED_HOST_HEADER,
     FORWARDED_PROTO_HEADER,
@@ -45,7 +46,14 @@ from app.api.consts import (
     WEB_ROUTE_RESTAURANT_TEMPLATE,
 )
 from app.api.public import _geo_point_out
-from app.api.schemas_public_seo import CertificateFactOut, CertifierFactOut, RestaurantPublicOut
+from app.api.schemas_public_seo import (
+    CertificateFactOut,
+    CertifierFactOut,
+    DirectoryCityOut,
+    DirectoryResponse,
+    DirectoryRestaurantOut,
+    RestaurantPublicOut,
+)
 from app.core.config import settings
 from app.db.session import get_session
 from app.models import Certificate, Certifier, Restaurant, RestaurantStatus
@@ -229,4 +237,111 @@ def get_sitemap(request: Request, session: Session = Depends(get_session)) -> Re
             CACHE_CONTROL_HEADER: SITEMAP_CACHE_CONTROL,
             VARY_HEADER: VARY_FORWARDED_HOST,
         },
+    )
+
+
+def _certifier_names(restaurant: Restaurant) -> tuple[list[str], list[str | None]]:
+    """Active certifiers of one restaurant's certificates, de-duplicated by certifier
+    id and sorted alphabetically by ``name_he`` — the same "active certifiers only"
+    inclusion rule ``get_restaurant_public_facts`` applies, with no certificate state
+    exposed (this is identity only, not evaluation).
+
+    Parameters:
+        restaurant (Restaurant): the restaurant, with ``certificates`` and each
+            certificate's ``certifier`` already loaded.
+
+    Return:
+        tuple[list[str], list[str | None]]: ``(names_he, names_en)``, parallel lists
+            (same order, same length); ``names_en`` may contain ``None``.
+    """
+    active_by_id: dict[uuid.UUID, Certifier] = {
+        certificate.certifier.id: certificate.certifier
+        for certificate in restaurant.certificates
+        if certificate.certifier.is_active
+    }
+    ordered = sorted(active_by_id.values(), key=lambda certifier: certifier.name_he)
+    names_he = [certifier.name_he for certifier in ordered]
+    names_en = [certifier.name_en for certifier in ordered]
+
+    return names_he, names_en
+
+
+def _directory_restaurant_out(restaurant: Restaurant) -> DirectoryRestaurantOut:
+    """Serialize one restaurant's identity-only facts for a directory city group.
+
+    Parameters:
+        restaurant (Restaurant): the restaurant, with ``certificates`` and each
+            certificate's ``certifier`` already loaded.
+
+    Return:
+        DirectoryRestaurantOut: the restaurant as an API output model.
+    """
+    certifier_names_he, certifier_names_en = _certifier_names(restaurant)
+
+    return DirectoryRestaurantOut(
+        restaurant_id=restaurant.id,
+        name_he=restaurant.name_he,
+        name_en=restaurant.name_en,
+        address_he=restaurant.address_he,
+        certifier_names_he=certifier_names_he,
+        certifier_names_en=certifier_names_en,
+    )
+
+
+@router.get("/directory", response_model=DirectoryResponse)
+def get_directory(response: Response, session: Session = Depends(get_session)) -> DirectoryResponse:
+    """Profile-free, facts-only directory grouped by city, for the web app's landing
+    page — rendered to anonymous visitors and crawlers, neither of whom carries a
+    kashrut profile.
+
+    Carries no verdict, no evaluation call, no Fit Score, and no reason codes, for the
+    same reason this module's docstring gives for ``get_restaurant_public_facts``: a
+    verdict is only ever the output of the pure match engine over (Certificate x
+    Profile), and there is no profile on this path to evaluate against. Every
+    ordering here — restaurants within a city, certifiers per restaurant, and cities
+    that tie on ``restaurant_count`` — is alphabetical rather than ranked, because
+    CLAUDE.md forbids the app from judging or ordering certifiers or restaurants by
+    kashrut; certifier *type* (Rabbanut local council vs. private badatz, etc.) never
+    enters any sort here.
+
+    Uses the same "which restaurants are public" filter as ``get_sitemap``
+    (``Restaurant.status == RestaurantStatus.OPEN``). ``total_restaurants`` counts
+    every such restaurant, including ones with a null ``city_he`` — those simply do
+    not appear under ``cities``, since there is nowhere to group them. Each city's
+    ``restaurants`` is capped at ``DIRECTORY_SAMPLE_PER_CITY`` (a landing-page sample,
+    not a full listing); ``restaurant_count`` on that city is always the full count.
+    """
+    restaurants = (
+        session.execute(
+            select(Restaurant)
+            .where(Restaurant.status == RestaurantStatus.OPEN)
+            .options(selectinload(Restaurant.certificates).joinedload(Certificate.certifier))
+            .order_by(Restaurant.name_he)
+        )
+        .scalars()
+        .all()
+    )
+
+    by_city: dict[str, list[Restaurant]] = {}
+    for restaurant in restaurants:
+        if restaurant.city_he is not None:
+            by_city.setdefault(restaurant.city_he, []).append(restaurant)
+
+    ordered_cities = sorted(by_city.items(), key=lambda entry: (-len(entry[1]), entry[0]))
+
+    response.headers[CACHE_CONTROL_HEADER] = SITEMAP_CACHE_CONTROL
+
+    return DirectoryResponse(
+        total_restaurants=len(restaurants),
+        cities=[
+            DirectoryCityOut(
+                city_he=city_he,
+                restaurant_count=len(city_restaurants),
+                restaurants=[
+                    _directory_restaurant_out(restaurant)
+                    for restaurant in city_restaurants[:DIRECTORY_SAMPLE_PER_CITY]
+                ],
+            )
+            for city_he, city_restaurants in ordered_cities
+        ],
     )
