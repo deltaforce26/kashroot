@@ -15,6 +15,13 @@ RATE_LIMIT_WINDOW_DAY_SECONDS = 86400
 DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_HOUR = 5
 DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_DAY = 20
 
+#: Defaults for ``KASHROOT_FLAG_REPORT_RATE_LIMIT_PER_HOUR`` / ``_PER_DAY`` (see
+#: app.core.config.Settings and .env.example). Same shape as the photo-upload
+#: limiter but a separate scope ("flag_report"), so the two endpoints keep
+#: independent counters against the same client IP.
+DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_HOUR = 5
+DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_DAY = 20
+
 #: Identifies a request whose ``request.client`` is ``None`` (e.g. some test
 #: clients/ASGI transports). All such requests share one bucket rather than bypassing
 #: the limiter entirely.

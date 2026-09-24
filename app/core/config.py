@@ -16,6 +16,8 @@ from app.core.consts import (
     StorageBackend,
 )
 from app.services.rate_limit_consts import (
+    DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_DAY,
+    DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_HOUR,
     DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_DAY,
     DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_HOUR,
 )
@@ -63,6 +65,12 @@ class Settings(BaseSettings):
     # see app.services.rate_limit and .env.example.
     photo_upload_rate_limit_per_hour: int = DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_HOUR
     photo_upload_rate_limit_per_day: int = DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_DAY
+
+    # Per-IP fixed-window limits on the anonymous community-flag report
+    # (POST /v1/restaurants/{id}/flags). Separate scope/counters from the photo
+    # upload limits above; see app.services.rate_limit and .env.example.
+    flag_report_rate_limit_per_hour: int = DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_HOUR
+    flag_report_rate_limit_per_day: int = DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_DAY
 
     # Which MediaStorage backend serves certificate evidence photos. "auto" resolves
     # to Supabase when the credentials below are set and to S3/MinIO otherwise, so

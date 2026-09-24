@@ -1,9 +1,11 @@
 """Reusable per-client-IP fixed-window rate limiting for anonymous public endpoints.
 
-Applied for now only to the anonymous certificate-photo upload
-(``app.api.public_photos.upload_public_certificate_photo``); built as a generic
-FastAPI dependency factory (:func:`rate_limiter`) so the community-flag endpoint can
-adopt the same mechanism later without duplicating it.
+Applied to the anonymous certificate-photo upload
+(``app.api.public_photos.upload_public_certificate_photo``) and the anonymous
+community-flag report (``app.api.public_photos.create_public_flag``); built as a
+generic FastAPI dependency factory (:func:`rate_limiter`) with a distinct ``scope``
+per endpoint (``"photo_upload"``, ``"flag_report"``) so their counters never collide,
+even for the same client IP.
 
 Backend: a fixed-window counter, keyed ``{prefix}:{scope}:{window_seconds}:{ip}``.
 Redis (``settings.redis_url``) is the primary backend so counts are shared across
@@ -34,6 +36,8 @@ from fastapi import Depends, HTTPException, Request, status
 from app.api.consts import ERROR_RATE_LIMITED
 from app.core.config import settings
 from app.services.rate_limit_consts import (
+    DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_DAY,
+    DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_HOUR,
     DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_DAY,
     DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_HOUR,
     LOG_RATE_LIMIT_REDIS_ERROR,
@@ -307,6 +311,25 @@ def photo_upload_rate_limit_rules() -> list[RateLimitRule]:
     ]
 
 
+def flag_report_rate_limit_rules() -> list[RateLimitRule]:
+    """
+    Build the current rate-limit rules for the anonymous flag-report endpoint.
+
+    Read from ``settings`` on every call (not cached) so tests can lower the limits
+    via ``monkeypatch.setattr(settings, ...)`` per test.
+
+    Parameters:
+        None
+
+    Return:
+        list[RateLimitRule]: The per-hour and per-day rules to enforce, in that order.
+    """
+    return [
+        RateLimitRule(settings.flag_report_rate_limit_per_hour, RATE_LIMIT_WINDOW_HOUR_SECONDS),
+        RateLimitRule(settings.flag_report_rate_limit_per_day, RATE_LIMIT_WINDOW_DAY_SECONDS),
+    ]
+
+
 def rate_limiter(
     scope: str, rules: Callable[[], list[RateLimitRule]]
 ) -> Callable[[Request, RateLimitBackend], None]:
@@ -365,8 +388,11 @@ def rate_limiter(
 
 
 require_photo_upload_rate_limit = rate_limiter("photo_upload", photo_upload_rate_limit_rules)
+require_flag_report_rate_limit = rate_limiter("flag_report", flag_report_rate_limit_rules)
 
 __all__ = [
+    "DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_DAY",
+    "DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_HOUR",
     "DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_DAY",
     "DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_HOUR",
     "HybridRateLimitBackend",
@@ -374,9 +400,11 @@ __all__ = [
     "RateLimitBackend",
     "RateLimitRule",
     "RedisRateLimitBackend",
+    "flag_report_rate_limit_rules",
     "get_client_identifier",
     "get_rate_limit_backend",
     "photo_upload_rate_limit_rules",
     "rate_limiter",
+    "require_flag_report_rate_limit",
     "require_photo_upload_rate_limit",
 ]

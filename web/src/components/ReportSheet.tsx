@@ -7,13 +7,13 @@
  */
 
 import { useState } from "react";
-import { FLAG_MESSAGE_MAX, FLAG_TYPES, kashrootApi } from "../api";
+import { FLAG_MESSAGE_MAX, FLAG_TYPES, isRateLimited, kashrootApi } from "../api";
 import type { FlagType } from "../api/types";
 import { useI18n } from "../i18n/I18nProvider";
 import { BottomSheet } from "./BottomSheet";
 import { CloseIcon } from "./icons";
 
-type Phase = "idle" | "sending" | "sent" | "error";
+type Phase = "idle" | "sending" | "sent" | "error" | "rateLimited";
 
 export function ReportSheet({
   restaurantId,
@@ -45,8 +45,8 @@ export function ReportSheet({
         ...(trimmed ? { message: trimmed } : {}),
       });
       setPhase("sent");
-    } catch {
-      setPhase("error");
+    } catch (error) {
+      setPhase(isRateLimited(error) ? "rateLimited" : "error");
     }
   }
 
@@ -115,9 +115,9 @@ export function ReportSheet({
             onChange={(event) => setMessage(event.target.value)}
           />
 
-          {phase === "error" && (
+          {(phase === "error" || phase === "rateLimited") && (
             <p className="hint sheet__note report-sheet__error" role="alert">
-              {strings.error}
+              {phase === "rateLimited" ? strings.rateLimited : strings.error}
             </p>
           )}
 

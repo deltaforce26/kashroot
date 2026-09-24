@@ -288,6 +288,29 @@ describe("CertificatePhotoSlot", () => {
     expect(await within(sheet).findByText(photo.sentLead)).toBeInTheDocument();
   });
 
+  it("maps a 429 to a friendly rate-limit message and offers a retry", async () => {
+    const user = userEvent.setup();
+    const upload = vi
+      .spyOn(kashrootApi, "uploadCertificatePhoto")
+      .mockRejectedValueOnce(new ApiError(429, "rate_limited"))
+      .mockResolvedValueOnce({ photo_id: "p", status: "pending" });
+    renderHe(
+      <CertificatePhotoSlot
+        restaurantId="r-1"
+        evidence={{ certificate_id: "c-1", photo_status: "none", photo_url: null }}
+        onReport={vi.fn()}
+      />,
+    );
+    const file = image();
+    const sheet = await pickInSheet(user, galleryInput, file);
+    await user.click(within(sheet).getByRole("button", { name: photo.send }));
+
+    expect(await within(sheet).findByRole("alert")).toHaveTextContent(photo.errors.rateLimited);
+    await user.click(within(sheet).getByRole("button", { name: photo.tryAgain }));
+    expect(upload).toHaveBeenNthCalledWith(2, "r-1", "c-1", file);
+    expect(await within(sheet).findByText(photo.sentLead)).toBeInTheDocument();
+  });
+
   it("maps 409 photo_pending to a message and the pending state", async () => {
     const user = userEvent.setup();
     vi.spyOn(kashrootApi, "uploadCertificatePhoto").mockRejectedValue(
@@ -390,6 +413,17 @@ describe("ReportSheet", () => {
 
     expect(send).toHaveBeenCalledWith("r-1", { type: "closed" });
     expect(await screen.findByRole("alert")).toHaveTextContent(report.error);
+  });
+
+  it("maps a 429 to a friendly rate-limit message", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(kashrootApi, "reportRestaurant").mockRejectedValue(new ApiError(429, "rate_limited"));
+    renderHe(<ReportSheet restaurantId="r-1" onClose={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: report.types.closed }));
+    await user.click(screen.getByRole("button", { name: report.submit }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(report.rateLimited);
   });
 });
 

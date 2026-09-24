@@ -24,7 +24,7 @@ export type PhotoErrorKey = keyof Strings["restaurant"]["photo"]["errors"];
 
 /** Errors a fresh pick can fix, errors a resend can fix, and ones nothing here can. */
 const PICK_AGAIN: readonly PhotoErrorKey[] = ["badType", "tooLarge"];
-const SEND_AGAIN: readonly PhotoErrorKey[] = ["network", "generic"];
+const SEND_AGAIN: readonly PhotoErrorKey[] = ["network", "generic", "rateLimited"];
 
 export function PhotoUploadSheet({
   step,

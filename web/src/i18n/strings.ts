@@ -184,6 +184,7 @@ const he = {
       sent: "תודה, נבדוק את זה.",
       sentLead: "הדיווח עובר לבדיקה ידנית. הוא לא משנה את הסטטוס בעצמו.",
       error: "הדיווח לא נשלח. נסו שוב.",
+      rateLimited: "יותר מדי ניסיונות. נסו שוב מאוחר יותר.",
       close: "סגירה",
       types: {
         closed: "העסק נסגר",
@@ -227,6 +228,7 @@ const he = {
         pending: "צילום של התעודה כבר ממתין לאישור.",
         network: "אין חיבור. נסו שוב.",
         generic: "ההעלאה נכשלה. נסו שוב.",
+        rateLimited: "יותר מדי ניסיונות. נסו שוב מאוחר יותר.",
       },
     },
     hours: "שעות",
@@ -640,6 +642,7 @@ const en: Strings = {
       sent: "Thanks, we'll review it.",
       sentLead: "Reports go to a human reviewer. A report never changes a status by itself.",
       error: "The report wasn't sent. Try again.",
+      rateLimited: "Too many attempts. Please try again later.",
       close: "Close",
       types: {
         closed: "Closed",
@@ -683,6 +686,7 @@ const en: Strings = {
         pending: "A photo of this certificate is already awaiting review.",
         network: "No connection. Try again.",
         generic: "Upload failed. Try again.",
+        rateLimited: "Too many attempts. Please try again later.",
       },
     },
     hours: "Hours",

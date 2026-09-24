@@ -63,7 +63,7 @@ from app.services.notifications import (
     notify_flag_created,
     parse_recipients,
 )
-from app.services.rate_limit import require_photo_upload_rate_limit
+from app.services.rate_limit import require_flag_report_rate_limit, require_photo_upload_rate_limit
 from app.storage import MediaStorage
 
 router = APIRouter(prefix="/v1", tags=["public"])
@@ -203,6 +203,7 @@ def create_public_flag(
     background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
     email_sender: EmailSender = Depends(get_email_sender),
+    _rate_limit: None = Depends(require_flag_report_rate_limit),
 ) -> FlagCreateResponse:
     """Anonymous community report. Opens an OPEN flag in the moderation console's
     flag queue and writes an audit row; it never changes a restaurant's or
@@ -217,6 +218,12 @@ def create_public_flag(
     An email notification (``app.services.notifications``) is queued via
     ``BackgroundTasks`` after the flag is committed, so a slow or failing send never
     delays or fails this response.
+
+    Rate-limited per client IP under its own ``"flag_report"`` scope
+    (``app.services.rate_limit``), counted independently from the photo-upload
+    endpoint's counters. Like the upload dependency, this one runs before this
+    function's body at all, so a rate-limited call never creates a ``Flag`` row and
+    never queues the notification email.
     """
     certificate: Certificate | None = None
     if body.certificate_id is not None:

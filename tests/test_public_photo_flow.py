@@ -398,6 +398,28 @@ def test_public_flag_certificate_from_another_restaurant_404(client, session) ->
     assert response.status_code == 404
 
 
+def test_public_flag_and_upload_use_separate_rate_limit_counters(
+    client, session, monkeypatch
+) -> None:
+    """Sanity check that the two endpoints don't share a counter identity even
+    though they share the same client IP and the same test's in-memory backend.
+    Exhaustive limit-boundary coverage lives in tests/test_rate_limit.py.
+    """
+    monkeypatch.setattr(settings, "photo_upload_rate_limit_per_hour", 1)
+    monkeypatch.setattr(settings, "flag_report_rate_limit_per_hour", 1)
+
+    restaurant, certificate = make_cert_chain(session)
+
+    upload_response = upload(client, restaurant.id, certificate.id)
+    assert upload_response.status_code == 201
+
+    flag_response = client.post(
+        f"/v1/restaurants/{restaurant.id}/flags",
+        json={"type": "other"},
+    )
+    assert flag_response.status_code == 201
+
+
 def test_public_flag_message_too_long_422(client, session) -> None:
     restaurant, _ = make_cert_chain(session)
     response = client.post(

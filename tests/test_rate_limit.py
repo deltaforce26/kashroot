@@ -17,6 +17,7 @@ import uuid
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from starlette.requests import Request
 
 from app.api.deps import get_media_storage
@@ -30,10 +31,12 @@ from app.models import (
     CertificationLevel,
     Certifier,
     CertifierType,
+    Flag,
     RecordState,
     Restaurant,
     RestaurantStatus,
 )
+from app.services.notifications import get_email_sender
 from app.services.rate_limit import (
     HybridRateLimitBackend,
     InMemoryRateLimitBackend,
@@ -302,3 +305,101 @@ def test_endpoint_counts_a_rejected_oversize_upload(client: TestClient, session)
     third = upload(client, restaurant.id, certificate.id, filename="third.jpg")
 
     assert third.status_code == 429
+
+
+# ------------------------------------------------------------- flag report, end-to-end
+
+
+class RecordingSender:
+    """A fake :class:`EmailSender` that records every call it receives, so a test can
+    assert none happened when a report is rejected for being over the rate limit.
+    """
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def send(self, *, to, subject, html_body, text_body) -> None:  # noqa: ANN001
+        self.calls.append({"to": list(to)})
+
+
+@pytest.fixture
+def recording_sender() -> RecordingSender:
+    return RecordingSender()
+
+
+@pytest.fixture
+def flag_client(
+    session, monkeypatch: pytest.MonkeyPatch, storage: InMemoryMediaStorage, recording_sender
+):
+    monkeypatch.setattr(settings, "flag_report_rate_limit_per_hour", 2)
+    monkeypatch.setattr(settings, "flag_report_rate_limit_per_day", 100)
+    monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
+    monkeypatch.setattr(settings, "report_email_from", "reports@kashroot.example")
+    monkeypatch.setattr(settings, "report_email_to", "mod1@example.com")
+    app = create_app()
+
+    def _override_session():
+        yield session
+        session.commit()
+
+    app.dependency_overrides[get_session] = _override_session
+    app.dependency_overrides[get_media_storage] = lambda: storage
+    app.dependency_overrides[get_email_sender] = lambda: recording_sender
+    rate_limit_backend = InMemoryRateLimitBackend()
+    app.dependency_overrides[get_rate_limit_backend] = lambda: rate_limit_backend
+    with TestClient(app) as test_client:
+        yield test_client
+
+
+def report_flag(client: TestClient, restaurant_id) -> object:
+    return client.post(f"/v1/restaurants/{restaurant_id}/flags", json={"type": "other"})
+
+
+def test_flag_report_allows_up_to_the_configured_limit(flag_client: TestClient, session) -> None:
+    restaurant, _ = make_cert_chain(session)
+
+    response = report_flag(flag_client, restaurant.id)
+
+    assert response.status_code == 201
+
+
+def test_flag_report_returns_429_over_the_configured_limit(
+    flag_client: TestClient, session, recording_sender
+) -> None:
+    restaurant, _ = make_cert_chain(session)
+
+    first = report_flag(flag_client, restaurant.id)
+    assert first.status_code == 201
+    second = report_flag(flag_client, restaurant.id)
+    assert second.status_code == 201
+
+    before_flag_count = len(session.scalars(select(Flag)).all())
+    third = report_flag(flag_client, restaurant.id)
+
+    assert third.status_code == 429
+    assert third.json()["detail"] == "rate_limited"
+    assert int(third.headers["Retry-After"]) > 0
+
+    # Rejected before the body ran: no Flag row was created, and the endpoint's own
+    # email queueing never happened (the two accepted reports above already sent to
+    # the same recording sender, so the count staying flat over the third call is the
+    # meaningful assertion here).
+    assert len(session.scalars(select(Flag)).all()) == before_flag_count
+    assert len(recording_sender.calls) == 2
+
+
+def test_flag_report_and_photo_upload_have_independent_counters(
+    flag_client: TestClient, session
+) -> None:
+    restaurant, certificate = make_cert_chain(session)
+
+    for _ in range(2):
+        assert report_flag(flag_client, restaurant.id).status_code == 201
+
+    # The flag-report limit (2/hour) is now exhausted, but the upload endpoint's own
+    # counter (a much higher default in this fixture's settings) is untouched.
+    upload_response = upload(flag_client, restaurant.id, certificate.id)
+    assert upload_response.status_code == 201
+
+    over_limit = report_flag(flag_client, restaurant.id)
+    assert over_limit.status_code == 429

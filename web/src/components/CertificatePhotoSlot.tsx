@@ -18,7 +18,14 @@
 import { Camera, Clock, Flag, X } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
-import { ApiError, PHOTO_MAX_BYTES, PHOTO_MIME_TYPES, kashrootApi, photoConflict } from "../api";
+import {
+  ApiError,
+  PHOTO_MAX_BYTES,
+  PHOTO_MIME_TYPES,
+  isRateLimited,
+  kashrootApi,
+  photoConflict,
+} from "../api";
 import type { CertificateEvidenceOut, PhotoStatus } from "../api/types";
 import { useI18n } from "../i18n/I18nProvider";
 import {
@@ -144,6 +151,7 @@ export function CertificatePhotoSlot({
     } catch (error) {
       if (!(error instanceof ApiError)) return fail("generic");
       if (error.isNetwork) return fail("network");
+      if (isRateLimited(error)) return fail("rateLimited");
       const conflict = photoConflict(error);
       if (conflict === "photo_pending") {
         setLocalStatus("pending");

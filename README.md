@@ -108,19 +108,24 @@ suite need none of this configured. See `.env.example`.
 
 ## Anonymous upload rate limiting
 
-`POST /v1/restaurants/{id}/certificate-photo` is rate-limited per client IP
-(`app.services.rate_limit`) — reused as a FastAPI dependency so other anonymous
-endpoints (e.g. the community-flag endpoint) can adopt the same limiter later.
+`POST /v1/restaurants/{id}/certificate-photo` and `POST /v1/restaurants/{id}/flags`
+are both rate-limited per client IP (`app.services.rate_limit`), reused as a FastAPI
+dependency with a distinct scope per endpoint (`"photo_upload"`, `"flag_report"`) so
+their counters never collide, even for the same IP.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `KASHROOT_TRUST_PROXY_HEADERS` | `false` | Trust `X-Forwarded-For`'s first hop as the client IP. Enable only behind a proxy that itself sets/overwrites the header. |
 | `KASHROOT_PHOTO_UPLOAD_RATE_LIMIT_PER_HOUR` | `5` | Uploads per IP per rolling-hour fixed window. |
 | `KASHROOT_PHOTO_UPLOAD_RATE_LIMIT_PER_DAY` | `20` | Uploads per IP per rolling-day fixed window. |
+| `KASHROOT_FLAG_REPORT_RATE_LIMIT_PER_HOUR` | `5` | Flag reports per IP per rolling-hour fixed window. |
+| `KASHROOT_FLAG_REPORT_RATE_LIMIT_PER_DAY` | `20` | Flag reports per IP per rolling-day fixed window. |
 
 Counts are kept in Redis (`KASHROOT_REDIS_URL`) so they're shared across worker
 processes; if Redis is unset or errors at request time, the limiter falls back to an
 in-process in-memory counter and logs the error, so local dev and the test suite need
-no Redis daemon. The attempt is counted before the endpoint does any file processing,
-so a rejected oversized file still counts. Over the limit, the response is `429` with
-a `Retry-After` header and `detail: "rate_limited"`.
+no Redis daemon. The attempt is counted before the endpoint does any further
+processing, so a rejected oversized upload still counts, and a rate-limited flag
+report is rejected before a `Flag` row is created or a notification email is queued.
+Over the limit, the response is `429` with a `Retry-After` header and
+`detail: "rate_limited"`.
