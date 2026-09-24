@@ -24,6 +24,7 @@ import { VerdictPill } from "../components/VerdictPill";
 import { BookmarkIcon, ChevronIcon, PhoneIcon, ShareIcon } from "../components/icons";
 import { ErrorState, LoadingList, NotFoundState, OfflineBanner } from "../components/states";
 import { useGoBack } from "../hooks/useReturnTo";
+import { googleMapsUrl, wazeUrl } from "../location/directions";
 import { useOrigin } from "../location/useOrigin";
 import { isNetworkError, useRestaurant } from "../hooks/useApi";
 import { formatDate, formatDistance, pickName, useI18n } from "../i18n/I18nProvider";
@@ -243,15 +244,19 @@ export function Restaurant() {
         <div className="actions">
           <a
             className="cta"
-            href={
-              data.geo
-                ? `https://www.google.com/maps/dir/?api=1&destination=${data.geo.lat},${data.geo.lon}`
-                : "#"
-            }
+            href={data.geo ? wazeUrl(data.geo) : "#"}
             target="_blank"
             rel="noreferrer"
           >
-            {t.restaurant.navigate}
+            {t.restaurant.navigateWaze}
+          </a>
+          <a
+            className="cta cta--ghost"
+            href={data.geo ? googleMapsUrl(data.geo) : "#"}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t.restaurant.navigateGoogle}
           </a>
           {data.phone && (
             <a className="action-circle glass" href={`tel:${data.phone}`} aria-label={t.restaurant.call}>
