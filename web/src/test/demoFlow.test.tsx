@@ -150,15 +150,19 @@ describe("demo flow", () => {
   /**
    * UNKNOWN has to arrive as considered as MATCH, not as a greyed-out version of it.
    * On the live corpus it comes from expiry, missing attributes, revocation and
-   * unpublished levels rather than staleness; this walks the stale case because it
-   * is the clearest, and the panel structure is identical whatever the cause.
+   * unpublished levels; this walks the unpublished-level case — a Rabbanut
+   * certificate with no published level, against the "mehadrin" preset, which asks
+   * each Rabbanut for its own Mehadrin level. (Verification-age staleness is off,
+   * `ENFORCE_FRESHNESS = false`, for the current app stage — see
+   * app/core/config.py's `enforce_freshness` — so it can no longer produce this
+   * UNKNOWN; the panel structure is identical whatever the cause.)
    */
   it("argues an UNKNOWN as fully as a MATCH, and says what is actually missing", async () => {
     const user = userEvent.setup();
     renderApp("/");
 
-    await screen.findByText(he.presets.any.title);
-    await user.click(screen.getByText(he.presets.any.title));
+    await screen.findByText(he.presets.mehadrin.title);
+    await user.click(screen.getByText(he.presets.mehadrin.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
     // The home tile is one stretched anchor over the whole card, so the name is a
@@ -173,7 +177,7 @@ describe("demo flow", () => {
     expect(panel.querySelector(".evidence__glyph--positive")).not.toBeNull();
     expect(panel.querySelector(".evidence__glyph--doubt")).not.toBeNull();
     // …and the closing paragraph names the cause rather than shrugging.
-    expect(screen.getByText(he.verdict.followUp.evidence_stale)).toBeInTheDocument();
+    expect(screen.getByText(he.verdict.followUp.level_unknown)).toBeInTheDocument();
     // The certificate panel is present and complete, not suppressed.
     expect(screen.getByText(he.restaurant.certificate)).toBeInTheDocument();
   });

@@ -201,6 +201,28 @@ def test_evaluate_restaurant_kashrut_match_when_whitelisted_and_fresh() -> None:
     assert result.verdict == Verdict.MATCH
 
 
+def test_evaluate_restaurant_kashrut_does_not_degrade_stale_evidence_by_default() -> None:
+    """Product decision override (current app stage): ``settings.enforce_freshness``
+    defaults to False, so the service path must not degrade a MATCH just because its
+    verification evidence is old or absent — only the engine's default (True) does.
+    """
+    certifier_id = uuid.uuid4()
+    certificate = _fake_certificate(
+        certifier_id=certifier_id,
+        attributes={"glatt": True},
+        verified_at=dt.datetime.now(dt.UTC) - dt.timedelta(days=1000),
+    )
+    restaurant = _fake_restaurant([certificate])
+    profile = ProfileInput(
+        whitelist=(WhitelistEntry(certifier_id=str(certifier_id)),),
+        required_attributes=frozenset({"glatt"}),
+    )
+
+    result = evaluate_restaurant_kashrut(restaurant, profile, now=dt.datetime.now(dt.UTC))
+
+    assert result.verdict == Verdict.MATCH
+
+
 def test_evaluate_restaurant_kashrut_no_certificates_is_unknown() -> None:
     """Fail-safe: a restaurant with no certificates at all is UNKNOWN, never MATCH or
     NO_MATCH — absence of a certificate is not evidence of anything.

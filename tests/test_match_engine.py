@@ -378,6 +378,71 @@ class TestFreshness:
 
 
 # ---------------------------------------------------------------------------
+# enforce_freshness=False: user decision override (current app stage). The
+# staleness clock stops contributing doubt or positive reasons; expiry still
+# auto-degrades. Default stays True so the exhaustive TestFreshness suite above
+# is unaffected.
+# ---------------------------------------------------------------------------
+
+
+class TestEnforceFreshnessDisabled:
+    def test_stale_evidence_matches_with_no_freshness_reasons(self):
+        result = run(
+            [
+                make_cert(
+                    valid_until=None,
+                    verified_at=NOW - dt.timedelta(days=DEFAULT_FRESHNESS_DAYS + 1),
+                )
+            ],
+            enforce_freshness=False,
+        )
+        assert result.verdict == Verdict.MATCH
+        assert ReasonCode.EVIDENCE_STALE not in codes(result)
+        assert ReasonCode.EVIDENCE_FRESH not in codes(result)
+        assert ReasonCode.NO_FRESHNESS_EVIDENCE not in codes(result)
+
+    def test_no_verified_at_matches_with_no_freshness_reasons(self):
+        result = run(
+            [make_cert(valid_until=None, verified_at=None)],
+            enforce_freshness=False,
+        )
+        assert result.verdict == Verdict.MATCH
+        assert ReasonCode.NO_FRESHNESS_EVIDENCE not in codes(result)
+        assert ReasonCode.EVIDENCE_STALE not in codes(result)
+        assert ReasonCode.EVIDENCE_FRESH not in codes(result)
+
+    def test_expired_valid_until_still_degrades_to_unknown(self):
+        # Expiry is untouched by enforce_freshness — it comes from _state_reasons,
+        # not the freshness block.
+        result = run(
+            [
+                make_cert(
+                    valid_until=TODAY - dt.timedelta(days=1),
+                    verified_at=NOW - dt.timedelta(days=6),
+                )
+            ],
+            enforce_freshness=False,
+        )
+        assert result.verdict == Verdict.UNKNOWN
+        assert ReasonCode.CERTIFICATE_EXPIRED in codes(result)
+
+    def test_freshness_info_block_is_still_populated(self):
+        # The freshness/confidence computation is unchanged — only the reason
+        # emission is switched off.
+        result = run(
+            [
+                make_cert(
+                    valid_until=None,
+                    verified_at=NOW - dt.timedelta(days=DEFAULT_FRESHNESS_DAYS + 1),
+                )
+            ],
+            enforce_freshness=False,
+        )
+        assert result.freshness is not None
+        assert result.freshness.is_stale is True
+
+
+# ---------------------------------------------------------------------------
 # No certificate: we don't know, we never guess.
 # ---------------------------------------------------------------------------
 

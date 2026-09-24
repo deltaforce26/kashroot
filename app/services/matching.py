@@ -16,6 +16,7 @@ import datetime as dt
 
 from app.api.consts import DEFAULT_HALF_DISTANCE_KM
 from app.api.schemas_public import ProfileRequest
+from app.core.config import settings
 from app.match import (
     CertificateInput,
     FitCandidate,
@@ -90,7 +91,9 @@ def evaluate_restaurant_kashrut(
         certificate_input_from_orm(certificate) for certificate in restaurant.certificates
     )
 
-    return evaluate_kashrut(certificates, profile, now=now)
+    return evaluate_kashrut(
+        certificates, profile, now=now, enforce_freshness=settings.enforce_freshness
+    )
 
 
 def fit_candidate_from_restaurant(

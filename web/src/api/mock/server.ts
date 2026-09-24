@@ -71,6 +71,15 @@ export const FRESHNESS_WINDOW_DAYS = 365;
 /** Inside this many days of expiry, the engine adds an informational reason. */
 export const EXPIRES_SOON_DAYS = 30;
 
+/**
+ * Mirrors `Settings.enforce_freshness` (app/core/config.py). Verification-age
+ * staleness is a user decision override for the current app stage: it must not
+ * affect the verdict. The staleness logic itself stays in `freshnessOf` and
+ * `evaluateCertificate` below (switchable), just as it does on the backend — only
+ * the reason emission is gated off. Expiry (`valid_until` past) is unaffected.
+ */
+export const ENFORCE_FRESHNESS = false;
+
 const REASON_ORDER: ReasonCode[] = [
   "certifier_in_whitelist",
   "level_meets_minimum",
@@ -191,9 +200,11 @@ function evaluateCertificate(
     else doubts.push(reason("attribute_unknown", attribute));
   }
 
-  if (freshness.evidence_age_days === null) doubts.push(reason("no_freshness_evidence"));
-  else if (freshness.is_stale) doubts.push(reason("evidence_stale"));
-  else positives.push(reason("evidence_fresh"));
+  if (ENFORCE_FRESHNESS) {
+    if (freshness.evidence_age_days === null) doubts.push(reason("no_freshness_evidence"));
+    else if (freshness.is_stale) doubts.push(reason("evidence_stale"));
+    else positives.push(reason("evidence_fresh"));
+  }
 
   if (freshness.expires_soon) positives.push(reason("certificate_expires_soon"));
 
