@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { CITIES, DEFAULT_CITY_SLUG, cityBySlug, coveringCity, type CityOption } from "../config";
+import { CITIES, DEFAULT_CITY_SLUG, cityBySlug, nearestCity, type CityOption } from "../config";
 import { clearOrigin } from "./useOrigin";
 
 const KEY = "kashroot.city";
@@ -40,13 +40,14 @@ function writeSlug(next: string): void {
  * (search) agrees with the two measured from the origin (home, map). Unlike
  * `setSlug` this does *not* clear the origin: the origin is what is being followed.
  *
- * A point outside every covered city leaves the slug alone: the screens then say
- * the corpus has nothing there (see `useOrigin().covered`) instead of answering
- * for the nearest city we happen to know.
+ * The nearest centre may be far away — the corpus has rows outside these six
+ * cities. That is fine: while an origin is pinned every screen searches by
+ * distance from it, and the city is only what the app falls back to when the pin
+ * is cleared.
  */
 export function followPoint(point: { lat: number; lon: number }): void {
-  const next = coveringCity(point)?.slug;
-  if (!next || next === readStored()) return;
+  const next = nearestCity(point).slug;
+  if (next === readStored()) return;
   writeSlug(next);
 }
 

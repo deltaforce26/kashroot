@@ -473,17 +473,39 @@ describe("home location sheet", () => {
     expect(await screen.findByText(beitShemesh.label)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: he.nav.search }));
-    expect(await screen.findByText("בית שמש")).toBeInTheDocument();
+    expect(await screen.findByText(beitShemesh.label)).toBeInTheDocument();
     expect(localStorage.getItem("kashroot.city")).toBe("beit-shemesh");
   });
 
   /**
-   * An address outside every covered city must not be answered for the nearest city
-   * we do know. Home and search both say the corpus has nothing there yet, the
-   * header names the place the user actually typed, and the stored city is left as
-   * it was rather than snapped to a neighbour.
+   * With a pin, search measures from it the way home does, and shows the radius chip
+   * because there is now a centre to measure from. The stored city was Jerusalem;
+   * the result is found because it is near the pin, not because of any city scope.
    */
-  it("says there is nothing yet near an address outside every covered city", async () => {
+  it("searches by distance from a pinned address", async () => {
+    const user = userEvent.setup();
+    const tiberias = { label: "הגליל 5, טבריה", point: { lat: 32.7922, lon: 35.5312 } };
+    geocodeImpl = async () => [tiberias];
+    await reachHome(user);
+    await openSheet(user);
+    await user.type(screen.getByLabelText(he.origin.addressLabel), "הגליל 5");
+    await user.click(screen.getByRole("button", { name: he.origin.addressSubmit }));
+    await user.click(await screen.findByRole("button", { name: new RegExp(tiberias.label) }));
+
+    await user.click(screen.getByRole("button", { name: he.nav.search }));
+    expect(await screen.findByText("מסעדת האגם")).toBeInTheDocument();
+    expect(screen.getByText(tiberias.label)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: he.home.openFilters }));
+    const sheet = await screen.findByRole("dialog");
+    expect(within(sheet).getByText(he.filters.radius)).toBeInTheDocument();
+  });
+
+  /**
+   * An address with no rows anywhere in range must not be answered for the nearest
+   * city we do know. Home and search both say the corpus has nothing there yet, and
+   * the search header names the place the user actually typed.
+   */
+  it("says there is nothing yet near an address with no rows in range", async () => {
     const user = userEvent.setup();
     const ashdod = { label: "רוגוזין 1, אשדוד", point: { lat: 31.8014, lon: 34.6435 } };
     geocodeImpl = async () => [ashdod];
@@ -494,7 +516,6 @@ describe("home location sheet", () => {
     await user.click(await screen.findByRole("button", { name: new RegExp(ashdod.label) }));
 
     expect(await screen.findByText(he.states.outsideTitle(ashdod.label))).toBeInTheDocument();
-    expect(localStorage.getItem("kashroot.city")).toBe("jerusalem");
 
     await user.click(screen.getByRole("button", { name: he.nav.search }));
     expect(await screen.findByText(he.states.outsideTitle(ashdod.label))).toBeInTheDocument();

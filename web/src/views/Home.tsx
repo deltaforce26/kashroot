@@ -36,6 +36,7 @@ import { TabBar } from "../components/TabBar";
 import { InstallPrompt } from "../components/InstallPrompt";
 import { PAGE_SIZE } from "../config";
 import { toSearchFilters } from "../filters/model";
+import { anyFilterActive } from "../filters/registry";
 import { useFilters } from "../filters/useFilters";
 import { useCity } from "../location/useCity";
 import { useOrigin } from "../location/useOrigin";
@@ -53,7 +54,7 @@ export function Home() {
   const { city } = useCity();
   // Where "near me" is measured from: the device, a typed address, or this city's
   // centre. The sheet sets it; the header only reports it.
-  const { origin, source, addressLabel, covered } = useOrigin(city);
+  const { origin, source, addressLabel } = useOrigin(city);
   // The bar and this request read one store, so a chip tapped there re-runs this.
   const { filters, reset: resetFilters } = useFilters();
   const [pickingPlace, setPickingPlace] = useState(false);
@@ -165,7 +166,10 @@ export function Home() {
           <LoadingList />
         ) : error ? (
           <ErrorState isNetwork={isNetworkError(error)} onRetry={reload} />
-        ) : !covered ? (
+        ) : (data?.total ?? 0) === 0 && !anyFilterActive(filters) ? (
+          // No rows at all in range, before the profile was applied: a data gap, not
+          // a verdict. Saying "nothing matches your profile" here would blame the
+          // product's core promise for a hole in the corpus.
           <OutsideCoverage place={placeLabel} onChangePlace={() => setPickingPlace(true)} />
         ) : results.length === 0 ? (
           <EmptyResults onWidenProfile={() => navigate("/profile")} onShowAll={resetFilters} />

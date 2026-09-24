@@ -111,20 +111,6 @@ export function nearestCity(point: { lat: number; lon: number }): CityOption {
   return best;
 }
 
-/**
- * How far from a covered city's centre a point can be and still count as "in" that
- * city. Beyond it the app says plainly that the corpus has nothing there, rather
- * than quietly answering for the nearest city it does know. Beit Shemesh to
- * Jerusalem is ~25 km, so the covered cities never overlap at this radius.
- */
-export const COVERAGE_RADIUS_KM = 15;
-
-/** The covered city a point falls inside, or null when it is outside all of them. */
-export function coveringCity(point: { lat: number; lon: number }): CityOption | null {
-  const city = nearestCity(point);
-  return distanceKm(point, city.center) <= COVERAGE_RADIUS_KM ? city : null;
-}
-
 const KM_PER_DEGREE = 111.32;
 
 /** Equirectangular distance: plenty at the scale of one small country. */

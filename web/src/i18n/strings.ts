@@ -348,11 +348,11 @@ const he = {
     emptyCityBody:
       "המאגר לא מכסה עדיין את כל הערים בארץ. זו חסר בנתונים שלנו — לא אמירה על העיר.",
     emptyCityAction: "מעבר לעיר אחרת",
-    // The chosen origin is outside every covered city. Named as our gap, not theirs,
-    // and never answered for the nearest city we do know.
+    // The search came back with no rows at all around the chosen origin — before
+    // any profile or filter was applied. Named as our gap, not theirs.
     outsideTitle: (place: string) => `אין לנו עדיין מקומות ליד ${place}`,
     outsideBody:
-      "המאגר מכסה כרגע רק חלק מהערים בארץ, והמיקום שנבחר רחוק מכולן. זה חסר בנתונים שלנו — לא אמירה על המקום.",
+      "המאגר עדיין לא מכסה את כל הארץ, ובטווח שנבחר סביב המיקום הזה אין לנו אף עסק. זה חסר בנתונים שלנו — לא אמירה על המקום. אפשר להגדיל את הטווח או לשנות מיקום.",
     outsideAction: "שינוי מיקום החיפוש",
     noVerifiedTitle: "אין כאן מקום שעומד בפרופיל שלך על סמך ראיה מאומתת",
     noVerifiedBody:
@@ -736,7 +736,7 @@ const en: Strings = {
     emptyCityAction: "Try another city",
     outsideTitle: (place: string) => `We have no places near ${place} yet`,
     outsideBody:
-      "Our corpus covers only some cities so far, and the chosen location is far from all of them. That is a gap in our data — not a statement about the place.",
+      "Our corpus does not cover the whole country yet, and within the chosen radius of this location we have no business at all. That is a gap in our data — not a statement about the place. Widen the radius or change the location.",
     outsideAction: "Change where we search from",
     noVerifiedTitle: "Nothing here meets your profile on verified evidence",
     noVerifiedBody:

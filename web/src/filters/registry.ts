@@ -144,6 +144,11 @@ export const FILTERS: readonly FilterDefinition[] = [
  * What a chip says: its name at the default, the chosen value when there is one,
  * and "name · n" when several are chosen.
  */
+/** True when any filter is away from its default — i.e. the user narrowed the results. */
+export function anyFilterActive(state: FilterState): boolean {
+  return FILTERS.some((filter) => filter.isActive(state));
+}
+
 export function chipLabel(
   filter: FilterDefinition,
   state: FilterState,

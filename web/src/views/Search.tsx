@@ -38,7 +38,7 @@ import { TabBar } from "../components/TabBar";
 import { CITIES } from "../config";
 import { useOrigin } from "../location/useOrigin";
 import { toSearchFilters } from "../filters/model";
-import type { FilterId } from "../filters/registry";
+import { anyFilterActive, type FilterId } from "../filters/registry";
 import { useFilters } from "../filters/useFilters";
 import { useCity } from "../location/useCity";
 import { isNetworkError, useSearch } from "../hooks/useApi";
@@ -65,29 +65,31 @@ export function Search() {
 
   const trimmedQuery = deferredQuery.trim();
 
-  const request = useMemo<SearchRequest>(() => {
-    const facets = toSearchFilters(filters);
-    return {
-      profile: toPayload(profile),
-      city,
-      page_size: 100,
-      ...(trimmedQuery ? { query: trimmedQuery.slice(0, MAX_QUERY_LENGTH) } : {}),
-      ...(facets ? { filters: facets } : {}),
-    };
-  }, [profile, city, filters, trimmedQuery]);
-
-  const { data, loading, error, reload } = useSearch(request);
-  const results = data?.items ?? [];
-
   const cityLabel = (slug: string) => {
     const found = CITIES.find((entry) => entry.slug === slug);
     return found ? (lang === "en" ? found.en : found.he) : slug;
   };
 
-  // Search is scoped by city, so an origin outside every covered city has no city to
-  // search in. Say so, with the place the user actually chose in the header.
-  const { source, addressLabel, covered } = useOrigin(cityOption);
+  // With an address or the device pinned, search measures from it like home does —
+  // a city scope would answer for whichever city happens to be stored, which is
+  // wrong the moment the pin is in Netanya. Without a pin, the city is the scope.
+  const { origin, source, addressLabel } = useOrigin(cityOption);
+  const pinned = source !== "city";
   const placeLabel = source === "device" ? t.map.youAreHere : (addressLabel ?? cityLabel(city));
+
+  const request = useMemo<SearchRequest>(() => {
+    const facets = toSearchFilters(filters);
+    return {
+      profile: toPayload(profile),
+      ...(pinned ? { center: origin, radius_km: filters.radiusKm } : { city }),
+      page_size: 100,
+      ...(trimmedQuery ? { query: trimmedQuery.slice(0, MAX_QUERY_LENGTH) } : {}),
+      ...(facets ? { filters: facets } : {}),
+    };
+  }, [profile, city, pinned, origin, filters, trimmedQuery]);
+
+  const { data, loading, error, reload } = useSearch(request);
+  const results = data?.items ?? [];
 
   return (
     <div className="shell">
@@ -97,7 +99,7 @@ export function Search() {
         </span>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 11.5, color: "var(--sub)" }}>{t.search.searchingNear}</div>
-          <div style={{ fontWeight: 700, fontSize: 15.5 }}>{covered ? cityLabel(city) : placeLabel}</div>
+          <div style={{ fontWeight: 700, fontSize: 15.5 }}>{placeLabel}</div>
         </div>
       </header>
 
@@ -116,19 +118,21 @@ export function Search() {
         />
       </label>
 
-      <FilterBar exclude={NOT_ON_SEARCH} />
+      {/* A city has no centre to measure a radius from; a pinned origin does. */}
+      <FilterBar exclude={pinned ? [] : NOT_ON_SEARCH} />
 
       <div className="shell__scroll" style={{ paddingTop: 10 }}>
         {error && isNetworkError(error) && <OfflineBanner />}
-        {!covered ? (
-          <OutsideCoverage place={placeLabel} onChangePlace={() => navigate("/")} />
-        ) : loading ? (
+        {loading ? (
           <LoadingList />
         ) : error ? (
           <ErrorState isNetwork={isNetworkError(error)} onRetry={reload} />
         ) : results.length === 0 && trimmedQuery ? (
           <EmptyQuery query={trimmedQuery} onClear={() => setQuery("")} />
-        ) : (data?.total ?? 0) === 0 ? (
+        ) : (data?.total ?? 0) === 0 && pinned && !anyFilterActive(filters) ? (
+          // Nothing at all within range of the pin — a data gap, not a verdict.
+          <OutsideCoverage place={placeLabel} onChangePlace={() => navigate("/")} />
+        ) : (data?.total ?? 0) === 0 && !anyFilterActive(filters) ? (
           // Nothing in the city at all — a data gap (or a bad city_slug), which is a
           // different statement from "nothing meets your profile".
           <EmptyCity
