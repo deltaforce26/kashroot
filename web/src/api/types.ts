@@ -255,7 +255,62 @@ export interface CertificateEvidenceOut {
   reasons: ReasonOut[];
   confidence: Confidence;
   freshness: FreshnessOut;
+  /**
+   * The certificate photo's review state. A public upload waits as `pending` until a
+   * moderator accepts it; the photo itself never changes the verdict.
+   */
+  photo_status: PhotoStatus;
+  /** A presigned URL, set only when `photo_status` is `accepted`. */
+  photo_url: string | null;
 }
+
+export type PhotoStatus = "none" | "pending" | "accepted";
+
+/** app/models/enums.py :: FlagType — what a public report says is wrong. */
+export type FlagType =
+  | "closed"
+  | "no_certificate_displayed"
+  | "different_certifier"
+  | "expired_certificate"
+  | "wrong_details"
+  | "wrong_hours"
+  | "other";
+
+export const FLAG_TYPES: readonly FlagType[] = [
+  "closed",
+  "no_certificate_displayed",
+  "different_certifier",
+  "expired_certificate",
+  "wrong_details",
+  "wrong_hours",
+  "other",
+];
+
+/** Longest free-text message a report may carry (the API rejects longer). */
+export const FLAG_MESSAGE_MAX = 1000;
+
+/** POST /v1/restaurants/{id}/flags. */
+export interface FlagRequest {
+  type: FlagType;
+  message?: string;
+}
+
+export interface FlagCreatedOut {
+  flag_id: number;
+  state: "open";
+}
+
+/** POST /v1/restaurants/{id}/certificate-photo → 201. */
+export interface PhotoUploadOut {
+  photo_id: number;
+  status: "pending";
+}
+
+/** The image types the public upload accepts; PDFs stay admin-only. */
+export const PHOTO_MIME_TYPES: readonly string[] = ["image/jpeg", "image/png", "image/webp"];
+
+/** The server's upload ceiling, checked on the client first to save the round trip. */
+export const PHOTO_MAX_BYTES = 15 * 1024 * 1024;
 
 export interface RestaurantDetailResponseOut {
   restaurant_id: string;

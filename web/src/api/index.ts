@@ -9,11 +9,20 @@
  * the branch below, done.
  */
 
-import { api } from "./client";
-import { mockCertifiers, mockRestaurant, mockSearch } from "./mock/server";
+import { ApiError, api, postForm } from "./client";
+import {
+  mockCertifiers,
+  mockReportRestaurant,
+  mockRestaurant,
+  mockSearch,
+  mockUploadCertificatePhoto,
+} from "./mock/server";
 import type {
   CertifierListItem,
+  FlagCreatedOut,
+  FlagRequest,
   GeoPoint,
+  PhotoUploadOut,
   ProfileRequest,
   RestaurantDetailResponseOut,
   SearchRequest,
@@ -42,6 +51,15 @@ export interface KashrootApi {
     center?: GeoPoint,
     signal?: AbortSignal,
   ): Promise<DetailView>;
+  /**
+   * Anonymous certificate photo upload for the restaurant's deciding certificate.
+   * It lands as `pending` in the moderation queue and changes nothing until a
+   * moderator accepts it. Rejects with `ApiError` — 409 carries `photo_exists` or
+   * `photo_pending` as its message.
+   */
+  uploadCertificatePhoto(restaurantId: string, file: File): Promise<PhotoUploadOut>;
+  /** A public report. It opens a moderation flag and never moves a verdict. */
+  reportRestaurant(restaurantId: string, body: FlagRequest): Promise<FlagCreatedOut>;
 }
 
 export const API_MODE: "live" | "mock" =
@@ -64,6 +82,19 @@ const liveApi: KashrootApi = {
       body: { profile, ...(center ? { center } : {}) },
       ...(signal ? { signal } : {}),
     }).then(toDetailView),
+  uploadCertificatePhoto: (restaurantId, file) => {
+    const form = new FormData();
+    form.append("file", file);
+    return postForm<PhotoUploadOut>(
+      `/v1/restaurants/${encodeURIComponent(restaurantId)}/certificate-photo`,
+      form,
+    );
+  },
+  reportRestaurant: (restaurantId, body) =>
+    api<FlagCreatedOut>(`/v1/restaurants/${encodeURIComponent(restaurantId)}/flags`, {
+      method: "POST",
+      body,
+    }),
 };
 
 const mockApi: KashrootApi = {
@@ -71,10 +102,24 @@ const mockApi: KashrootApi = {
   search: (request) => mockSearch(request).then(toSearchView),
   getRestaurant: (id, profile, center) =>
     mockRestaurant(id, profile, undefined, center).then(toDetailView),
+  uploadCertificatePhoto: (restaurantId, file) => mockUploadCertificatePhoto(restaurantId, file),
+  reportRestaurant: (restaurantId, body) => mockReportRestaurant(restaurantId, body),
 };
 
 export const kashrootApi: KashrootApi = API_MODE === "live" ? liveApi : mockApi;
 
+/**
+ * Which refusal a 409 from the photo upload was. The server's `detail` is a machine
+ * code here, read only to pick a string from our own table — the UI never prints it.
+ */
+export function photoConflict(error: unknown): "photo_exists" | "photo_pending" | null {
+  if (!(error instanceof ApiError) || error.status !== 409) return null;
+  return error.message === "photo_exists" || error.message === "photo_pending"
+    ? error.message
+    : null;
+}
+
 export { ApiError } from "./client";
+export { FLAG_MESSAGE_MAX, FLAG_TYPES, PHOTO_MAX_BYTES, PHOTO_MIME_TYPES } from "./types";
 export type * from "./types";
 export type { CertifierView, DetailView, ResultView, SearchView } from "./viewmodel";

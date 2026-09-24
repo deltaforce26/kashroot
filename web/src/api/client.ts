@@ -47,21 +47,26 @@ function normalizeDetail(body: unknown, status: number): string {
 
 export interface RequestOptions {
   method?: "GET" | "POST";
+  /**
+   * JSON by default. A `FormData` body is sent as multipart as-is, with no
+   * Content-Type header of our own: the browser has to write the boundary into it.
+   */
   body?: unknown;
   signal?: AbortSignal;
 }
 
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = "GET", body, signal } = options;
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
   const headers: Record<string, string> = {};
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
 
   let response: Response;
   try {
     response = await fetch(path, {
       method,
       headers,
-      body: body === undefined ? null : JSON.stringify(body),
+      body: body === undefined ? null : isForm ? (body as FormData) : JSON.stringify(body),
       ...(signal ? { signal } : {}),
     });
   } catch (error) {
@@ -80,4 +85,9 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   }
 
   return (await response.json()) as T;
+}
+
+/** POST a multipart form — the upload path. */
+export function postForm<T>(path: string, form: FormData, signal?: AbortSignal): Promise<T> {
+  return api<T>(path, { method: "POST", body: form, ...(signal ? { signal } : {}) });
 }

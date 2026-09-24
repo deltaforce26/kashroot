@@ -49,6 +49,8 @@ const DECIDING: CertificateEvidenceOut = {
     is_stale: false,
     expires_soon: false,
   },
+  photo_status: "none",
+  photo_url: null,
 };
 
 const MATCH: KashrutVerdictOut = {
