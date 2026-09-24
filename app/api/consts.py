@@ -6,6 +6,8 @@ radius and error-message literals live here with informative names.
 
 from __future__ import annotations
 
+from app.api.admin.consts import PHOTO_EXTENSIONS
+
 #: Search paging.
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
@@ -56,3 +58,37 @@ MAX_RATING = 5.0
 
 ERROR_DUPLICATE_WHITELIST_CERTIFIER = "duplicate whitelist entry for certifier_id {certifier_id}"
 ERROR_RESTAURANT_NOT_FOUND = "restaurant not found"
+
+#: ``CertificateEvidenceOut.photo_status`` — the public detail response's tri-state
+#: view of ``CertificateEvidencePhoto``: an accepted photo (``evidence_photo_key`` set
+#: on the certificate), a photo awaiting moderator review, or neither.
+PHOTO_STATUS_NONE = "none"
+PHOTO_STATUS_PENDING = "pending"
+PHOTO_STATUS_ACCEPTED = "accepted"
+
+#: Actor label stamped on every write an anonymous public-API caller makes (evidence
+#: photo uploads, flags) — there are no accounts yet (see ``app.api.deps`` docstring),
+#: so this is the one actor name every such AuditLog / photo row carries.
+PUBLIC_ANONYMOUS_ACTOR = "public:anonymous"
+
+#: ``POST /v1/restaurants/{id}/certificate-photo`` only accepts images — unlike the
+#: admin path (``app.api.admin.consts.PHOTO_EXTENSIONS``), PDF scans stay admin-only.
+#: Derived from the admin allow-list so the two paths cannot silently drift apart.
+IMAGE_ONLY_PHOTO_EXTENSIONS: dict[str, str] = {
+    content_type: extension
+    for content_type, extension in PHOTO_EXTENSIONS.items()
+    if content_type != "application/pdf"
+}
+
+ERROR_PHOTO_EXISTS = "photo_exists"
+ERROR_PHOTO_PENDING = "photo_pending"
+
+#: ``POST /v1/restaurants/{id}/certificate-photo`` and ``.../flags`` both take an
+#: explicit ``certificate_id`` — the client already knows which certificate card the
+#: user is looking at (chosen by their own profile), so the server never re-derives
+#: it. This is the 404 for one that does not belong to the named restaurant.
+ERROR_CERTIFICATE_NOT_FOUND_FOR_RESTAURANT = "certificate not found for this restaurant"
+
+#: ``FlagCreateRequest.message`` (POST /v1/restaurants/{id}/flags) — a short free-text
+#: report, not a certificate-evidence document.
+MAX_FLAG_MESSAGE_LENGTH = 1000

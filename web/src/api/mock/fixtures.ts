@@ -69,7 +69,35 @@ export interface FixtureRestaurant {
   lon: number;
   amenities: Partial<Record<string, boolean>>;
   certificates: FixtureCertificate[];
+  /**
+   * The deciding certificate's photo review state. Absent = no photo (`none`).
+   * Mutated at runtime by the mock upload endpoint, via a copy in `./server`.
+   */
+  photo?: FixturePhoto;
 }
+
+export interface FixturePhoto {
+  status: "pending" | "accepted";
+  url: string | null;
+}
+
+/**
+ * A drawn stand-in for an accepted certificate photo: an inline SVG, so the offline
+ * demo needs no network and no binary asset. It is plainly a placeholder.
+ */
+export const PLACEHOLDER_CERTIFICATE_PHOTO = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400" width="600" height="800">
+<rect width="300" height="400" fill="#f7f3e6"/>
+<rect x="14" y="14" width="272" height="372" fill="none" stroke="#8a7a4a" stroke-width="4"/>
+<rect x="24" y="24" width="252" height="352" fill="none" stroke="#8a7a4a" stroke-width="1"/>
+<text x="150" y="80" font-family="serif" font-size="30" font-weight="700" text-anchor="middle" fill="#3b3320">תעודת כשרות</text>
+<g fill="#b9ab82"><rect x="60" y="120" width="180" height="8" rx="4"/><rect x="45" y="145" width="210" height="8" rx="4"/><rect x="45" y="170" width="210" height="8" rx="4"/><rect x="70" y="195" width="160" height="8" rx="4"/><rect x="45" y="235" width="210" height="8" rx="4"/><rect x="80" y="260" width="140" height="8" rx="4"/></g>
+<circle cx="220" cy="325" r="34" fill="none" stroke="#2d5aa0" stroke-width="4"/>
+<circle cx="220" cy="325" r="25" fill="none" stroke="#2d5aa0" stroke-width="1.5"/>
+<path d="M50 330 q20 -25 40 0 t40 0" fill="none" stroke="#3b3320" stroke-width="2"/>
+<text x="150" y="372" font-family="monospace" font-size="11" text-anchor="middle" fill="#8a7a4a">DEMO PLACEHOLDER</text>
+</svg>`,
+)}`;
 
 export const RESTAURANTS: FixtureRestaurant[] = [
   {
@@ -105,6 +133,8 @@ export const RESTAURANTS: FixtureRestaurant[] = [
         source: "official_list",
       },
     ],
+    // An accepted photo: the card shows it, and offers only a report.
+    photo: { status: "accepted", url: PLACEHOLDER_CERTIFICATE_PHOTO },
   },
   {
     id: "r-hapisga",
@@ -151,6 +181,8 @@ export const RESTAURANTS: FixtureRestaurant[] = [
         source: "moderator_verified",
       },
     ],
+    // A public upload awaiting review: no upload offered, no photo shown yet.
+    photo: { status: "pending", url: null },
   },
   {
     id: "r-katzefet",

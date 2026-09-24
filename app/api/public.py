@@ -28,7 +28,11 @@ from app.api.consts import (
     LIKE_ESCAPE_CHAR,
     MAX_QUERY_ROWS,
     METERS_PER_KM,
+    PHOTO_STATUS_ACCEPTED,
+    PHOTO_STATUS_NONE,
+    PHOTO_STATUS_PENDING,
 )
+from app.api.deps import get_media_storage
 from app.api.schemas_public import (
     CertificateEvidenceOut,
     CertifierChip,
@@ -40,6 +44,7 @@ from app.api.schemas_public import (
     GeoPoint,
     GeoPointOut,
     KashrutVerdictOut,
+    PhotoStatus,
     ProvenanceOut,
     ReasonOut,
     RestaurantDetailRequest,
@@ -61,8 +66,10 @@ from app.match import (
 from app.models import (
     CERTIFICATION_LEVEL_ORDER,
     Certificate,
+    CertificateEvidencePhoto,
     CertificationLevel,
     Certifier,
+    EvidencePhotoStatus,
     Restaurant,
     RestaurantStatus,
 )
@@ -72,6 +79,7 @@ from app.services.matching import (
     fit_preferences_from_profile,
     profile_input_from_request,
 )
+from app.storage import MediaStorage
 
 router = APIRouter(prefix="/v1", tags=["public"])
 
@@ -652,25 +660,65 @@ def search_restaurants(
     )
 
 
+def _certificate_photo_status(
+    certificate: Certificate,
+    *,
+    pending_photo_certificate_ids: set[uuid.UUID],
+    storage: MediaStorage,
+) -> tuple[PhotoStatus, str | None]:
+    """Resolve one certificate's public evidence-photo state and, when accepted, a
+    fresh presigned view URL.
+
+    Parameters:
+        certificate (Certificate): the certificate row.
+        pending_photo_certificate_ids (set[uuid.UUID]): ids of every certificate on
+            this restaurant that has a PENDING_REVIEW photo — pre-fetched once per
+            request by the caller so this stays free of per-certificate queries.
+        storage (MediaStorage): backend that mints the presigned URL.
+
+    Return:
+        tuple[PhotoStatus, str | None]: the status, and a view URL only when accepted.
+    """
+    if certificate.evidence_photo_key is not None:
+        return PHOTO_STATUS_ACCEPTED, storage.get_url(certificate.evidence_photo_key)
+    if certificate.id in pending_photo_certificate_ids:
+        return PHOTO_STATUS_PENDING, None
+
+    return PHOTO_STATUS_NONE, None
+
+
 def _certificate_evidence_out(
-    certificate: Certificate, evaluation: CertificateEvaluation
+    certificate: Certificate,
+    evaluation: CertificateEvaluation,
+    *,
+    pending_photo_certificate_ids: set[uuid.UUID],
+    storage: MediaStorage,
 ) -> CertificateEvidenceOut:
     """Assemble one certificate's full evidence row for the restaurant detail response.
 
     Guarantees every certificate-level fact the product's "why am I seeing this
     answer" claim depends on is present in one object: the certifier chip, level,
-    attributes, state, validity window, provenance, and this specific certificate's
-    own outcome/reasons/confidence/freshness (as opposed to the restaurant's combined
-    verdict) — the client needs no further request to explain the verdict.
+    attributes, state, validity window, provenance, this specific certificate's own
+    outcome/reasons/confidence/freshness (as opposed to the restaurant's combined
+    verdict), and its public evidence-photo state — the client needs no further
+    request to explain the verdict or to decide whether to offer an upload.
 
     Parameters:
         certificate (Certificate): the certificate row, with ``certifier`` loaded.
         evaluation (CertificateEvaluation): this certificate's own Layer 1 evaluation,
             matched to it by certificate id.
+        pending_photo_certificate_ids (set[uuid.UUID]): see
+            :func:`_certificate_photo_status`.
+        storage (MediaStorage): backend that mints the presigned photo view URL.
 
     Return:
         CertificateEvidenceOut: one certificate's evidence as an API output model.
     """
+    photo_status, photo_url = _certificate_photo_status(
+        certificate,
+        pending_photo_certificate_ids=pending_photo_certificate_ids,
+        storage=storage,
+    )
 
     return CertificateEvidenceOut(
         certificate_id=uuid.UUID(evaluation.certificate_id),
@@ -691,6 +739,8 @@ def _certificate_evidence_out(
         reasons=_reason_list(evaluation.reasons),
         confidence=evaluation.confidence,
         freshness=_freshness_out(evaluation.freshness),
+        photo_status=photo_status,
+        photo_url=photo_url,
     )
 
 
@@ -699,6 +749,7 @@ def get_restaurant_detail(
     restaurant_id: uuid.UUID,
     body: RestaurantDetailRequest,
     session: Session = Depends(get_session),
+    storage: MediaStorage = Depends(get_media_storage),
 ) -> RestaurantDetailResponse:
     """Full evidence for one restaurant against the request profile (POC_PLAN.md B4):
     every certificate, its certifier, its attributes with provenance, and the verdict
@@ -731,6 +782,19 @@ def get_restaurant_detail(
         evaluation.certificate_id: evaluation for evaluation in kashrut.evaluations
     }
 
+    pending_photo_certificate_ids: set[uuid.UUID] = set(
+        session.scalars(
+            select(CertificateEvidencePhoto.certificate_id)
+            .where(
+                CertificateEvidencePhoto.certificate_id.in_(
+                    [certificate.id for certificate in restaurant.certificates]
+                ),
+                CertificateEvidencePhoto.status == EvidencePhotoStatus.PENDING_REVIEW,
+            )
+            .distinct()
+        )
+    )
+
     return RestaurantDetailResponse(
         restaurant_id=restaurant.id,
         name_he=restaurant.name_he,
@@ -748,7 +812,10 @@ def get_restaurant_detail(
         fit=_fit_score_out(fit),
         certificates=[
             _certificate_evidence_out(
-                certificate, evaluations_by_certificate_id[str(certificate.id)]
+                certificate,
+                evaluations_by_certificate_id[str(certificate.id)],
+                pending_photo_certificate_ids=pending_photo_certificate_ids,
+                storage=storage,
             )
             for certificate in restaurant.certificates
         ],

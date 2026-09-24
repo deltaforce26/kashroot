@@ -1528,7 +1528,11 @@ a {
 }
 
 .cert-card {
+  /* Raised so the upload menu opens over the glass panels that follow it. */
+  position: relative;
+  z-index: 2;
   display: flex;
+  flex-wrap: wrap;
   gap: 14px;
 }
 
@@ -1544,6 +1548,203 @@ a {
   color: var(--sub);
   text-align: center;
   white-space: pre-line;
+}
+
+/*
+ * The photo slot: a column holding the 76×98 box and, when a photo is approved, the
+ * small report button under it. Status lines wrap to their own full-width row.
+ */
+.cert-photo {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.cert-photo__thumb {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--hair);
+  background: var(--pill);
+  cursor: zoom-in;
+}
+
+.cert-photo__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cert-photo__upload,
+.cert-photo__pending {
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  font: 600 11px Assistant, sans-serif;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.cert-photo__upload {
+  color: var(--ink);
+  background: var(--pill);
+  border: 1.5px dashed var(--sub);
+}
+
+.cert-photo__upload[disabled] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.cert-photo__pending {
+  color: var(--amber);
+}
+
+.cert-photo__badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--amber-soft);
+}
+
+.cert-photo__report {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hair);
+  font-size: 11px;
+  color: var(--sub);
+}
+
+.cert-photo__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  inset-inline-start: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: 6px;
+  border-radius: var(--radius-tile);
+  border: 1px solid var(--hair);
+  background: var(--bg-ink);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+.cert-photo__menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--ink);
+  text-align: start;
+}
+
+.cert-photo__menu button:hover,
+.cert-photo__menu button:focus-visible {
+  background: var(--hair);
+}
+
+.cert-photo__status {
+  flex-basis: 100%;
+  order: 3;
+  margin: -4px 0 0;
+  font-size: 12px;
+  color: var(--green);
+  text-align: start;
+}
+
+.cert-photo__status--error {
+  color: var(--red);
+}
+
+/* Full-size viewer, portalled to <body> so no glass ancestor can trap it. */
+.photo-viewer__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  border: 0;
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.78);
+  cursor: zoom-out;
+}
+
+.photo-viewer {
+  position: fixed;
+  inset: 5vh 16px;
+  z-index: 61;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.photo-viewer img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 12px;
+  pointer-events: auto;
+}
+
+.photo-viewer__close {
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+  pointer-events: auto;
+}
+
+/* The report entry at the foot of the page, and the sheet it opens. */
+.report-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  align-self: center;
+  margin-bottom: 12px;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  color: var(--sub);
+  border-radius: var(--radius-pill);
+}
+
+.report-sheet__form,
+.report-sheet__done {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.report-sheet__form .filter-group__title {
+  margin: 0;
+}
+
+.report-sheet__types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.report-sheet__message {
+  width: 100%;
+  resize: vertical;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.report-sheet__error {
+  color: var(--red);
 }
 
 .cert-card__body {

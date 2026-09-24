@@ -88,6 +88,17 @@ class Settings(BaseSettings):
     # admin API rejects everything. Tokens are secrets: never log them.
     admin_api_tokens: dict[str, str] | str = {}
 
+    # Resend (https://resend.com) email notifications for public community reports
+    # (POST /v1/restaurants/{id}/flags). Unset key or recipients -> silent no-op, so
+    # dev/tests work with no email credentials at all (app.services.notifications).
+    resend_api_key: str | None = None
+    report_email_from: str | None = None
+    # Comma-separated recipient list, e.g. "alice@example.com,bob@example.com".
+    report_email_to: str | None = None
+    # Optional base URL of the admin console, for a link to its flag queue (/flags)
+    # in the notification email, e.g. "https://admin.kashroot.example".
+    admin_base_url: str | None = None
+
     @field_validator("storage_backend", mode="before")
     @classmethod
     def _parse_storage_backend(cls, value: Any) -> Any:

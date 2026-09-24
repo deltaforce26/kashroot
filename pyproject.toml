@@ -48,7 +48,13 @@ select = ["E", "F", "I", "UP", "B"]
 # at declaration time, not a mutable default) — silence B008 for these rather than
 # contorting endpoint signatures. File() is included because it is actually used the
 # same way in app/api/admin.py.
-extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.File"]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.File",
+    "fastapi.Form",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

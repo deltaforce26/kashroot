@@ -89,3 +89,19 @@ alembic downgrade -1
 ```
 
 The URL comes from `KASHROOT_DATABASE_URL` via `app.core.config`, not from `alembic.ini`.
+
+## Report notification email
+
+Every public community report (`POST /v1/restaurants/{id}/flags`) sends one email
+through [Resend](https://resend.com) after the flag is committed (`app.services.notifications`),
+via a background task so a slow or failing send never delays or fails the response.
+
+| Variable | Purpose |
+| --- | --- |
+| `KASHROOT_RESEND_API_KEY` | Resend API key (secret). |
+| `KASHROOT_REPORT_EMAIL_FROM` | Verified Resend "from" address. |
+| `KASHROOT_REPORT_EMAIL_TO` | Comma-separated recipient list. |
+| `KASHROOT_ADMIN_BASE_URL` | Optional — base URL of the admin console, linked in the email to its flag queue. |
+
+Unset key or recipients is a silent no-op (`NullSender`), so local dev and the test
+suite need none of this configured. See `.env.example`.

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import datetime as dt
 import uuid
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -25,6 +26,7 @@ from app.api.consts import (
     ERROR_DUPLICATE_WHITELIST_CERTIFIER,
     MAX_CERTIFIER_IDS,
     MAX_DIET_TYPES,
+    MAX_FLAG_MESSAGE_LENGTH,
     MAX_PAGE_SIZE,
     MAX_RADIUS_KM,
     MAX_RATING,
@@ -42,7 +44,11 @@ from app.models.enums import (
     CertificationLevel,
     CertifierType,
     DietType,
+    FlagType,
 )
+
+#: See ``app.api.consts.PHOTO_STATUS_NONE`` / ``_PENDING`` / ``_ACCEPTED``.
+PhotoStatus = Literal["none", "pending", "accepted"]
 
 # --------------------------------------------------------------------------- profile
 
@@ -393,6 +399,13 @@ class CertificateEvidenceOut(BaseModel):
     reasons: list[ReasonOut]
     confidence: Confidence
     freshness: FreshnessOut
+    #: Public evidence-photo state of THIS certificate (Change: certificate photo
+    #: upload + report button). "accepted" means ``photo_url`` is populated with a
+    #: presigned view URL; "pending" means an upload is awaiting moderator review and
+    #: uploads are refused (409 ``photo_exists``/``photo_pending``); "none" means the
+    #: client may offer an upload.
+    photo_status: PhotoStatus
+    photo_url: str | None = None
 
 
 class RestaurantDetailResponse(BaseModel):
@@ -415,3 +428,38 @@ class RestaurantDetailResponse(BaseModel):
     fit: FitScoreOut
     #: Every certificate's full evidence, not just the deciding one.
     certificates: list[CertificateEvidenceOut]
+
+
+# --------------------------------------------------- /v1/restaurants/{id}/*, public
+
+
+class PublicPhotoUploadResponse(BaseModel):
+    """``POST /v1/restaurants/{id}/certificate-photo`` (201). The upload always lands
+    PENDING_REVIEW — this response never carries the photo's own id-shaped detail, on
+    purpose: an anonymous uploader is not a moderator and has no photo queue to look
+    it up in.
+    """
+
+    photo_id: uuid.UUID
+    status: Literal["pending"] = "pending"
+
+
+class FlagCreateRequest(BaseModel):
+    """``POST /v1/restaurants/{id}/flags`` body. Anonymous community report — never
+    changes any status by itself (PRD §13 fail-safe); it only queues the restaurant
+    into the moderation console's flag queue.
+    """
+
+    type: FlagType
+    #: The certificate card the user was looking at when they reported, if any — the
+    #: client passes the id of whichever certificate its own profile is displaying;
+    #: the server only validates it belongs to the restaurant, never re-derives it.
+    certificate_id: uuid.UUID | None = None
+    message: str | None = Field(default=None, max_length=MAX_FLAG_MESSAGE_LENGTH)
+
+
+class FlagCreateResponse(BaseModel):
+    """``POST /v1/restaurants/{id}/flags`` (201)."""
+
+    flag_id: uuid.UUID
+    state: Literal["open"] = "open"
