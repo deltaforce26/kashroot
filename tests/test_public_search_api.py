@@ -273,9 +273,12 @@ def test_search_unknown_when_restaurant_has_no_certificate(client, session) -> N
     assert item["kashrut"]["reasons"] == [{"code": "no_certificate", "attribute": None}]
 
 
-def test_search_unknown_when_verified_at_is_stale(client, session) -> None:
-    """Fail-safe: the staleness clock runs from ``verified_at`` regardless of an
-    unexpired ``valid_until`` — stale evidence degrades to UNKNOWN, never MATCH.
+def test_search_matches_despite_stale_verified_at(client, session) -> None:
+    """Product decision override (current app stage, CLAUDE.md/user instruction):
+    verification-age staleness does not affect the verdict — ``settings.
+    enforce_freshness`` defaults to False. Stale ``verified_at`` no longer degrades an
+    otherwise-matching certificate; the engine's staleness logic itself is still
+    exhaustively covered with ``enforce_freshness=True`` in test_match_engine.py.
     """
     certifier = make_certifier(session)
     restaurant = make_restaurant(session)
@@ -297,8 +300,10 @@ def test_search_unknown_when_verified_at_is_stale(client, session) -> None:
     )
 
     item = response.json()["items"][0]
-    assert item["kashrut"]["verdict"] == "unknown"
-    assert "evidence_stale" in {r["code"] for r in item["kashrut"]["reasons"]}
+    assert item["kashrut"]["verdict"] == "match"
+    reason_codes = {r["code"] for r in item["kashrut"]["reasons"]}
+    assert "evidence_stale" not in reason_codes
+    assert "evidence_fresh" not in reason_codes
 
 
 def test_search_city_filter_excludes_other_cities(client, session) -> None:

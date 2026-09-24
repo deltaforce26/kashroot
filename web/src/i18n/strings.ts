@@ -145,16 +145,6 @@ const he = {
     validUntil: (date: string) => `בתוקף עד ${date}`,
     noExpiry: "לא פורסם תאריך תפוגה",
     verifiedBy: (who: string) => `אומת ע״י ${who}`,
-    verifiedAgo: (days: number) =>
-      days === 0
-        ? "אומת היום"
-        : days === 1
-          ? "אומת אתמול"
-          : days > 365
-            ? "אומת לפני יותר משנה"
-            : days > 100
-              ? "אומת בשנה האחרונה"
-              : `אומת לפני ${days} ימים`,
     neverVerified: "לא אומת מעולם על ידינו",
     source: "מקור",
     sources: {
@@ -546,16 +536,6 @@ const en: Strings = {
     validUntil: (date: string) => `Valid until ${date}`,
     noExpiry: "No expiry date published",
     verifiedBy: (who: string) => `Verified by ${who}`,
-    verifiedAgo: (days: number) =>
-      days === 0
-        ? "Verified today"
-        : days === 1
-          ? "Verified yesterday"
-          : days > 365
-            ? "Verified over a year ago"
-            : days > 100
-              ? "Verified in the last year"
-              : `Verified ${days} days ago`,
     neverVerified: "Never verified by us",
     source: "Source",
     sources: {

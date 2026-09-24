@@ -114,8 +114,8 @@ describe("EvidencePanel", () => {
     renderHe(<EvidencePanel match={MATCH} deciding={DECIDING} />);
     const panel = screen.getByLabelText(STRINGS.he.verdict.whyMatch);
     const rows = within(panel).getAllByRole("listitem");
-    // certifier / attributes (grouped) / valid / fresh
-    expect(rows).toHaveLength(4);
+    // certifier / attributes (grouped) / valid — the verification-age reason is hidden
+    expect(rows).toHaveLength(3);
     expect(rows[1]?.textContent).toContain(STRINGS.he.attributes.chalav_yisrael);
     expect(rows[1]?.textContent).toContain(STRINGS.he.attributes.pas_yisrael);
   });
@@ -126,10 +126,10 @@ describe("EvidencePanel", () => {
     expect(screen.getByText(/ברשימה שלך/)).toBeInTheDocument();
   });
 
-  it("shows the expiry and the verification age from the API's freshness block", () => {
+  it("shows the expiry but no verification-age line", () => {
     renderHe(<EvidencePanel match={MATCH} deciding={DECIDING} />);
     expect(screen.getByText(/30\/09\/26/)).toBeInTheDocument();
-    expect(screen.getByText(STRINGS.he.restaurant.verifiedAgo(6))).toBeInTheDocument();
+    expect(screen.queryByText(/אומת/)).not.toBeInTheDocument();
   });
 
   it("reads UNKNOWN as honest, not broken, and never as a quiet match", () => {

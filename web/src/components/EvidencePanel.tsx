@@ -16,6 +16,7 @@ import {
   followUpText,
   reasonPolarity,
   reasonText,
+  visibleReasons,
   type ReasonContext,
 } from "../i18n/reasons";
 
@@ -67,11 +68,10 @@ export function EvidencePanel({ match, deciding }: EvidencePanelProps) {
   const context: ReasonContext = {
     certifierName,
     validUntil: formatDate(match.freshness?.valid_until ?? null),
-    evidenceAgeDays: match.freshness?.evidence_age_days ?? null,
     daysUntilExpiry: match.freshness?.days_until_expiry ?? null,
   };
 
-  const groups = groupReasons(match.reasons);
+  const groups = groupReasons(visibleReasons(match.reasons));
 
   return (
     <section className="panel glass" aria-label={title}>

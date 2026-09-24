@@ -51,7 +51,6 @@ function useCardText(item: ResultView) {
     ? reasonText(deciding, t, lang, {
         certifierName: certifierLabel(item, lang),
         validUntil: formatDate(item.kashrut.freshness?.valid_until ?? null),
-        evidenceAgeDays: item.kashrut.freshness?.evidence_age_days ?? null,
         daysUntilExpiry: item.kashrut.freshness?.days_until_expiry ?? null,
       })
     : null;

@@ -76,6 +76,11 @@ class Settings(BaseSettings):
     # certifier overrides it. Staleness degrades to UNKNOWN — never to MATCH.
     default_freshness_days: int = 365
 
+    # Verification-age gate is off for the current app stage (explicit product
+    # decision, overrides the engine's documented staleness fail-safe); the engine
+    # logic stays in place, switchable, for later re-enabling.
+    enforce_freshness: bool = False
+
     # TEMPORARY moderator auth for the admin/moderation API, until real moderator
     # accounts exist (PRD FR8). Maps bearer token -> moderator actor name; the actor
     # name flows into every AuditLog entry the moderator writes. Configure via
