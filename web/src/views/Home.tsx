@@ -25,6 +25,7 @@ import { LocationSheet } from "../components/LocationSheet";
 import { RestaurantGridCard } from "../components/RestaurantCard";
 import {
   EmptyResults,
+  OutsideCoverage,
   ErrorState,
   LoadingList,
   NoVerifiedMatchesBanner,
@@ -52,7 +53,7 @@ export function Home() {
   const { city } = useCity();
   // Where "near me" is measured from: the device, a typed address, or this city's
   // centre. The sheet sets it; the header only reports it.
-  const { origin, source, addressLabel } = useOrigin(city);
+  const { origin, source, addressLabel, covered } = useOrigin(city);
   // The bar and this request read one store, so a chip tapped there re-runs this.
   const { filters, reset: resetFilters } = useFilters();
   const [pickingPlace, setPickingPlace] = useState(false);
@@ -164,6 +165,8 @@ export function Home() {
           <LoadingList />
         ) : error ? (
           <ErrorState isNetwork={isNetworkError(error)} onRetry={reload} />
+        ) : !covered ? (
+          <OutsideCoverage place={placeLabel} onChangePlace={() => setPickingPlace(true)} />
         ) : results.length === 0 ? (
           <EmptyResults onWidenProfile={() => navigate("/profile")} onShowAll={resetFilters} />
         ) : (

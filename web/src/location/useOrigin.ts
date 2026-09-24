@@ -45,7 +45,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { GeoPoint } from "../api/types";
-import type { CityOption } from "../config";
+import { coveringCity, type CityOption } from "../config";
 import { followPoint } from "./useCity";
 
 export type OriginSource = "device" | "city" | "address";
@@ -212,6 +212,12 @@ export function useOrigin(city: CityOption): {
   source: OriginSource;
   /** The typed address, when that is what we are measuring from; otherwise null. */
   addressLabel: string | null;
+  /**
+   * False when the origin lies outside every city the corpus covers. Home and map
+   * would then measure honestly from it and find nothing; search would silently
+   * answer for the last city. Each screen says "nothing here yet" instead.
+   */
+  covered: boolean;
   state: GeoState;
   /** Ask for the device position. Safe to call when unsupported — resolves to city. */
   requestDeviceLocation: () => void;
@@ -284,6 +290,7 @@ export function useOrigin(city: CityOption): {
     origin: override?.point ?? city.center,
     source: override?.source ?? "city",
     addressLabel: override?.source === "address" ? override.label : null,
+    covered: override ? coveringCity(override.point) !== null : true,
     state: geoState,
     requestDeviceLocation,
     setAddressOrigin,

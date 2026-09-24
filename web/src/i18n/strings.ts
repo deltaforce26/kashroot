@@ -348,6 +348,12 @@ const he = {
     emptyCityBody:
       "המאגר לא מכסה עדיין את כל הערים בארץ. זו חסר בנתונים שלנו — לא אמירה על העיר.",
     emptyCityAction: "מעבר לעיר אחרת",
+    // The chosen origin is outside every covered city. Named as our gap, not theirs,
+    // and never answered for the nearest city we do know.
+    outsideTitle: (place: string) => `אין לנו עדיין מקומות ליד ${place}`,
+    outsideBody:
+      "המאגר מכסה כרגע רק חלק מהערים בארץ, והמיקום שנבחר רחוק מכולן. זה חסר בנתונים שלנו — לא אמירה על המקום.",
+    outsideAction: "שינוי מיקום החיפוש",
     noVerifiedTitle: "אין כאן מקום שעומד בפרופיל שלך על סמך ראיה מאומתת",
     noVerifiedBody:
       "המקומות מוצגים כמו שהם, עם מה שידוע לנו על כל אחד. ״לא מאומת״ אינו ״לא כשר״ — פשוט אין בידינו ראיה שעונה על מה שהגדרתם.",
@@ -728,6 +734,10 @@ const en: Strings = {
     emptyCityBody:
       "Our corpus does not cover every city yet. That is a gap in our data — not a statement about the city.",
     emptyCityAction: "Try another city",
+    outsideTitle: (place: string) => `We have no places near ${place} yet`,
+    outsideBody:
+      "Our corpus covers only some cities so far, and the chosen location is far from all of them. That is a gap in our data — not a statement about the place.",
+    outsideAction: "Change where we search from",
     noVerifiedTitle: "Nothing here meets your profile on verified evidence",
     noVerifiedBody:
       "The places below are shown as they are, with whatever we know about each. “Not verified” is not “not kosher” — we simply hold no evidence meeting what you set.",

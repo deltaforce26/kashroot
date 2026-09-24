@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { CITIES, DEFAULT_CITY_SLUG, cityBySlug, nearestCity, type CityOption } from "../config";
+import { CITIES, DEFAULT_CITY_SLUG, cityBySlug, coveringCity, type CityOption } from "../config";
 import { clearOrigin } from "./useOrigin";
 
 const KEY = "kashroot.city";
@@ -39,10 +39,14 @@ function writeSlug(next: string): void {
  * address is pinned or the device answers, so that the one screen scoped by city
  * (search) agrees with the two measured from the origin (home, map). Unlike
  * `setSlug` this does *not* clear the origin: the origin is what is being followed.
+ *
+ * A point outside every covered city leaves the slug alone: the screens then say
+ * the corpus has nothing there (see `useOrigin().covered`) instead of answering
+ * for the nearest city we happen to know.
  */
 export function followPoint(point: { lat: number; lon: number }): void {
-  const next = nearestCity(point).slug;
-  if (next === readStored()) return;
+  const next = coveringCity(point)?.slug;
+  if (!next || next === readStored()) return;
   writeSlug(next);
 }
 

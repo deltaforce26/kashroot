@@ -188,6 +188,30 @@ export function EmptyCity({ city, onPickAnother }: { city: string; onPickAnother
 }
 
 /**
+ * The origin the user chose is outside every covered city. Distinct from
+ * `EmptyCity` (a covered city with no rows) and from `EmptyResults` (rows exist but
+ * none pass the profile): here the honest answer is "we have not got there yet", and
+ * the one useful action is to search from somewhere else.
+ */
+export function OutsideCoverage({ place, onChangePlace }: { place: string; onChangePlace?: () => void }) {
+  const { t } = useI18n();
+  return (
+    <StateBlock
+      title={t.states.outsideTitle(place)}
+      body={t.states.outsideBody}
+      mark={<PinIcon size={26} />}
+      actions={
+        onChangePlace ? (
+          <button type="button" className="cta cta--ghost" onClick={onChangePlace}>
+            {t.states.outsideAction}
+          </button>
+        ) : null
+      }
+    />
+  );
+}
+
+/**
  * Shown above a result list that came back with no MATCH in it — which, with this
  * corpus, is the common case. It is a caveat on real content, not an error: the
  * list below it is still worth reading, and the copy says why. Counting how many of

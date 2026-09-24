@@ -46,7 +46,7 @@ import { certifierLabel, type ResultView } from "../api/viewmodel";
 import { FilterBar } from "../components/filters/FilterBar";
 import { CloseIcon, PinIcon, SearchIcon } from "../components/icons";
 import { tintClass } from "../components/RestaurantCard";
-import { EmptyQuery, EmptyResults, ErrorState } from "../components/states";
+import { EmptyQuery, EmptyResults, ErrorState, OutsideCoverage } from "../components/states";
 import { TabBar } from "../components/TabBar";
 import { VERDICT_GLYPH, verdictLabel } from "../components/VerdictPill";
 import { toSearchFilters } from "../filters/model";
@@ -172,7 +172,8 @@ export function MapView() {
   // The one filter store, shared with home and search, so a chip tapped here is the
   // chip tapped there and the map cannot become a third, differently-filtered answer.
   const { filters } = useFilters();
-  const { origin, source, state: originState, requestDeviceLocation } = useOrigin(city);
+  const { origin, source, state: originState, requestDeviceLocation, addressLabel, covered } =
+    useOrigin(city);
   const { status: mapsStatus, libs } = useGoogleMaps(lang);
 
   // The open card, by restaurant id. Nothing is open on arrival.
@@ -467,6 +468,11 @@ export function MapView() {
         <div className="map__notice">
           {error ? (
             <ErrorState isNetwork={isNetworkError(error)} onRetry={reload} />
+          ) : !covered ? (
+            <OutsideCoverage
+              place={source === "device" ? t.map.youAreHere : (addressLabel ?? "")}
+              onChangePlace={() => navigate("/")}
+            />
           ) : trimmedQuery ? (
             <EmptyQuery query={trimmedQuery} onClear={() => setQuery("")} />
           ) : (

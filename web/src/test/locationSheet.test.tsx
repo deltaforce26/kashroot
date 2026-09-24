@@ -478,6 +478,31 @@ describe("home location sheet", () => {
   });
 
   /**
+   * An address outside every covered city must not be answered for the nearest city
+   * we do know. Home and search both say the corpus has nothing there yet, the
+   * header names the place the user actually typed, and the stored city is left as
+   * it was rather than snapped to a neighbour.
+   */
+  it("says there is nothing yet near an address outside every covered city", async () => {
+    const user = userEvent.setup();
+    const ashdod = { label: "רוגוזין 1, אשדוד", point: { lat: 31.8014, lon: 34.6435 } };
+    geocodeImpl = async () => [ashdod];
+    await reachHome(user);
+    await openSheet(user);
+    await user.type(screen.getByLabelText(he.origin.addressLabel), "רוגוזין 1");
+    await user.click(screen.getByRole("button", { name: he.origin.addressSubmit }));
+    await user.click(await screen.findByRole("button", { name: new RegExp(ashdod.label) }));
+
+    expect(await screen.findByText(he.states.outsideTitle(ashdod.label))).toBeInTheDocument();
+    expect(localStorage.getItem("kashroot.city")).toBe("jerusalem");
+
+    await user.click(screen.getByRole("button", { name: he.nav.search }));
+    expect(await screen.findByText(he.states.outsideTitle(ashdod.label))).toBeInTheDocument();
+    expect(screen.getByText(ashdod.label)).toBeInTheDocument();
+    expect(screen.queryByText("ירושלים")).toBeNull();
+  });
+
+  /**
    * A refresh that silently returns to the city centre reports distances from a
    * place the user did not pick, which is the same lie as a wrong distance.
    */

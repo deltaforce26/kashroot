@@ -99,19 +99,40 @@ export function cityBySlug(slug: string): CityOption {
  * Equirectangular distance is plenty at the scale of one small country.
  */
 export function nearestCity(point: { lat: number; lon: number }): CityOption {
-  const cosLat = Math.cos((point.lat * Math.PI) / 180);
   let best = CITIES[0] as CityOption;
-  let bestD = Number.POSITIVE_INFINITY;
+  let bestKm = Number.POSITIVE_INFINITY;
   for (const city of CITIES) {
-    const dLat = city.center.lat - point.lat;
-    const dLon = (city.center.lon - point.lon) * cosLat;
-    const d = dLat * dLat + dLon * dLon;
-    if (d < bestD) {
-      bestD = d;
+    const km = distanceKm(point, city.center);
+    if (km < bestKm) {
+      bestKm = km;
       best = city;
     }
   }
   return best;
+}
+
+/**
+ * How far from a covered city's centre a point can be and still count as "in" that
+ * city. Beyond it the app says plainly that the corpus has nothing there, rather
+ * than quietly answering for the nearest city it does know. Beit Shemesh to
+ * Jerusalem is ~25 km, so the covered cities never overlap at this radius.
+ */
+export const COVERAGE_RADIUS_KM = 15;
+
+/** The covered city a point falls inside, or null when it is outside all of them. */
+export function coveringCity(point: { lat: number; lon: number }): CityOption | null {
+  const city = nearestCity(point);
+  return distanceKm(point, city.center) <= COVERAGE_RADIUS_KM ? city : null;
+}
+
+const KM_PER_DEGREE = 111.32;
+
+/** Equirectangular distance: plenty at the scale of one small country. */
+function distanceKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+  const cosLat = Math.cos(((a.lat + b.lat) / 2) * (Math.PI / 180));
+  const dLat = b.lat - a.lat;
+  const dLon = (b.lon - a.lon) * cosLat;
+  return Math.sqrt(dLat * dLat + dLon * dLon) * KM_PER_DEGREE;
 }
 
 /** Comfortable walking/driving radius for the home list. */

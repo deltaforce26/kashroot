@@ -27,6 +27,7 @@ import {
   EmptyCity,
   EmptyQuery,
   EmptyResults,
+  OutsideCoverage,
   ErrorState,
   LoadingList,
   NoVerifiedMatchesBanner,
@@ -35,6 +36,7 @@ import {
 import { SaveToListHost } from "../components/SaveToListSheet";
 import { TabBar } from "../components/TabBar";
 import { CITIES } from "../config";
+import { useOrigin } from "../location/useOrigin";
 import { toSearchFilters } from "../filters/model";
 import type { FilterId } from "../filters/registry";
 import { useFilters } from "../filters/useFilters";
@@ -56,7 +58,7 @@ export function Search() {
   // already typed rather than asking for it a second time.
   const [params] = useSearchParams();
   const [query, setQuery] = useState(() => params.get("q") ?? "");
-  const { slug: city, setSlug: setCity } = useCity();
+  const { slug: city, setSlug: setCity, city: cityOption } = useCity();
   // Shared with home, so a filter picked here is the one picked there.
   const { filters, reset: resetFilters } = useFilters();
   const deferredQuery = useDeferredValue(query);
@@ -82,6 +84,11 @@ export function Search() {
     return found ? (lang === "en" ? found.en : found.he) : slug;
   };
 
+  // Search is scoped by city, so an origin outside every covered city has no city to
+  // search in. Say so, with the place the user actually chose in the header.
+  const { source, addressLabel, covered } = useOrigin(cityOption);
+  const placeLabel = source === "device" ? t.map.youAreHere : (addressLabel ?? cityLabel(city));
+
   return (
     <div className="shell">
       <header className="shell__header">
@@ -90,7 +97,7 @@ export function Search() {
         </span>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 11.5, color: "var(--sub)" }}>{t.search.searchingNear}</div>
-          <div style={{ fontWeight: 700, fontSize: 15.5 }}>{cityLabel(city)}</div>
+          <div style={{ fontWeight: 700, fontSize: 15.5 }}>{covered ? cityLabel(city) : placeLabel}</div>
         </div>
       </header>
 
@@ -113,7 +120,9 @@ export function Search() {
 
       <div className="shell__scroll" style={{ paddingTop: 10 }}>
         {error && isNetworkError(error) && <OfflineBanner />}
-        {loading ? (
+        {!covered ? (
+          <OutsideCoverage place={placeLabel} onChangePlace={() => navigate("/")} />
+        ) : loading ? (
           <LoadingList />
         ) : error ? (
           <ErrorState isNetwork={isNetworkError(error)} onRetry={reload} />
