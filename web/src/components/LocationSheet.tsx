@@ -3,9 +3,9 @@
  *
  * Opened from the pin or the address in the home header, which are two halves of the
  * same control. It offers the two origins a person names for themselves, in the order
- * they cost effort: the device position (one tap) and a typed address. Cities are not
- * repeated here — they are a filter, and they live on the filters and search screens
- * where the rest of the filtering does.
+ * they cost effort: the device position (one tap) and a typed address — and the way
+ * out of both, "all of Israel", which drops the pin and shows every place we hold.
+ * There is no city to pick: the app has no such concept.
  *
  * Every branch says something true. Address lookup needs the Google geocoder, so
  * without a browser key the field is not drawn at all rather than drawn dead — and
@@ -21,10 +21,10 @@
  * The sheet does not filter or rank anything. It moves the origin; the API re-answers.
  */
 
+import { Globe } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CloseIcon, CrosshairIcon, PinIcon, SearchIcon } from "./icons";
 import { useI18n } from "../i18n/I18nProvider";
-import { useCity } from "../location/useCity";
 import { useOrigin } from "../location/useOrigin";
 import {
   geocodeAddress,
@@ -70,8 +70,8 @@ function exitDuration(): number {
 
 export function LocationSheet({ onClose }: { onClose: () => void }) {
   const { t, lang } = useI18n();
-  const { city } = useCity();
-  const { source, state, requestDeviceLocation, setAddressOrigin } = useOrigin(city);
+  const { source, state, requestDeviceLocation, setAddressOrigin, searchEverywhere } =
+    useOrigin();
 
   const [address, setAddress] = useState("");
   const [lookup, setLookup] = useState<Lookup>({ state: "idle" });
@@ -137,7 +137,7 @@ export function LocationSheet({ onClose }: { onClose: () => void }) {
       setLookup({ state: "done", candidates: await geocodeAddress(query, lang) });
     } catch {
       // No key, blocked script, offline, quota. The user does not need to know
-      // which; they need to know the field cannot answer and the cities can.
+      // which; they need to know the field cannot answer and the other ways can.
       setLookup({ state: "failed" });
     }
   }
@@ -213,6 +213,20 @@ export function LocationSheet({ onClose }: { onClose: () => void }) {
             {t.origin.notRefreshed}
           </p>
         )}
+
+        {/* The last resort, offered plainly: no pin, every place in the database. */}
+        <button
+          type="button"
+          className="cta cta--ghost sheet__locate"
+          aria-pressed={source === "none"}
+          onClick={() => {
+            searchEverywhere();
+            close();
+          }}
+        >
+          <Globe size={16} strokeWidth={2} aria-hidden />
+          {t.origin.everywhere}
+        </button>
 
         {hasMapsKey() && (
           <form

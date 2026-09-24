@@ -1,5 +1,5 @@
 /**
- * Search — city chips, the filter bar, result tiles (design 3e).
+ * Search — the filter bar, a text field, result tiles (design 3e).
  *
  * Nothing here filters or reorders by verdict. The bar's facets decide which
  * restaurants get asked about, and the server answers each one that survives with
@@ -12,8 +12,9 @@
  * normalization. The UI is careful not to imply otherwise: there is no "did you
  * mean", and a miss is explained as a spelling difference rather than an absence.
  *
- * This is a city search with no centre, so the bar's radius has nothing to measure
- * from and is left out of its sheet here.
+ * Where it searches is the same origin home uses: the device, a pinned address, or
+ * — with neither — every place in the database, paged. There is no city scope. The
+ * bar's radius is offered only when there is a centre to measure it from.
  */
 
 import { useDeferredValue, useMemo, useState } from "react";
@@ -24,33 +25,32 @@ import { FilterBar } from "../components/filters/FilterBar";
 import { PinIcon, SearchIcon } from "../components/icons";
 import { RestaurantTileCard } from "../components/RestaurantCard";
 import {
-  EmptyCity,
   EmptyQuery,
   EmptyResults,
-  OutsideCoverage,
   ErrorState,
   LoadingList,
+  NothingHere,
   NoVerifiedMatchesBanner,
   OfflineBanner,
 } from "../components/states";
 import { SaveToListHost } from "../components/SaveToListSheet";
 import { TabBar } from "../components/TabBar";
-import { CITIES } from "../config";
+import { PAGE_SIZE } from "../config";
 import { useOrigin } from "../location/useOrigin";
 import { toSearchFilters } from "../filters/model";
 import { anyFilterActive, type FilterId } from "../filters/registry";
 import { useFilters } from "../filters/useFilters";
-import { useCity } from "../location/useCity";
-import { isNetworkError, useSearch } from "../hooks/useApi";
+import { isNetworkError, usePagedSearch } from "../hooks/useApi";
 import { useI18n } from "../i18n/I18nProvider";
 import { toPayload } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
 import { useSaveToggle } from "../saved/useSaveToggle";
 
-const NOT_ON_SEARCH: readonly FilterId[] = ["radius"];
+/** A radius needs a centre; with nothing pinned the chip would measure from nowhere. */
+const WITHOUT_ORIGIN: readonly FilterId[] = ["radius"];
 
 export function Search() {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { profile } = useProfile();
   const { toggle, isSaved } = useSaveToggle();
@@ -58,38 +58,32 @@ export function Search() {
   // already typed rather than asking for it a second time.
   const [params] = useSearchParams();
   const [query, setQuery] = useState(() => params.get("q") ?? "");
-  const { slug: city, setSlug: setCity, city: cityOption } = useCity();
   // Shared with home, so a filter picked here is the one picked there.
   const { filters, reset: resetFilters } = useFilters();
   const deferredQuery = useDeferredValue(query);
 
   const trimmedQuery = deferredQuery.trim();
 
-  const cityLabel = (slug: string) => {
-    const found = CITIES.find((entry) => entry.slug === slug);
-    return found ? (lang === "en" ? found.en : found.he) : slug;
-  };
+  // The one origin, shared with home and the map: measured from the pin when there
+  // is one, and from nowhere — the whole database — when there is not.
+  const { origin, source, addressLabel, resolving } = useOrigin();
+  const placeLabel =
+    source === "device" ? t.map.youAreHere : (addressLabel ?? t.origin.everywhere);
 
-  // With an address or the device pinned, search measures from it like home does —
-  // a city scope would answer for whichever city happens to be stored, which is
-  // wrong the moment the pin is in Netanya. Without a pin, the city is the scope.
-  const { origin, source, addressLabel } = useOrigin(cityOption);
-  const pinned = source !== "city";
-  const placeLabel = source === "device" ? t.map.youAreHere : (addressLabel ?? cityLabel(city));
-
-  const request = useMemo<SearchRequest>(() => {
+  const request = useMemo<SearchRequest | null>(() => {
+    if (resolving) return null;
     const facets = toSearchFilters(filters);
     return {
       profile: toPayload(profile),
-      ...(pinned ? { center: origin, radius_km: filters.radiusKm } : { city }),
-      page_size: 100,
+      ...(origin ? { center: origin, radius_km: filters.radiusKm } : {}),
+      page_size: PAGE_SIZE,
       ...(trimmedQuery ? { query: trimmedQuery.slice(0, MAX_QUERY_LENGTH) } : {}),
       ...(facets ? { filters: facets } : {}),
     };
-  }, [profile, city, pinned, origin, filters, trimmedQuery]);
+  }, [profile, origin, resolving, filters, trimmedQuery]);
 
-  const { data, loading, error, reload } = useSearch(request);
-  const results = data?.items ?? [];
+  const { items: results, total, loading, loadingMore, error, reload, hasMore, loadMore } =
+    usePagedSearch(request);
 
   return (
     <div className="shell">
@@ -98,7 +92,9 @@ export function Search() {
           <PinIcon />
         </span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11.5, color: "var(--sub)" }}>{t.search.searchingNear}</div>
+          <div style={{ fontSize: 11.5, color: "var(--sub)" }}>
+            {origin ? t.search.searchingNear : t.origin.searchingEverywhere}
+          </div>
           <div style={{ fontWeight: 700, fontSize: 15.5 }}>{placeLabel}</div>
         </div>
       </header>
@@ -118,8 +114,8 @@ export function Search() {
         />
       </label>
 
-      {/* A city has no centre to measure a radius from; a pinned origin does. */}
-      <FilterBar exclude={pinned ? [] : NOT_ON_SEARCH} />
+      {/* A radius is only a question when there is a centre to measure it from. */}
+      <FilterBar exclude={origin ? [] : WITHOUT_ORIGIN} />
 
       <div className="shell__scroll" style={{ paddingTop: 10 }}>
         {error && isNetworkError(error) && <OfflineBanner />}
@@ -129,19 +125,10 @@ export function Search() {
           <ErrorState isNetwork={isNetworkError(error)} onRetry={reload} />
         ) : results.length === 0 && trimmedQuery ? (
           <EmptyQuery query={trimmedQuery} onClear={() => setQuery("")} />
-        ) : (data?.total ?? 0) === 0 && pinned && !anyFilterActive(filters) ? (
-          // Nothing at all within range of the pin — a data gap, not a verdict.
-          <OutsideCoverage place={placeLabel} onChangePlace={() => navigate("/")} />
-        ) : (data?.total ?? 0) === 0 && !anyFilterActive(filters) ? (
-          // Nothing in the city at all — a data gap (or a bad city_slug), which is a
-          // different statement from "nothing meets your profile".
-          <EmptyCity
-            city={cityLabel(city)}
-            onPickAnother={() => {
-              const next = CITIES.find((entry) => entry.slug !== city);
-              if (next) setCity(next.slug);
-            }}
-          />
+        ) : total === 0 && !anyFilterActive(filters) ? (
+          // No rows at all, before the profile was applied — a data gap, not a
+          // verdict, and a different statement from "nothing meets your profile".
+          <NothingHere place={origin ? placeLabel : null} onChangePlace={() => navigate("/")} />
         ) : results.length === 0 ? (
           <EmptyResults
             onWidenProfile={() => navigate("/profile")}
@@ -152,11 +139,9 @@ export function Search() {
           />
         ) : (
           <>
-            {!hasVerifiedMatch(results) && (
-              <NoVerifiedMatchesBanner />
-            )}
+            {!hasVerifiedMatch(results) && <NoVerifiedMatchesBanner />}
             <div className="sr-only" role="status">
-              {t.search.resultCount(results.length)}
+              {t.search.resultCount(total)}
             </div>
             <div className="grid">
               {results.map((item) => (
@@ -168,8 +153,21 @@ export function Search() {
                 />
               ))}
             </div>
+            {hasMore && (
+              <div className="load-more">
+                <button
+                  type="button"
+                  className="cta cta--ghost"
+                  disabled={loadingMore}
+                  aria-busy={loadingMore}
+                  onClick={loadMore}
+                >
+                  {loadingMore ? t.states.loadingShort : t.states.loadMore}
+                </button>
+              </div>
+            )}
             <p className="hint" style={{ paddingBottom: 8 }}>
-              {t.states.coverageNoteCity}
+              {origin ? t.states.coverageNoteNearby : t.states.coverageNoteEverywhere}
             </p>
           </>
         )}

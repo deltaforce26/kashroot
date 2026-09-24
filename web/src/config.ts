@@ -1,125 +1,15 @@
 /**
  * Demo-time constants.
  *
- * The POC has no geolocation permission flow, so the app opens on a chosen city
- * centre rather than the device's position. No single city is hardcoded as *the*
- * demo city: the lead city is still a product decision, and the app lets you switch
- * between every city the corpus actually covers.
+ * The app has no "current city" and no default centre: a search is measured from
+ * the device, from a pinned address, or from nowhere — in which case the API is
+ * asked for every place it holds, paginated. Nothing here names a place the API is
+ * ever asked about.
  *
  * Bounds mirror `app/api/consts.py`: radius must stay within 0.1–50 km, page size
- * within 1–100. `POST /v1/search` requires `center` or `city`.
+ * within 1–100. `POST /v1/search` takes an optional `center`; without one it returns
+ * every row.
  */
-
-export interface CityOption {
-  /** Must match `Restaurant.city_slug`. Verified against Track A's geocoding pass. */
-  slug: string;
-  he: string;
-  en: string;
-  /** Neighbourhood-level label for the home header, where the design shows one. */
-  areaHe: string;
-  areaEn: string;
-  center: { lat: number; lon: number };
-}
-
-/**
- * Every city with geocoded rows in the corpus. Slugs confirmed verbatim against the
- * database. Coverage is partial in all of them, which is why `states.coverageNote`
- * exists — the list a user sees is never the whole city.
- *
- * Jerusalem leads because the product owner chose it as the demo city, not because
- * of its coverage number. The order is presentational only; nothing depends on it
- * except which chip appears first.
- */
-export const CITIES: readonly CityOption[] = [
-  {
-    slug: "jerusalem",
-    he: "ירושלים",
-    en: "Jerusalem",
-    areaHe: "ירושלים · בית וגן",
-    areaEn: "Jerusalem · Bayit VeGan",
-    center: { lat: 31.7649, lon: 35.1846 },
-  },
-  {
-    slug: "bnei-brak",
-    he: "בני ברק",
-    en: "Bnei Brak",
-    areaHe: "בני ברק · רבי עקיבא",
-    areaEn: "Bnei Brak · Rabbi Akiva",
-    center: { lat: 32.0853, lon: 34.8338 },
-  },
-  {
-    slug: "haifa",
-    he: "חיפה",
-    en: "Haifa",
-    areaHe: "חיפה · הדר",
-    areaEn: "Haifa · Hadar",
-    center: { lat: 32.8082, lon: 34.9896 },
-  },
-  {
-    slug: "beit-shemesh",
-    he: "בית שמש",
-    en: "Beit Shemesh",
-    areaHe: "בית שמש · רמת בית שמש",
-    areaEn: "Beit Shemesh · Ramat Beit Shemesh",
-    center: { lat: 31.7497, lon: 34.9887 },
-  },
-  {
-    slug: "safed",
-    he: "צפת",
-    en: "Safed",
-    areaHe: "צפת · העיר העתיקה",
-    areaEn: "Safed · Old City",
-    center: { lat: 32.9646, lon: 35.4961 },
-  },
-  {
-    slug: "tiberias",
-    he: "טבריה",
-    en: "Tiberias",
-    areaHe: "טבריה · הטיילת",
-    areaEn: "Tiberias · Promenade",
-    center: { lat: 32.7922, lon: 35.5312 },
-  },
-];
-
-/**
- * The city the app opens on. A product decision (Jerusalem), stated explicitly here
- * rather than falling out of array order, so changing it is one obvious edit and
- * cannot be moved by accident when the city list is reordered.
- */
-export const DEFAULT_CITY_SLUG = "jerusalem";
-
-export function cityBySlug(slug: string): CityOption {
-  return CITIES.find((city) => city.slug === slug) ?? (CITIES[0] as CityOption);
-}
-
-/**
- * The covered city whose centre is closest to a point. Used to keep the city in step
- * with a pinned address or the device position: a user standing in Beit Shemesh is
- * "in" Beit Shemesh for search too, not still in whichever city they opened on.
- * Equirectangular distance is plenty at the scale of one small country.
- */
-export function nearestCity(point: { lat: number; lon: number }): CityOption {
-  let best = CITIES[0] as CityOption;
-  let bestKm = Number.POSITIVE_INFINITY;
-  for (const city of CITIES) {
-    const km = distanceKm(point, city.center);
-    if (km < bestKm) {
-      bestKm = km;
-      best = city;
-    }
-  }
-  return best;
-}
-
-const KM_PER_DEGREE = 111.32;
-
-/** Equirectangular distance: plenty at the scale of one small country. */
-function distanceKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
-  const cosLat = Math.cos(((a.lat + b.lat) / 2) * (Math.PI / 180));
-  const dLat = b.lat - a.lat;
-  const dLon = (b.lon - a.lon) * cosLat;
-  return Math.sqrt(dLat * dLat + dLon * dLon) * KM_PER_DEGREE;
-}
 
 /** Comfortable walking/driving radius for the home list. */
 export const NEARBY_RADIUS_KM = 12;
@@ -133,3 +23,12 @@ export const NEARBY_RADIUS_KM = 12;
 export const MAX_RADIUS_KM = 50;
 
 export const PAGE_SIZE = 20;
+
+/**
+ * Where the map camera opens when there is no origin to open on. A starting
+ * viewport only — Jerusalem, at the zoom the map uses for a pinned origin. It is
+ * never sent to the API, never used to compute a distance, and never treated as
+ * where the user is: with no origin the map plots every place in the database and
+ * the user pans to the part of the country they care about.
+ */
+export const MAP_DEFAULT_VIEW = { center: { lat: 31.7683, lon: 35.2137 }, zoom: 14 } as const;

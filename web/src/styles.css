@@ -635,6 +635,13 @@ a {
   align-content: start;
 }
 
+/* The "show more" control under a paged list: one ghost button, centred. */
+.load-more {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0 6px;
+}
+
 .card--tile {
   padding: 14px;
   min-height: 198px;

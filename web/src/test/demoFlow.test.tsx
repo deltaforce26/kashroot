@@ -20,10 +20,9 @@ import { SavedProvider } from "../saved/SavedProvider";
 import { STRINGS } from "../i18n/strings";
 import { ThemeProvider } from "../theme/ThemeProvider";
 
-function renderApp(route = "/", city = "jerusalem") {
-  // The demo city is a live product decision, so tests name the one whose fixtures
-  // they depend on instead of relying on whatever the default happens to be.
-  localStorage.setItem("kashroot.city", city);
+// jsdom has no geolocation, so the first load's device request fails at once and
+// every screen here searches unscoped: all eleven fixtures, with no distance.
+function renderApp(route = "/") {
   return render(
     <ThemeProvider>
       <I18nProvider>
@@ -89,7 +88,7 @@ describe("demo flow", () => {
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
     await screen.findAllByText(new RegExp(he.verdict.match));
-    // All three appear in the Jerusalem list under "any certification": a valid
+    // All three appear in the unscoped list under "any certification": a valid
     // certificate, a record with none, and a revoked one.
     expect(container.querySelectorAll(".verdict--match").length).toBeGreaterThan(0);
     expect(container.querySelectorAll(".verdict--unknown").length).toBeGreaterThan(0);
@@ -206,12 +205,12 @@ describe("demo flow", () => {
     await screen.findByText(he.presets.any.title);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
-    await screen.findByText(he.states.coverageNoteNearby);
+    await screen.findByText(he.states.coverageNoteEverywhere);
 
     // Remount with the profile it just wrote: it survives.
     cleanup();
     renderApp("/");
-    expect(await screen.findByText(he.states.coverageNoteNearby)).toBeInTheDocument();
+    expect(await screen.findByText(he.states.coverageNoteEverywhere)).toBeInTheDocument();
   });
 
   /**
@@ -236,7 +235,7 @@ describe("demo flow", () => {
     expect(screen.getByText(he.map.unavailableNoKey)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: he.map.toList }));
-    expect(await screen.findByText(he.home.nearYou)).toBeInTheDocument();
+    expect((await screen.findAllByRole("button", { name: he.home.changeLocation })).length).toBe(2);
   });
 
   it("tells the user the list is partial rather than implying it is everything", async () => {
@@ -247,7 +246,33 @@ describe("demo flow", () => {
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
 
-    expect(await screen.findByText(he.states.coverageNoteNearby)).toBeInTheDocument();
+    expect(await screen.findByText(he.states.coverageNoteEverywhere)).toBeInTheDocument();
+  });
+
+  /**
+   * No pin and no device: the header says so in as many words, and the list is the
+   * whole database rather than any one city — rows from more than one city_he.
+   */
+  it("says it is showing all of Israel when nothing is pinned, and lists more than one city", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp("/");
+
+    await screen.findByText(he.presets.any.title);
+    await user.click(screen.getByText(he.presets.any.title));
+    await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
+
+    expect(await screen.findByText(he.origin.everywhere)).toBeInTheDocument();
+    expect(screen.getByText(he.origin.searchingEverywhere)).toBeInTheDocument();
+    await waitFor(() => expect(container.querySelectorAll(".card--grid").length).toBe(11));
+    // Rows whose `city_he` is Jerusalem, Bnei Brak and Tiberias, all on one unscoped
+    // list. (A tile shows the street where it has one, so the names are the seam.)
+    expect(screen.getByText("נוגטין")).toBeInTheDocument();
+    expect(screen.getByText("פיצה נחמה")).toBeInTheDocument();
+    expect(screen.getByText("מסעדת האגם")).toBeInTheDocument();
+    // A radius has nothing to measure from, so the sheet does not offer one.
+    await user.click(screen.getByRole("button", { name: he.home.openFilters }));
+    const sheet = await screen.findByRole("dialog", { name: he.filters.title });
+    expect(within(sheet).queryByText(he.filters.radius)).toBeNull();
   });
 
   /**

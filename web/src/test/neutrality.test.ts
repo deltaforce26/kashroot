@@ -194,7 +194,7 @@ describe("certifier neutrality in the string table", () => {
     expect(scanned).toContain(table.search.resultCount(7));
     expect(scanned).toContain(table.fit.aria(7));
     expect(scanned).toContain(table.restaurant.verifiedBy("Jerusalem"));
-    expect(scanned).toContain(table.states.emptyCityTitle("Jerusalem"));
+    expect(scanned).toContain(table.states.nothingHereTitle("Jerusalem"));
     expect(scanned).toContain(table.saved.degradeBody("Jerusalem", "Jerusalem", "Jerusalem"));
     // …including every branch of the branchy ones.
     expect(scanned).toContain(table.restaurant.verifiedAgo(0));

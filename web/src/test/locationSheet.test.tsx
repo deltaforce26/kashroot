@@ -1,11 +1,16 @@
 /**
- * The home location control: pin or address -> sheet -> device, typed address, city.
+ * The home location control: pin or address -> sheet -> device, typed address, or
+ * nothing at all ("all of Israel").
  *
- * What matters here is that each of the three origins can actually be chosen and
- * that the header then names the place we are really measuring from — the header
- * and the search `center` must never disagree, because that is how a distance
- * becomes a lie. The refused-permission branch is covered too: refusing is a
- * legitimate answer, so the app states it once and keeps working from the city.
+ * What matters here is that each origin can actually be chosen and that the header
+ * then names the place we are really measuring from — the header and the search
+ * `center` must never disagree, because that is how a distance becomes a lie. The
+ * refused-permission branch is covered too: refusing is a legitimate answer, so the
+ * app states it once and keeps working, unscoped, over the whole database.
+ *
+ * "Everywhere" is the last resort, so a first load with nothing stored asks the
+ * device before it settles for it. jsdom has no geolocation: unless a test installs
+ * one, that request fails at once and the app opens on "all of Israel".
  *
  * The geocoder is mocked. It is Google's network call, not ours; what is tested is
  * what the sheet does with an answer, with no answer, and with a failure.
@@ -22,7 +27,6 @@ import { SavedProvider } from "../saved/SavedProvider";
 import { STRINGS } from "../i18n/strings";
 import { ThemeProvider } from "../theme/ThemeProvider";
 import { clearOrigin, resetOriginState } from "../location/useOrigin";
-import { useCity } from "../location/useCity";
 
 type Candidates = Array<{ label: string; point: { lat: number; lon: number } }>;
 
@@ -65,27 +69,10 @@ const CANDIDATE = { label: "ביאליק 1, רמת גן", point: { lat: 32.0684,
 
 type User = ReturnType<typeof userEvent.setup>;
 
-function renderApp() {
-  localStorage.setItem("kashroot.city", "jerusalem");
-  return mount();
-}
-
 /**
- * The app no longer draws a city switcher (the chips row came off search), but a
- * city can still change under a pinned address — via a deep link, a future picker,
- * or the empty-city recovery button. This stands in for that: a bare button that
- * takes the same `setSlug` path any of them would.
+ * A render that seeds nothing, so a reload sees exactly what the last one left —
+ * and, on a first visit, so the load asks the device the way the app does.
  */
-function CitySwitch({ slug, label }: { slug: string; label: string }) {
-  const { setSlug } = useCity();
-  return (
-    <button type="button" onClick={() => setSlug(slug)}>
-      {label}
-    </button>
-  );
-}
-
-/** A render that seeds nothing, so a reload sees exactly what the last one left. */
 function mount() {
   return render(
     <ThemeProvider>
@@ -94,7 +81,6 @@ function mount() {
           <SavedProvider>
             <MemoryRouter initialEntries={["/"]}>
               <App />
-              <CitySwitch slug="haifa" label="חיפה" />
             </MemoryRouter>
           </SavedProvider>
         </ProfileProvider>
@@ -103,13 +89,22 @@ function mount() {
   );
 }
 
+/**
+ * A visitor who already chose "all of Israel". The load then asks the device for
+ * nothing, so a test of the sheet's own button sees that button's request and no
+ * other.
+ */
+function seedEverywhere() {
+  localStorage.setItem("kashroot.origin.v1", JSON.stringify({ source: "none" }));
+}
+
 /** Through onboarding to home, the way the demo gets there. */
 async function reachHome(user: User) {
-  renderApp();
+  mount();
   await screen.findByText(he.presets.any.title);
   await user.click(screen.getByText(he.presets.any.title));
   await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
-  await screen.findByText(he.home.nearYou);
+  await screen.findAllByRole("button", { name: he.home.changeLocation });
 }
 
 async function openSheet(user: User) {
@@ -162,7 +157,7 @@ async function reload() {
   cleanup();
   resetOriginState();
   mount();
-  await screen.findByText(he.home.nearYou);
+  await screen.findAllByRole("button", { name: he.home.changeLocation });
 }
 
 describe("home location sheet", () => {
@@ -189,7 +184,8 @@ describe("home location sheet", () => {
       within(sheet).getByRole("button", { name: he.origin.useMyLocation }),
     ).toBeInTheDocument();
     expect(within(sheet).getByLabelText(he.origin.addressLabel)).toBeInTheDocument();
-    // Cities are a filter, not an origin, and are not repeated here.
+    // …and the way out of both. There is no city to pick: the app has none.
+    expect(within(sheet).getByRole("button", { name: he.origin.everywhere })).toBeInTheDocument();
     expect(within(sheet).queryByRole("button", { name: "ירושלים" })).toBeNull();
     // It drops from the top rather than rising from the bottom, so it lands on the
     // header control that asked. jsdom lays nothing out; the modifier is the guarantee.
@@ -368,10 +364,39 @@ describe("home location sheet", () => {
     expect(within(sheet).getByLabelText(he.origin.addressLabel)).toBeInTheDocument();
   });
 
-  it("measures from the device when the user allows it", async () => {
+  /**
+   * "Everywhere" is what the app falls back to, not what it opens on: with nothing
+   * stored, the first load asks the device itself — a prompt is acceptable here —
+   * and only settles for the whole database once that has failed.
+   */
+  it("asks the device on first load and measures from it when allowed", async () => {
     const user = userEvent.setup();
     stubGeolocation("grant");
     await reachHome(user);
+
+    expect(await screen.findByText(he.map.youAreHere)).toBeInTheDocument();
+    expect(positionRequests).toBe(1);
+    expect(screen.queryByText(he.origin.everywhere)).toBeNull();
+  });
+
+  it("settles for all of Israel only once the first-load request has failed", async () => {
+    const user = userEvent.setup();
+    stubGeolocation("deny");
+    await reachHome(user);
+
+    expect(await screen.findByText(he.origin.everywhere)).toBeInTheDocument();
+    expect(screen.getByText(he.origin.searchingEverywhere)).toBeInTheDocument();
+    expect(positionRequests).toBe(1);
+    // The header does not nag: the refusal is said in the sheet, where the button is.
+    expect(screen.queryByText(he.origin.denied)).toBeNull();
+  });
+
+  it("measures from the device when the user allows it", async () => {
+    const user = userEvent.setup();
+    stubGeolocation("grant");
+    seedEverywhere();
+    await reachHome(user);
+    expect(positionRequests).toBe(0);
     await openSheet(user);
 
     await user.click(screen.getByRole("button", { name: he.origin.useMyLocation }));
@@ -380,31 +405,31 @@ describe("home location sheet", () => {
     expect(screen.getByText(he.map.youAreHere)).toBeInTheDocument();
   });
 
-  it("treats a refusal as an answer, not an error, and stays on the city centre", async () => {
+  it("treats a refusal as an answer, not an error, and keeps searching everywhere", async () => {
     const user = userEvent.setup();
     stubGeolocation("deny");
+    seedEverywhere();
     await reachHome(user);
     await openSheet(user);
 
     await user.click(screen.getByRole("button", { name: he.origin.useMyLocation }));
 
     expect(await screen.findByText(he.origin.denied)).toBeInTheDocument();
-    // Still the city, and the sheet stayed open so another way can be chosen.
+    // Still unscoped, and the sheet stayed open so another way can be chosen.
     expect(screen.getByRole("dialog", { name: he.origin.title })).toBeInTheDocument();
-    expect(screen.getByText("ירושלים · בית וגן")).toBeInTheDocument();
+    expect(screen.getAllByText(he.origin.everywhere).length).toBeGreaterThan(0);
   });
 
   /**
    * A request that fails says nothing about where the user is: the fix from a minute
-   * ago is still good. Falling back to the city on a timeout would move every screen —
-   * the map camera with them — because one attempt did not come back.
+   * ago is still good. Falling back to "everywhere" on a timeout would move every
+   * screen — the map camera with them — because one attempt did not come back.
    */
   it("keeps the last device position when a later attempt fails", async () => {
     const user = userEvent.setup();
     stubGeolocation("grant-once");
+    // The first load takes the one grant; the sheet's own request is the one that fails.
     await reachHome(user);
-    await openSheet(user);
-    await user.click(screen.getByRole("button", { name: he.origin.useMyLocation }));
     await screen.findByText(he.map.youAreHere);
 
     await openSheet(user);
@@ -423,6 +448,7 @@ describe("home location sheet", () => {
     const user = userEvent.setup();
     geocodeImpl = async () => [CANDIDATE];
     stubGeolocation("deny");
+    seedEverywhere();
     await reachHome(user);
     await openSheet(user);
     await pickAddress(user, "ביאליק 1");
@@ -437,12 +463,11 @@ describe("home location sheet", () => {
   });
 
   /**
-   * The city moved off the sheet, but it is still the same question, so picking one
-   * anywhere — here, the search screen's city chips — has to drop a pinned address.
-   * Two answers cannot both be live: the header would name one place and the results
-   * come from another.
+   * "All of Israel" is the way out of a pin. Two answers cannot both be live: the
+   * header would name one place and the results come from another — so picking it
+   * drops the address, and the list becomes the whole database.
    */
-  it("drops a pinned address when a city is picked elsewhere", async () => {
+  it("drops a pinned address when all of Israel is picked", async () => {
     const user = userEvent.setup();
     geocodeImpl = async () => [CANDIDATE];
     await reachHome(user);
@@ -450,18 +475,23 @@ describe("home location sheet", () => {
     await pickAddress(user, "ביאליק 1");
     expect(await screen.findByText(CANDIDATE.label)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "חיפה" }));
+    await openSheet(user);
+    await user.click(screen.getByRole("button", { name: he.origin.everywhere }));
 
-    expect(await screen.findByText("חיפה · הדר")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByText(he.origin.everywhere)).toBeInTheDocument();
     expect(screen.queryByText(CANDIDATE.label)).toBeNull();
+    // Unscoped: rows from more than one city on the one list.
+    expect(await screen.findByText("מסעדת האגם")).toBeInTheDocument();
+    expect(screen.getByText("נוגטין")).toBeInTheDocument();
   });
 
   /**
-   * Home and map measure from the origin, but search is scoped by city. Pinning an
-   * address in another city has to move the city too, or search keeps looking in
-   * the city the app opened on while the header over it names the new address.
+   * Home, search and map share the one origin. Pinning an address on home has to
+   * move search too, or search keeps answering for the whole country while the
+   * header over it names the new address.
    */
-  it("moves the search city to the pinned address", async () => {
+  it("carries the pinned address through to search", async () => {
     const user = userEvent.setup();
     const beitShemesh = { label: "נחל שורק 1, בית שמש", point: { lat: 31.7497, lon: 34.9887 } };
     geocodeImpl = async () => [beitShemesh];
@@ -474,13 +504,13 @@ describe("home location sheet", () => {
 
     await user.click(screen.getByRole("button", { name: he.nav.search }));
     expect(await screen.findByText(beitShemesh.label)).toBeInTheDocument();
-    expect(localStorage.getItem("kashroot.city")).toBe("beit-shemesh");
+    expect(screen.queryByText(he.origin.everywhere)).toBeNull();
   });
 
   /**
    * With a pin, search measures from it the way home does, and shows the radius chip
-   * because there is now a centre to measure from. The stored city was Jerusalem;
-   * the result is found because it is near the pin, not because of any city scope.
+   * because there is now a centre to measure from. The result is found because it is
+   * near the pin, and the Jerusalem rows are not, because they are not.
    */
   it("searches by distance from a pinned address", async () => {
     const user = userEvent.setup();
@@ -494,6 +524,7 @@ describe("home location sheet", () => {
 
     await user.click(screen.getByRole("button", { name: he.nav.search }));
     expect(await screen.findByText("מסעדת האגם")).toBeInTheDocument();
+    expect(screen.queryByText("נוגטין")).toBeNull();
     expect(screen.getByText(tiberias.label)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: he.home.openFilters }));
     const sheet = await screen.findByRole("dialog");
@@ -501,8 +532,8 @@ describe("home location sheet", () => {
   });
 
   /**
-   * An address with no rows anywhere in range must not be answered for the nearest
-   * city we do know. Home and search both say the corpus has nothing there yet, and
+   * An address with no rows anywhere in range must not be answered with the whole
+   * database instead. Home and search both say the corpus has nothing there yet, and
    * the search header names the place the user actually typed.
    */
   it("says there is nothing yet near an address with no rows in range", async () => {
@@ -515,17 +546,17 @@ describe("home location sheet", () => {
     await user.click(screen.getByRole("button", { name: he.origin.addressSubmit }));
     await user.click(await screen.findByRole("button", { name: new RegExp(ashdod.label) }));
 
-    expect(await screen.findByText(he.states.outsideTitle(ashdod.label))).toBeInTheDocument();
+    expect(await screen.findByText(he.states.nothingHereTitle(ashdod.label))).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: he.nav.search }));
-    expect(await screen.findByText(he.states.outsideTitle(ashdod.label))).toBeInTheDocument();
+    expect(await screen.findByText(he.states.nothingHereTitle(ashdod.label))).toBeInTheDocument();
     expect(screen.getByText(ashdod.label)).toBeInTheDocument();
     expect(screen.queryByText("ירושלים")).toBeNull();
   });
 
   /**
-   * A refresh that silently returns to the city centre reports distances from a
-   * place the user did not pick, which is the same lie as a wrong distance.
+   * A refresh that silently drops the pin shows a list the user did not ask for —
+   * and, worse, would re-ask the device. The address is what they chose.
    */
   it("still measures from the pinned address after a reload", async () => {
     const user = userEvent.setup();
@@ -538,22 +569,32 @@ describe("home location sheet", () => {
     await reload();
 
     expect(screen.getByText(CANDIDATE.label)).toBeInTheDocument();
-    expect(screen.queryByText("ירושלים · בית וגן")).toBeNull();
+    expect(screen.queryByText(he.origin.everywhere)).toBeNull();
   });
 
-  it("drops the pinned address for good once the city takes over", async () => {
+  /**
+   * An explicit "all of Israel" is a choice like any other, so a reload honours it:
+   * the address stays gone, and the device is not asked for a position the user
+   * just declined to search from.
+   */
+  it("drops the pinned address for good once all of Israel is picked", async () => {
     const user = userEvent.setup();
     geocodeImpl = async () => [CANDIDATE];
+    stubGeolocation("grant");
     await reachHome(user);
     await openSheet(user);
     await pickAddress(user, "ביאליק 1");
     expect(await screen.findByText(CANDIDATE.label)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "חיפה" }));
+    await openSheet(user);
+    await user.click(screen.getByRole("button", { name: he.origin.everywhere }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    positionRequests = 0;
     await reload();
 
-    expect(screen.getByText("חיפה · הדר")).toBeInTheDocument();
+    expect(screen.getByText(he.origin.everywhere)).toBeInTheDocument();
     expect(screen.queryByText(CANDIDATE.label)).toBeNull();
+    expect(positionRequests).toBe(0);
   });
 
   /**
@@ -584,7 +625,7 @@ describe("home location sheet", () => {
    * Permission withdrawn between visits: the marker is worthless, and asking again
    * unprompted is exactly the nagging the sheet exists to avoid.
    */
-  it("falls back to the city, silently, when the permission no longer stands", async () => {
+  it("falls back to all of Israel, silently, when the permission no longer stands", async () => {
     const user = userEvent.setup();
     stubGeolocation("grant");
     stubPermissions("granted");
@@ -597,7 +638,7 @@ describe("home location sheet", () => {
     positionRequests = 0;
     await reload();
 
-    expect(await screen.findByText("ירושלים · בית וגן")).toBeInTheDocument();
+    expect(await screen.findByText(he.origin.everywhere)).toBeInTheDocument();
     expect(positionRequests).toBe(0);
     // Nobody asked, so nobody is told it failed.
     expect(screen.queryByText(he.origin.denied)).toBeNull();

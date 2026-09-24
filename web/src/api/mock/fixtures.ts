@@ -58,7 +58,7 @@ export interface FixtureRestaurant {
   name_en: string;
   city_he: string;
   city_en: string;
-  /** `Restaurant.city_slug` — what `POST /v1/search` filters on. */
+  /** `Restaurant.city_slug`, kept for parity with the wire model; never filtered on. */
   city_slug: string;
   address_he: string;
   address_en: string;
@@ -424,9 +424,3 @@ export const RESTAURANTS: FixtureRestaurant[] = [
     ],
   },
 ];
-
-/** Default search centre — Bayit VeGan, Jerusalem, matching the design's header. */
-export const DEFAULT_CENTER = { lat: 31.7649, lon: 35.1846 };
-
-/** The city the demo opens on. */
-export const DEFAULT_CITY_SLUG = "jerusalem";

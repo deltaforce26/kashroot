@@ -2,7 +2,7 @@
  * The fail-safe rule at the data layer.
  *
  * `useSearch` used to hold the previous query's results in state while the next
- * request was still in flight. Effects run after React commits, so switching city or
+ * request was still in flight. Effects run after React commits, so switching origin or
  * profile could paint one frame in which the *old* verdicts sat under the *new*
  * context — a MATCH earned by a profile the user has already left, rendered with no
  * indication that it answers a different question. It self-corrected on the next
@@ -14,10 +14,10 @@
  * can resolve, which is exactly the frame that used to be wrong.
  */
 
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { ProfileRequest, SearchRequest } from "../api/types";
-import { useRestaurant, useSearch } from "../hooks/useApi";
+import { usePagedSearch, useRestaurant, useSearch } from "../hooks/useApi";
 
 const OPEN_PROFILE: ProfileRequest = {
   whitelist: [
@@ -39,9 +39,14 @@ const NARROW_PROFILE: ProfileRequest = {
   whitelist: [{ certifier_id: "cert-eda", min_level: "regular" }],
 };
 
-const search = (profile: ProfileRequest, city = "jerusalem"): SearchRequest => ({
+/** Bayit VeGan and Bnei Brak: two origins whose 10 km reach nothing in common. */
+const JERUSALEM = { lat: 31.7649, lon: 35.1846 };
+const BNEI_BRAK = { lat: 32.0853, lon: 34.8338 };
+
+const search = (profile: ProfileRequest, center = JERUSALEM): SearchRequest => ({
   profile,
-  city,
+  center,
+  radius_km: 10,
   page_size: 100,
 });
 
@@ -64,15 +69,15 @@ describe("useSearch never carries an answer across a change of question", () => 
     expect(result.current.data?.items.length).toBeGreaterThan(0);
   });
 
-  it("drops them the same way when the city changes", async () => {
+  it("drops them the same way when the origin changes", async () => {
     const { result, rerender } = renderHook(({ request }) => useSearch(request), {
-      initialProps: { request: search(OPEN_PROFILE, "jerusalem") },
+      initialProps: { request: search(OPEN_PROFILE, JERUSALEM) },
     });
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.data).not.toBeNull();
 
-    rerender({ request: search(OPEN_PROFILE, "bnei-brak") });
+    rerender({ request: search(OPEN_PROFILE, BNEI_BRAK) });
     expect(result.current.data).toBeNull();
   });
 
@@ -103,5 +108,59 @@ describe("useSearch never carries an answer across a change of question", () => 
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.data).not.toBeNull();
+  });
+});
+
+/**
+ * The unscoped list is the whole database, so it arrives a page at a time. The
+ * fixture holds eleven rows; asked for five per page, the hook must show five, then
+ * ten, then all eleven — each page appended, none repeated, and the total the
+ * server's from the first answer on.
+ */
+describe("usePagedSearch accumulates pages of one question", () => {
+  const everywhere = (profile: ProfileRequest): SearchRequest => ({ profile, page_size: 5 });
+
+  it("appends the next page on loadMore and stops when the total is reached", async () => {
+    const { result } = renderHook(({ request }) => usePagedSearch(request), {
+      initialProps: { request: everywhere(OPEN_PROFILE) },
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.items).toHaveLength(5);
+    expect(result.current.total).toBe(11);
+    expect(result.current.hasMore).toBe(true);
+
+    act(() => result.current.loadMore());
+    expect(result.current.loadingMore).toBe(true);
+    await waitFor(() => expect(result.current.items).toHaveLength(10));
+    expect(result.current.hasMore).toBe(true);
+
+    act(() => result.current.loadMore());
+    await waitFor(() => expect(result.current.items).toHaveLength(11));
+    expect(result.current.hasMore).toBe(false);
+    expect(new Set(result.current.items.map((item) => item.id)).size).toBe(11);
+  });
+
+  it("throws the pages away in the same frame the question changes", async () => {
+    const { result, rerender } = renderHook(({ request }) => usePagedSearch(request), {
+      initialProps: { request: everywhere(OPEN_PROFILE) },
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    act(() => result.current.loadMore());
+    await waitFor(() => expect(result.current.items).toHaveLength(10));
+
+    rerender({ request: everywhere(NARROW_PROFILE) });
+
+    expect(result.current.items).toEqual([]);
+    expect(result.current.loading).toBe(true);
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.items).toHaveLength(5);
+  });
+
+  it("reads a null request as a question not yet askable, not as an empty answer", () => {
+    const { result } = renderHook(() => usePagedSearch(null));
+    expect(result.current.loading).toBe(true);
+    expect(result.current.items).toEqual([]);
+    expect(result.current.hasMore).toBe(false);
   });
 });

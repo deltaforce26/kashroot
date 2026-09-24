@@ -46,7 +46,6 @@ import type {
 } from "../types";
 import {
   CERTIFIERS,
-  DEFAULT_CENTER,
   RESTAURANTS,
   type FixtureCertificate,
   type FixtureRestaurant,
@@ -371,7 +370,9 @@ function matchesQuery(restaurant: (typeof RESTAURANTS)[number], query: string): 
 }
 
 export function mockSearch(request: SearchRequest, now = new Date()): Promise<SearchResponseOut> {
-  const center = request.center ?? DEFAULT_CENTER;
+  // No centre means no distance and no distance filter: every row is in scope,
+  // exactly as the API behaves. Nothing here invents a place to measure from.
+  const center = request.center ?? null;
   const radiusKm = request.radius_km ?? 25;
   const dietTypes = request.filters?.diet_types ?? [];
   const certifierIds = request.filters?.certifier_ids ?? [];
@@ -379,9 +380,8 @@ export function mockSearch(request: SearchRequest, now = new Date()): Promise<Se
 
   const items: SearchResultItemOut[] = [];
   for (const restaurant of RESTAURANTS) {
-    const distanceKm = haversineKm(center, restaurant);
-    if (request.center && distanceKm > radiusKm) continue;
-    if (request.city && restaurant.city_slug !== request.city) continue;
+    const distanceKm = center ? haversineKm(center, restaurant) : null;
+    if (distanceKm !== null && distanceKm > radiusKm) continue;
     if (query && !matchesQuery(restaurant, query)) continue;
     if (request.filters?.diet_type && restaurant.diet_type !== request.filters.diet_type) continue;
     if (dietTypes.length > 0 && !(restaurant.diet_type && dietTypes.includes(restaurant.diet_type)))
@@ -415,7 +415,7 @@ export function mockSearch(request: SearchRequest, now = new Date()): Promise<Se
       geo: restaurant.lat === null || restaurant.lon === null
         ? null
         : { lat: restaurant.lat, lon: restaurant.lon },
-      distance_km: request.center ? Number(distanceKm.toFixed(2)) : null,
+      distance_km: distanceKm === null ? null : Number(distanceKm.toFixed(2)),
       diet_type: restaurant.diet_type,
       kashrut,
       fit: computeFit(restaurant, distanceKm),

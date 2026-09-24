@@ -1,8 +1,8 @@
 /**
  * The one filter store, shared by every chip, popover and sheet on every screen, so
  * changing a filter in any of them moves all of them — and persisted, so a restart
- * keeps them. Same one-event-one-subscription shape as `useCity`, which holds the
- * city.
+ * keeps them. Same one-event-one-subscription shape as `useOrigin`, which holds
+ * where a search is measured from.
  *
  * The shape and its rules live in `./model.ts`; this file only stores it. It holds
  * the UI's state, not a request: screens map it with `toSearchFilters`.
