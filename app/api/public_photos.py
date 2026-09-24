@@ -20,7 +20,17 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -35,6 +45,7 @@ from app.api.consts import (
 )
 from app.api.deps import get_media_storage
 from app.api.schemas_public import FlagCreateRequest, FlagCreateResponse, PublicPhotoUploadResponse
+from app.core.config import settings
 from app.db.session import get_session
 from app.models import (
     AuditAction,
@@ -46,6 +57,12 @@ from app.models import (
     Restaurant,
 )
 from app.services.evidence_photos import store_evidence_photo
+from app.services.notifications import (
+    EmailSender,
+    get_email_sender,
+    notify_flag_created,
+    parse_recipients,
+)
 from app.storage import MediaStorage
 
 router = APIRouter(prefix="/v1", tags=["public"])
@@ -178,7 +195,9 @@ def upload_public_certificate_photo(
 def create_public_flag(
     restaurant_id: uuid.UUID,
     body: FlagCreateRequest,
+    background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
+    email_sender: EmailSender = Depends(get_email_sender),
 ) -> FlagCreateResponse:
     """Anonymous community report. Opens an OPEN flag in the moderation console's
     flag queue and writes an audit row; it never changes a restaurant's or
@@ -189,7 +208,12 @@ def create_public_flag(
     was showing when it has one; a report with none is still a valid restaurant-level
     flag (``certificate_id`` null). When given, it must belong to the restaurant
     (404 otherwise).
+
+    An email notification (``app.services.notifications``) is queued via
+    ``BackgroundTasks`` after the flag is committed, so a slow or failing send never
+    delays or fails this response.
     """
+    certificate: Certificate | None = None
     if body.certificate_id is not None:
         certificate = _get_owned_certificate_or_404(session, restaurant_id, body.certificate_id)
         certificate_id = certificate.id
@@ -197,6 +221,9 @@ def create_public_flag(
         if not _restaurant_exists(session, restaurant_id):
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail=ERROR_RESTAURANT_NOT_FOUND)
         certificate_id = None
+
+    restaurant = session.get(Restaurant, restaurant_id)
+    assert restaurant is not None  # existence already confirmed above
 
     flag = Flag(
         restaurant_id=restaurant_id,
@@ -220,6 +247,21 @@ def create_public_flag(
         },
         PUBLIC_ANONYMOUS_ACTOR,
         {"action": "create_flag", "restaurant_id": restaurant_id, "flag_type": body.type},
+    )
+
+    background_tasks.add_task(
+        notify_flag_created,
+        email_sender,
+        to=parse_recipients(settings.report_email_to),
+        restaurant_id=restaurant_id,
+        restaurant_name=restaurant.name_he or restaurant.name_en or str(restaurant_id),
+        flag_id=flag.id,
+        flag_type=body.type.value,
+        message=body.message,
+        certificate_id=certificate_id,
+        certifier_name=certificate.certifier.name_he if certificate is not None else None,
+        created_at=flag.created_at,
+        admin_base_url=settings.admin_base_url,
     )
 
     return FlagCreateResponse(flag_id=flag.id, state="open")
