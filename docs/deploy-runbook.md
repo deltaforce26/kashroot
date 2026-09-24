@@ -65,7 +65,7 @@ Render prompts for every var marked `sync: false`. None of them are in git.
 | `KASHROOT_SUPABASE_SERVICE_KEY` | The **secret** key (`sb_secret_…`), never the publishable one |
 | `KASHROOT_ADMIN_API_TOKENS` | `{}` — the admin console is not deployed, so nothing should authenticate |
 | `KASHROOT_GOOGLE_MAPS_API_KEY` | Server-side Geocoding key. Not the browser key |
-| `KASHROOT_PUBLIC_WEB_ORIGIN` | The web app's public origin, e.g. `https://kashroot.app`, used in `/sitemap.xml` URLs. Optional until a custom domain exists (see `docs/seo-runbook.md`) |
+| `KASHROOT_PUBLIC_WEB_ORIGIN` | `https://kashroot.app` — set in `render.yaml`; add it by hand if the service predates that line. Used in `/sitemap.xml` URLs (see `docs/seo-runbook.md`) |
 
 > **The database URL here differs from your local `.env`.** Local uses the *session*
 > pooler (5432) because it also runs migrations. The deployed app should use the
@@ -143,6 +143,7 @@ fine right up until the demo.
 In Google Cloud Console → Credentials → the browser key → Website restrictions, add:
 
 ```
+https://kashroot.app/*
 https://<your-project>.vercel.app/*
 ```
 

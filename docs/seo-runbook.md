@@ -29,28 +29,31 @@ alternates — one URL serves both languages, Hebrew first.
 ## Settings that name the public origin
 
 Absolute URLs (sitemap entries, canonical, `og:url`) need to know the site's origin.
+The public address is **`https://kashroot.app`**, and both settings are committed:
 
 | Where | Key | Effect |
 |---|---|---|
-| Render (API) | `KASHROOT_PUBLIC_WEB_ORIGIN` | Origin used in sitemap URLs, e.g. `https://kashroot.app`. **Set it in production.** Without it the API falls back to `X-Forwarded-Host`, and only when that host ends in `.vercel.app` (anything else is client input and is ignored in favour of the API's own host, which would put `onrender.com` URLs in the sitemap). A custom domain therefore *needs* this setting. |
-| Vercel (web) | `VITE_SITE_ORIGIN` | Build-time. Adds the `Sitemap:` line to `robots.txt` and pins canonical/`og:url` to this origin. Without it canonicals use `window.location.origin` and `robots.txt` has no `Sitemap:` line (submit it in Search Console instead). Redeploy after changing it. |
+| Render (API) | `KASHROOT_PUBLIC_WEB_ORIGIN` | In `render.yaml`. Origin used in sitemap URLs. Without it the API falls back to `X-Forwarded-Host`, and only when that host ends in `.vercel.app` (anything else is client input and is ignored in favour of the API's own host, which would put `onrender.com` URLs in the sitemap). If the Render service was created before this line existed, add it in the dashboard by hand. |
+| Vercel (web) | `VITE_SITE_ORIGIN` | In `web/.env.production`, so every `vite build` gets it, previews included. Adds the `Sitemap:` line to `robots.txt` and pins canonical/`og:url`. A preview pointing its canonical at the real site is intended; Vercel already `noindex`es preview URLs. |
 
-Set both to the **same** canonical origin, without a trailing slash. If you attach a
-custom domain later, change both and redeploy — a `*.vercel.app` canonical that is
-already indexed will otherwise keep competing with the real domain.
+Both name the **same** origin, without a trailing slash. If the domain ever changes,
+change both files together — a canonical that is already indexed keeps competing with
+the new domain until it is updated.
 
 ---
 
 ## One-time setup
 
-1. **Custom domain (recommended).** Vercel → Project → Domains. Add the domain, then
-   put it in both settings above and redeploy. Add the domain to the Google Maps
-   browser key's referrer allowlist as well (`deploy-runbook.md` §3).
-2. **Search Console.** https://search.google.com/search-console → Add property.
-   Use the **Domain** property with the DNS TXT record if you own the domain;
-   otherwise the URL-prefix property and the HTML-tag method — paste the
+1. **Domain.** Vercel → Project → Domains → add `kashroot.app` (and `www.kashroot.app`
+   redirecting to it, so there is one canonical host). Add
+   `https://kashroot.app/*` to the Google Maps browser key's referrer allowlist
+   (`deploy-runbook.md` §3).
+2. **Search Console.** https://search.google.com/search-console → Add property →
+   **Domain** `kashroot.app`, verified with the DNS TXT record Google shows, added at
+   the registrar. This covers http/https and www in one property. (Fallback: the
+   URL-prefix property and the HTML-tag method — paste the
    `<meta name="google-site-verification" …>` tag into `web/index.html` `<head>` and
-   redeploy.
+   redeploy.)
 3. **Submit the sitemap.** Search Console → Sitemaps → `https://<origin>/sitemap.xml`.
    Before submitting, open it in a browser and confirm it lists restaurants; the
    first hit after idle pays the Render cold start (~50 s), which Google tolerates

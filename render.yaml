@@ -69,3 +69,10 @@ services:
       # the PWA uses; this one must never reach a client bundle.
       - key: KASHROOT_GOOGLE_MAPS_API_KEY
         sync: false
+
+      # The web app's public origin, used for every URL in GET /v1/sitemap.xml.
+      # Not a secret. Must match VITE_SITE_ORIGIN in web/.env.production. If the
+      # service already existed before this line, add it in the dashboard too —
+      # a Blueprint sync only applies new values to services it creates or updates.
+      - key: KASHROOT_PUBLIC_WEB_ORIGIN
+        value: https://kashroot.app
