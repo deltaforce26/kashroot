@@ -15,7 +15,7 @@ and the one-time Search Console steps. Companion to `deploy-runbook.md`.
 
 | URL | Indexable? | Notes |
 |---|---|---|
-| `/` | via redirect | An anonymous visit redirects to `/onboarding/preset`, so its title/description are what Google shows for the home page. The `WebSite` JSON-LD lives on Home for signed-in users. |
+| `/` | **yes** | Anonymous visitors get the landing page: what the app does, a call-to-action into onboarding, and every city with a sample of restaurant links (from `GET /v1/directory`, facts only). Those links are how the `/r/<id>` pages get discovered. Visitors with a profile get the Home list at the same URL. `WebSite` JSON-LD on both. |
 | `/r/<id>` | **yes** | Profile-free facts page. `Restaurant` JSON-LD (name, address, geo, phone). No verdict, no cuisine claim, no rating markup — a certificate says "certified by X", never "is kosher"; the app reports facts, it never rules. |
 | `/onboarding/*`, `/search`, `/saved*`, `/map`, `/profile`, `/filters` | `noindex` | Thin, profile-dependent, or legacy redirects. Also disallowed in `robots.txt`. |
 | `/robots.txt` | static | Served by Vercel from `web/public/`. **Never** proxied to the API: if the API is asleep and `robots.txt` times out, Google pauses crawling the whole site. |
@@ -87,9 +87,6 @@ watch Search Console → Pages for the `/r/…` URLs to move from "Discovered" t
   indexing is slower and other engines/link previews (WhatsApp, Telegram) show only
   the `index.html` defaults. Pre-rendering `/r/<id>` at build or edge time is the
   next step if link previews matter for sharing.
-- **The home page has no content of its own** — it redirects to onboarding. A public
-  landing page (what the app does, the five cities, links into restaurants) is the
-  single biggest ranking lever left, and a product decision about the first-run flow.
 - **City pages.** `/city/jerusalem` style listing pages would target the queries
   people actually type ("kosher restaurants Jerusalem", "מסעדות כשרות ירושלים").
   They need a profile-free listing endpoint (facts only) to stay honest.
