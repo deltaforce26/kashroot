@@ -8,9 +8,11 @@ send, via a fake sender override, with HTML-escaped user content) and the
 from __future__ import annotations
 
 import datetime as dt
+import logging
 import uuid
 from unittest.mock import MagicMock
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -35,11 +37,21 @@ from app.services.notifications import (
     ResendEmailSender,
     build_flag_report_email,
     get_email_sender,
+    log_email_configuration_status,
     notify_flag_created,
+    notify_photo_uploaded,
     parse_recipients,
+)
+from app.services.notifications_consts import (
+    ENV_VAR_REPORT_EMAIL_FROM,
+    ENV_VAR_REPORT_EMAIL_TO,
+    ENV_VAR_RESEND_API_KEY,
 )
 from app.services.rate_limit import InMemoryRateLimitBackend, get_rate_limit_backend
 from app.storage import InMemoryMediaStorage
+
+JPEG_BYTES = b"\xff\xd8\xff\xe0" + b"\x00" * 128
+PDF_BYTES = b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n" + b"0" * 128
 
 # ------------------------------------------------------------------------ fixtures
 
@@ -230,6 +242,118 @@ def test_sender_raising_still_returns_201_and_persists_flag(client, session, mon
     assert flag.message == "still works"
 
 
+# ---------------------------------------------------------- certificate photo upload
+
+
+def test_photo_upload_sends_one_email_with_expected_fields(
+    client, session, recording_sender, monkeypatch
+) -> None:
+    monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
+    monkeypatch.setattr(settings, "report_email_from", "reports@kashroot.example")
+    monkeypatch.setattr(settings, "report_email_to", "mod1@example.com")
+    monkeypatch.setattr(settings, "admin_base_url", "https://admin.kashroot.example")
+
+    restaurant, certificate = make_cert_chain(session)
+
+    response = client.post(
+        f"/v1/restaurants/{restaurant.id}/certificate-photo",
+        data={"certificate_id": str(certificate.id)},
+        files={"file": ("photo.jpg", JPEG_BYTES, "image/jpeg")},
+    )
+    assert response.status_code == 201
+    photo_id = response.json()["photo_id"]
+
+    assert len(recording_sender.calls) == 1
+    call = recording_sender.calls[0]
+    assert call["to"] == ["mod1@example.com"]
+    assert "pending review" in call["subject"]
+    assert restaurant.name_he in call["subject"]
+    assert photo_id in call["html_body"]
+    assert certificate.id.hex in call["html_body"].replace("-", "")
+    assert "image/jpeg" in call["html_body"]
+    assert "https://admin.kashroot.example/photos?photo_id=" in call["html_body"]
+    assert photo_id in call["text_body"]
+
+
+def test_photo_upload_conflict_sends_no_email(
+    client, session, recording_sender, monkeypatch
+) -> None:
+    monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
+    monkeypatch.setattr(settings, "report_email_from", "reports@kashroot.example")
+    monkeypatch.setattr(settings, "report_email_to", "mod1@example.com")
+
+    restaurant, certificate = make_cert_chain(session)
+    certificate.evidence_photo_key = "cert-evidence/already-accepted.jpg"
+    session.flush()
+
+    response = client.post(
+        f"/v1/restaurants/{restaurant.id}/certificate-photo",
+        data={"certificate_id": str(certificate.id)},
+        files={"file": ("photo.jpg", JPEG_BYTES, "image/jpeg")},
+    )
+    assert response.status_code == 409
+    assert recording_sender.calls == []
+
+
+def test_photo_upload_unsupported_media_type_sends_no_email(
+    client, session, recording_sender, monkeypatch
+) -> None:
+    monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
+    monkeypatch.setattr(settings, "report_email_from", "reports@kashroot.example")
+    monkeypatch.setattr(settings, "report_email_to", "mod1@example.com")
+
+    restaurant, certificate = make_cert_chain(session)
+
+    response = client.post(
+        f"/v1/restaurants/{restaurant.id}/certificate-photo",
+        data={"certificate_id": str(certificate.id)},
+        files={"file": ("scan.pdf", PDF_BYTES, "application/pdf")},
+    )
+    assert response.status_code == 415
+    assert recording_sender.calls == []
+
+
+def test_photo_upload_rate_limited_sends_no_email(
+    client, session, recording_sender, monkeypatch
+) -> None:
+    monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
+    monkeypatch.setattr(settings, "report_email_from", "reports@kashroot.example")
+    monkeypatch.setattr(settings, "report_email_to", "mod1@example.com")
+    monkeypatch.setattr(settings, "photo_upload_rate_limit_per_hour", 0)
+
+    restaurant, certificate = make_cert_chain(session)
+
+    response = client.post(
+        f"/v1/restaurants/{restaurant.id}/certificate-photo",
+        data={"certificate_id": str(certificate.id)},
+        files={"file": ("photo.jpg", JPEG_BYTES, "image/jpeg")},
+    )
+    assert response.status_code == 429
+    assert recording_sender.calls == []
+
+
+def test_photo_upload_sender_raising_still_returns_201(client, session, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "resend_api_key", "re_test_key")
+    monkeypatch.setattr(settings, "report_email_from", "reports@kashroot.example")
+    monkeypatch.setattr(settings, "report_email_to", "mod1@example.com")
+    client.app.dependency_overrides[get_email_sender] = lambda: RaisingSender()
+
+    restaurant, certificate = make_cert_chain(session)
+
+    response = client.post(
+        f"/v1/restaurants/{restaurant.id}/certificate-photo",
+        data={"certificate_id": str(certificate.id)},
+        files={"file": ("photo.jpg", JPEG_BYTES, "image/jpeg")},
+    )
+    assert response.status_code == 201
+
+    from app.models import CertificateEvidencePhoto
+
+    photo_id = uuid.UUID(response.json()["photo_id"])
+    photo = session.get(CertificateEvidencePhoto, photo_id)
+    assert photo is not None
+
+
 # ------------------------------------------------------------------- notify_flag_created
 
 
@@ -263,6 +387,43 @@ def test_notify_flag_created_swallows_sender_errors() -> None:
         certificate_id=None,
         certifier_name=None,
         created_at=dt.datetime.now(dt.UTC),
+        admin_base_url=None,
+    )
+
+
+# ---------------------------------------------------------------- notify_photo_uploaded
+
+
+def test_notify_photo_uploaded_no_recipients_is_a_noop() -> None:
+    sender = RecordingSender()
+    notify_photo_uploaded(
+        sender,
+        to=[],
+        restaurant_id=uuid.uuid4(),
+        restaurant_name="Test",
+        certificate_id=uuid.uuid4(),
+        certifier_name="Badatz Test",
+        photo_id=uuid.uuid4(),
+        content_type="image/jpeg",
+        size_bytes=1024,
+        uploaded_at=dt.datetime.now(dt.UTC),
+        admin_base_url=None,
+    )
+    assert sender.calls == []
+
+
+def test_notify_photo_uploaded_swallows_sender_errors() -> None:
+    notify_photo_uploaded(
+        RaisingSender(),
+        to=["mod@example.com"],
+        restaurant_id=uuid.uuid4(),
+        restaurant_name="Test",
+        certificate_id=uuid.uuid4(),
+        certifier_name="Badatz Test",
+        photo_id=uuid.uuid4(),
+        content_type="image/jpeg",
+        size_bytes=1024,
+        uploaded_at=dt.datetime.now(dt.UTC),
         admin_base_url=None,
     )
 
@@ -337,3 +498,115 @@ def test_resend_sender_raises_on_error_response() -> None:
     sender = ResendEmailSender(api_key="k", from_address="f@example.com", client=fake_client)
     with pytest.raises(RuntimeError):
         sender.send(to=["a@example.com"], subject="s", html_body="h", text_body="t")
+
+
+# ------------------------------------------------------------- startup logging
+
+
+def test_log_email_configuration_status_configured_logs_one_warning(monkeypatch, caplog) -> None:
+    monkeypatch.setattr(settings, "resend_api_key", "re_super_secret_key")
+    monkeypatch.setattr(settings, "report_email_from", "reports@kashroot.example")
+    monkeypatch.setattr(settings, "report_email_to", "mod1@example.com, mod2@example.com")
+
+    with caplog.at_level(logging.WARNING, logger="app"):
+        log_email_configuration_status()
+
+    records = [r for r in caplog.records if r.name == "app.services.notifications"]
+    assert len(records) == 1
+    assert records[0].levelno == logging.WARNING
+    message = records[0].getMessage()
+    assert "reports@kashroot.example" in message
+    assert "2" in message
+    assert "re_super_secret_key" not in message
+
+
+def test_log_email_configuration_status_missing_vars_names_each_one(monkeypatch, caplog) -> None:
+    monkeypatch.setattr(settings, "resend_api_key", None)
+    monkeypatch.setattr(settings, "report_email_from", "reports@kashroot.example")
+    monkeypatch.setattr(settings, "report_email_to", "")
+
+    with caplog.at_level(logging.WARNING, logger="app"):
+        log_email_configuration_status()
+
+    records = [r for r in caplog.records if r.name == "app.services.notifications"]
+    assert len(records) == 1
+    assert records[0].levelno == logging.WARNING
+    message = records[0].getMessage()
+    assert ENV_VAR_RESEND_API_KEY in message
+    assert ENV_VAR_REPORT_EMAIL_TO in message
+    assert ENV_VAR_REPORT_EMAIL_FROM not in message
+
+
+def test_send_failure_logs_resend_status_and_truncated_body(caplog) -> None:
+    request = httpx.Request("POST", "https://api.resend.com/emails")
+    response = httpx.Response(
+        403,
+        text='{"message": "domain not verified"}',
+        request=request,
+    )
+    fake_client = MagicMock()
+    fake_client.post.return_value = response
+
+    sender = ResendEmailSender(
+        api_key="re_super_secret_key",
+        from_address="reports@kashroot.example",
+        client=fake_client,
+    )
+
+    with caplog.at_level(logging.WARNING, logger="app"):
+        notify_flag_created(
+            sender,
+            to=["mod@example.com"],
+            restaurant_id=uuid.uuid4(),
+            restaurant_name="Test",
+            flag_id=uuid.uuid4(),
+            flag_type="other",
+            message=None,
+            certificate_id=None,
+            certifier_name=None,
+            created_at=dt.datetime.now(dt.UTC),
+            admin_base_url=None,
+        )
+
+    records = [r for r in caplog.records if r.name == "app.services.notifications"]
+    assert len(records) == 1
+    message = records[0].getMessage()
+    assert "403" in message
+    assert "domain not verified" in message
+    assert "re_super_secret_key" not in message
+
+
+def test_api_key_never_appears_in_any_log_record(monkeypatch, caplog) -> None:
+    secret_key = "re_never_leak_this_key"
+    monkeypatch.setattr(settings, "resend_api_key", secret_key)
+    monkeypatch.setattr(settings, "report_email_from", "reports@kashroot.example")
+    monkeypatch.setattr(settings, "report_email_to", "mod1@example.com")
+
+    request = httpx.Request("POST", "https://api.resend.com/emails")
+    response = httpx.Response(403, text="domain not verified", request=request)
+    fake_client = MagicMock()
+    fake_client.post.return_value = response
+    sender = ResendEmailSender(
+        api_key=secret_key,
+        from_address="reports@kashroot.example",
+        client=fake_client,
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        log_email_configuration_status()
+        notify_flag_created(
+            sender,
+            to=["mod1@example.com"],
+            restaurant_id=uuid.uuid4(),
+            restaurant_name="Test",
+            flag_id=uuid.uuid4(),
+            flag_type="other",
+            message=None,
+            certificate_id=None,
+            certifier_name=None,
+            created_at=dt.datetime.now(dt.UTC),
+            admin_base_url=None,
+        )
+
+    for record in caplog.records:
+        assert secret_key not in record.getMessage()

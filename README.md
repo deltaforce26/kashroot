@@ -92,19 +92,29 @@ The URL comes from `KASHROOT_DATABASE_URL` via `app.core.config`, not from `alem
 
 ## Report notification email
 
-Every public community report (`POST /v1/restaurants/{id}/flags`) sends one email
-through [Resend](https://resend.com) after the flag is committed (`app.services.notifications`),
-via a background task so a slow or failing send never delays or fails the response.
+Two public, anonymous events each send one email through [Resend](https://resend.com)
+after their row is committed (`app.services.notifications`), via a background task
+so a slow or failing send never delays or fails the response:
+
+- Every community report (`POST /v1/restaurants/{id}/flags`).
+- Every successful certificate-photo upload (`POST /v1/restaurants/{id}/certificate-photo`)
+  — a rate-limited, rejected (409/413/415) or otherwise failed upload sends nothing.
+  Admin/moderator uploads (`app.api.admin.photos`) never send anything either.
 
 | Variable | Purpose |
 | --- | --- |
 | `KASHROOT_RESEND_API_KEY` | Resend API key (secret). |
 | `KASHROOT_REPORT_EMAIL_FROM` | Verified Resend "from" address. |
 | `KASHROOT_REPORT_EMAIL_TO` | Comma-separated recipient list. |
-| `KASHROOT_ADMIN_BASE_URL` | Optional — base URL of the admin console, linked in the email to its flag queue. |
+| `KASHROOT_ADMIN_BASE_URL` | Optional — base URL of the admin console, linked in each email to its flag or photo queue. |
 
 Unset key or recipients is a silent no-op (`NullSender`), so local dev and the test
 suite need none of this configured. See `.env.example`.
+
+At startup, the app logs exactly one WARNING line stating whether report email is
+configured (never the API key itself) — this is a WARNING, not INFO, specifically so
+it is visible in Render's default uvicorn log output. A send failure logs Resend's
+HTTP status and a truncated response body (e.g. `403 "domain not verified"`).
 
 ## Anonymous upload rate limiting
 

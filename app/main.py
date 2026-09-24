@@ -6,6 +6,8 @@ mount their own router here as they land. Only health checks exist today.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import APIRouter, Depends, FastAPI
@@ -18,6 +20,7 @@ from app.api.public import router as public_router
 from app.api.public_photos import router as public_photos_router
 from app.core.config import settings
 from app.db.session import get_session
+from app.services.notifications import log_email_configuration_status
 
 router = APIRouter(tags=["health"])
 
@@ -31,6 +34,23 @@ def health() -> dict[str, Any]:
 def health_db(session: Session = Depends(get_session)) -> dict[str, Any]:
     postgis = session.execute(text("select postgis_version()")).scalar_one()
     return {"status": "ok", "postgis": postgis}
+
+
+@asynccontextmanager
+async def _lifespan(application: FastAPI) -> AsyncIterator[None]:
+    """
+    Log the report-flag email configuration state exactly once, at process startup.
+
+    Parameters:
+        application (FastAPI): The application being started. Unused; required by
+            FastAPI's lifespan signature.
+
+    Return:
+        AsyncIterator[None]: Yields once, for the application's running lifetime.
+    """
+    log_email_configuration_status()
+
+    yield
 
 
 def create_app() -> FastAPI:
@@ -52,6 +72,7 @@ def create_app() -> FastAPI:
             "Kosher restaurant discovery. Kashrut verdicts are binary and evidence-backed; "
             "fit scores rank soft preferences only and never mix with the verdict."
         ),
+        lifespan=_lifespan,
     )
     application.include_router(router)
     application.include_router(admin_router)

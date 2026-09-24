@@ -1,10 +1,13 @@
-"""Instant email notification for public community reports.
+"""Instant email notifications for public community activity.
 
-``POST /v1/restaurants/{id}/flags`` (``app.api.public_photos.create_public_flag``)
-sends one transactional email through Resend (https://resend.com) after the flag is
-committed, via ``BackgroundTasks`` — a send failure or slow network call must never
-fail or delay the report response (PRD §13 fail-safe: the report itself already
-succeeded once the flag row exists).
+Two ``app.api.public_photos`` endpoints each send one transactional email through
+Resend (https://resend.com) after their row is committed, via ``BackgroundTasks`` —
+a send failure or slow network call must never fail or delay the response (PRD §13
+fail-safe: the request itself already succeeded once its row exists):
+``POST /v1/restaurants/{id}/flags`` (``create_public_flag``) and
+``POST /v1/restaurants/{id}/certificate-photo`` (``upload_public_certificate_photo``,
+success only — a rate-limited, rejected or failed upload sends nothing). Admin/
+moderator uploads (``app.api.admin.photos``) send no email.
 
 Sender abstraction: :class:`EmailSender` is the interface the router depends on
 (:func:`get_email_sender`, overridable in tests); :class:`ResendEmailSender` is the
@@ -30,15 +33,27 @@ import httpx
 from app.core.config import Settings, settings
 from app.services.notifications_consts import (
     ADMIN_FLAGS_QUEUE_PATH,
+    ADMIN_PHOTOS_QUEUE_PATH,
+    APP_LOGGER_NAME,
     DEFAULT_RESEND_TIMEOUT_SECONDS,
     EMAIL_NO_CERTIFICATE_PLACEHOLDER,
     EMAIL_NO_MESSAGE_PLACEHOLDER,
+    EMAIL_PHOTO_SUBJECT_TEMPLATE,
     EMAIL_SUBJECT_TEMPLATE,
     EMAIL_UNKNOWN_CERTIFIER_PLACEHOLDER,
+    ENV_VAR_REPORT_EMAIL_FROM,
+    ENV_VAR_REPORT_EMAIL_TO,
+    ENV_VAR_RESEND_API_KEY,
+    LOG_EMAIL_CONFIGURED_AT_STARTUP,
+    LOG_EMAIL_NOT_CONFIGURED_AT_STARTUP,
     LOG_EMAIL_SEND_FAILED,
+    LOG_EMAIL_SEND_FAILED_WITH_RESEND_DETAIL,
     LOG_EMAIL_SEND_SKIPPED_NO_RECIPIENTS,
     LOG_EMAIL_SENDER_UNCONFIGURED,
+    LOG_LABEL_CERTIFICATE_PHOTO,
+    LOG_LABEL_FLAG_REPORT,
     RESEND_API_URL,
+    RESEND_ERROR_BODY_TRUNCATE_LENGTH,
 )
 
 logger = logging.getLogger(__name__)
@@ -183,6 +198,77 @@ def _resend_is_configured(config: Settings) -> bool:
     )
 
 
+def _missing_email_env_vars(config: Settings) -> list[str]:
+    """
+    List which of the three required Resend env vars are missing or empty.
+
+    Parameters:
+        config (Settings): The settings to read.
+
+    Return:
+        list[str]: The env var names (``KASHROOT_RESEND_API_KEY``,
+            ``KASHROOT_REPORT_EMAIL_FROM``, ``KASHROOT_REPORT_EMAIL_TO``) that are
+            missing or empty, in that fixed order; empty when all are present.
+    """
+    missing: list[str] = []
+
+    if not config.resend_api_key:
+        missing.append(ENV_VAR_RESEND_API_KEY)
+
+    if not config.report_email_from:
+        missing.append(ENV_VAR_REPORT_EMAIL_FROM)
+
+    if not parse_recipients(config.report_email_to):
+        missing.append(ENV_VAR_REPORT_EMAIL_TO)
+
+    return missing
+
+
+def ensure_app_logger_visible() -> None:
+    """
+    Attach a ``StreamHandler`` to the ``app`` logger, once, so WARNING+ records from
+    every ``app.*`` module reach the process's stderr under uvicorn on Render.
+
+    Idempotent and safe to call repeatedly (tests build the FastAPI app many times):
+    it is a no-op once the ``app`` logger already has a handler, so output is never
+    duplicated. Does not disable propagation, so ``caplog``/``pytest`` handlers on
+    the root logger keep seeing the same records.
+
+    Return:
+        None
+    """
+    app_logger = logging.getLogger(APP_LOGGER_NAME)
+
+    if app_logger.handlers:
+        return
+
+    app_logger.addHandler(logging.StreamHandler())
+    app_logger.setLevel(logging.WARNING)
+
+
+def log_email_configuration_status() -> None:
+    """
+    Log, once at application startup, whether report-flag email is configured —
+    at WARNING, since Render's default uvicorn output does not show INFO. Never
+    logs the Resend API key itself.
+
+    Meant to be called from ``app.main``'s startup/lifespan hook.
+
+    Return:
+        None
+    """
+    ensure_app_logger_visible()
+    missing = _missing_email_env_vars(settings)
+
+    if missing:
+        logger.warning(LOG_EMAIL_NOT_CONFIGURED_AT_STARTUP, ", ".join(missing))
+
+        return
+
+    recipient_count = len(parse_recipients(settings.report_email_to))
+    logger.warning(LOG_EMAIL_CONFIGURED_AT_STARTUP, settings.report_email_from, recipient_count)
+
+
 @lru_cache
 def _default_email_sender() -> EmailSender:
     """
@@ -215,6 +301,29 @@ def get_email_sender() -> EmailSender:
     return _default_email_sender()
 
 
+def _admin_console_link(
+    admin_base_url: str | None, queue_path: str, query_param: str, entity_id: uuid.UUID
+) -> str | None:
+    """
+    Build a link to one moderation-console queue for one entity, when a base URL is
+    configured.
+
+    Parameters:
+        admin_base_url (str | None): ``KASHROOT_ADMIN_BASE_URL``, or None.
+        queue_path (str): The queue's path, e.g. ``ADMIN_FLAGS_QUEUE_PATH``.
+        query_param (str): The query-string key identifying the entity, e.g.
+            ``"flag_id"``.
+        entity_id (uuid.UUID): The entity to deep-link to.
+
+    Return:
+        str | None: The link, or None when no base URL is configured.
+    """
+    if not admin_base_url:
+        return None
+
+    return f"{admin_base_url.rstrip('/')}{queue_path}?{query_param}={entity_id}"
+
+
 def _admin_flags_link(admin_base_url: str | None, flag_id: uuid.UUID) -> str | None:
     """
     Build a link to the moderation console's flag queue for one flag, when a base
@@ -227,10 +336,22 @@ def _admin_flags_link(admin_base_url: str | None, flag_id: uuid.UUID) -> str | N
     Return:
         str | None: The link, or None when no base URL is configured.
     """
-    if not admin_base_url:
-        return None
+    return _admin_console_link(admin_base_url, ADMIN_FLAGS_QUEUE_PATH, "flag_id", flag_id)
 
-    return f"{admin_base_url.rstrip('/')}{ADMIN_FLAGS_QUEUE_PATH}?flag_id={flag_id}"
+
+def _admin_photos_link(admin_base_url: str | None, photo_id: uuid.UUID) -> str | None:
+    """
+    Build a link to the moderation console's photo queue for one photo, when a base
+    URL is configured.
+
+    Parameters:
+        admin_base_url (str | None): ``KASHROOT_ADMIN_BASE_URL``, or None.
+        photo_id (uuid.UUID): The evidence photo to deep-link to.
+
+    Return:
+        str | None: The link, or None when no base URL is configured.
+    """
+    return _admin_console_link(admin_base_url, ADMIN_PHOTOS_QUEUE_PATH, "photo_id", photo_id)
 
 
 def build_flag_report_email(
@@ -319,6 +440,59 @@ def build_flag_report_email(
     return subject, html_body, text_body
 
 
+def _deliver_notification_email(
+    sender: EmailSender,
+    *,
+    label: str,
+    entity_id: uuid.UUID,
+    to: Sequence[str],
+    subject: str,
+    html_body: str,
+    text_body: str,
+) -> None:
+    """
+    Send one already-rendered notification email, swallowing every error.
+
+    Shared by every notification kind (flag reports, certificate-photo uploads):
+    each one is a ``BackgroundTasks`` callback that runs strictly after its own row
+    is committed, so this never raises — a Resend outage or a network timeout can
+    never turn an already-successful request into a failed one (PRD §13 fail-safe).
+
+    Parameters:
+        sender (EmailSender): The sender to use (from ``get_email_sender``).
+        label (str): A short, human-readable notification kind for the log line
+            (e.g. ``LOG_LABEL_FLAG_REPORT``, ``LOG_LABEL_CERTIFICATE_PHOTO``).
+        entity_id (uuid.UUID): The flag, photo, etc. this email is about, logged for
+            correlation.
+        to (Sequence[str]): Recipient addresses (``KASHROOT_REPORT_EMAIL_TO``,
+            already parsed).
+        subject (str): The email subject line.
+        html_body (str): The HTML body part.
+        text_body (str): The plain-text body part.
+
+    Return:
+        None
+    """
+    if not to:
+        logger.debug(LOG_EMAIL_SEND_SKIPPED_NO_RECIPIENTS, label, entity_id)
+
+        return
+
+    try:
+        sender.send(to=to, subject=subject, html_body=html_body, text_body=text_body)
+    except httpx.HTTPStatusError as exc:
+        body = exc.response.text[:RESEND_ERROR_BODY_TRUNCATE_LENGTH]
+        logger.error(
+            LOG_EMAIL_SEND_FAILED_WITH_RESEND_DETAIL,
+            label,
+            entity_id,
+            exc.response.status_code,
+            body,
+        )
+    except Exception:
+        logger.exception(LOG_EMAIL_SEND_FAILED, label, entity_id)
+
+
 def notify_flag_created(
     sender: EmailSender,
     *,
@@ -358,11 +532,6 @@ def notify_flag_created(
     Return:
         None
     """
-    if not to:
-        logger.debug(LOG_EMAIL_SEND_SKIPPED_NO_RECIPIENTS, flag_id)
-
-        return
-
     subject, html_body, text_body = build_flag_report_email(
         restaurant_id=restaurant_id,
         restaurant_name=restaurant_name,
@@ -374,7 +543,153 @@ def notify_flag_created(
         created_at=created_at,
         admin_base_url=admin_base_url,
     )
-    try:
-        sender.send(to=to, subject=subject, html_body=html_body, text_body=text_body)
-    except Exception:
-        logger.exception(LOG_EMAIL_SEND_FAILED, flag_id)
+    _deliver_notification_email(
+        sender,
+        label=LOG_LABEL_FLAG_REPORT,
+        entity_id=flag_id,
+        to=to,
+        subject=subject,
+        html_body=html_body,
+        text_body=text_body,
+    )
+
+
+def build_photo_uploaded_email(
+    *,
+    restaurant_id: uuid.UUID,
+    restaurant_name: str,
+    certificate_id: uuid.UUID,
+    certifier_name: str | None,
+    photo_id: uuid.UUID,
+    content_type: str,
+    size_bytes: int,
+    uploaded_at: dt.datetime,
+    admin_base_url: str | None,
+) -> tuple[str, str, str]:
+    """
+    Render the subject, HTML body and plain-text body for one certificate-photo-
+    upload notification email.
+
+    ``restaurant_name`` and ``certifier_name`` are HTML-escaped before they reach the
+    HTML body, matching :func:`build_flag_report_email` — the restaurant/certifier
+    names originate from moderator-entered data, not the anonymous uploader, but the
+    same discipline is cheap and keeps the two builders consistent.
+
+    Parameters:
+        restaurant_id (uuid.UUID): The restaurant whose certificate was photographed.
+        restaurant_name (str): The restaurant's display name (Hebrew or English).
+        certificate_id (uuid.UUID): The certificate the photo is evidence for.
+        certifier_name (str | None): That certificate's certifier name, if any.
+        photo_id (uuid.UUID): The newly created evidence-photo row's id.
+        content_type (str): The photo's normalized Content-Type (e.g.
+            ``"image/jpeg"``).
+        size_bytes (int): The uploaded file's size in bytes.
+        uploaded_at (dt.datetime): When the photo was uploaded.
+        admin_base_url (str | None): ``KASHROOT_ADMIN_BASE_URL``, or None.
+
+    Return:
+        tuple[str, str, str]: ``(subject, html_body, text_body)``. Never includes the
+            image itself or a presigned URL — the admin opens it from the queue.
+    """
+    safe_restaurant_name = html.escape(restaurant_name)
+    safe_certifier_name = html.escape(certifier_name) if certifier_name else None
+    certifier_display = certifier_name or EMAIL_UNKNOWN_CERTIFIER_PLACEHOLDER
+    safe_certifier_display = safe_certifier_name or EMAIL_UNKNOWN_CERTIFIER_PLACEHOLDER
+
+    subject = EMAIL_PHOTO_SUBJECT_TEMPLATE.format(restaurant_name=restaurant_name)
+    admin_link = _admin_photos_link(admin_base_url, photo_id)
+    uploaded_at_str = uploaded_at.isoformat()
+
+    admin_link_html = (
+        f'<p><a href="{admin_link}">Open in moderation console</a></p>' if admin_link else ""
+    )
+    admin_link_text = f"\nAdmin link: {admin_link}" if admin_link else ""
+
+    html_body = (
+        "<div>"
+        "<h2>New certificate photo pending review</h2>"
+        "<ul>"
+        f"<li>Restaurant: {safe_restaurant_name} ({restaurant_id})</li>"
+        f"<li>Certificate: {certificate_id} ({safe_certifier_display})</li>"
+        f"<li>Photo id: {photo_id}</li>"
+        f"<li>Content type: {content_type}</li>"
+        f"<li>Size: {size_bytes} bytes</li>"
+        f"<li>Uploaded at: {uploaded_at_str}</li>"
+        "</ul>"
+        f"{admin_link_html}"
+        "</div>"
+    )
+    text_body = (
+        "New certificate photo pending review\n\n"
+        f"Restaurant: {restaurant_name} ({restaurant_id})\n"
+        f"Certificate: {certificate_id} ({certifier_display})\n"
+        f"Photo id: {photo_id}\n"
+        f"Content type: {content_type}\n"
+        f"Size: {size_bytes} bytes\n"
+        f"Uploaded at: {uploaded_at_str}"
+        f"{admin_link_text}"
+    )
+
+    return subject, html_body, text_body
+
+
+def notify_photo_uploaded(
+    sender: EmailSender,
+    *,
+    to: Sequence[str],
+    restaurant_id: uuid.UUID,
+    restaurant_name: str,
+    certificate_id: uuid.UUID,
+    certifier_name: str | None,
+    photo_id: uuid.UUID,
+    content_type: str,
+    size_bytes: int,
+    uploaded_at: dt.datetime,
+    admin_base_url: str | None,
+) -> None:
+    """
+    Send the certificate-photo-upload notification email, swallowing every error.
+
+    Meant to run as a ``BackgroundTasks`` callback, strictly after the photo row is
+    committed, for a successful anonymous public upload only — a rate-limited,
+    rejected (409/413/415) or otherwise failed upload never reaches here and sends no
+    email (PRD §13 fail-safe: the upload has already succeeded once the photo row
+    exists PENDING_REVIEW).
+
+    Parameters:
+        sender (EmailSender): The sender to use (from ``get_email_sender``).
+        to (Sequence[str]): Recipient addresses (``KASHROOT_REPORT_EMAIL_TO``,
+            already parsed).
+        restaurant_id (uuid.UUID): The restaurant whose certificate was photographed.
+        restaurant_name (str): The restaurant's display name.
+        certificate_id (uuid.UUID): The certificate the photo is evidence for.
+        certifier_name (str | None): That certificate's certifier name, if any.
+        photo_id (uuid.UUID): The newly created evidence-photo row's id.
+        content_type (str): The photo's normalized Content-Type.
+        size_bytes (int): The uploaded file's size in bytes.
+        uploaded_at (dt.datetime): When the photo was uploaded.
+        admin_base_url (str | None): ``KASHROOT_ADMIN_BASE_URL``, or None.
+
+    Return:
+        None
+    """
+    subject, html_body, text_body = build_photo_uploaded_email(
+        restaurant_id=restaurant_id,
+        restaurant_name=restaurant_name,
+        certificate_id=certificate_id,
+        certifier_name=certifier_name,
+        photo_id=photo_id,
+        content_type=content_type,
+        size_bytes=size_bytes,
+        uploaded_at=uploaded_at,
+        admin_base_url=admin_base_url,
+    )
+    _deliver_notification_email(
+        sender,
+        label=LOG_LABEL_CERTIFICATE_PHOTO,
+        entity_id=photo_id,
+        to=to,
+        subject=subject,
+        html_body=html_body,
+        text_body=text_body,
+    )

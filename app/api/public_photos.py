@@ -61,6 +61,7 @@ from app.services.notifications import (
     EmailSender,
     get_email_sender,
     notify_flag_created,
+    notify_photo_uploaded,
     parse_recipients,
 )
 from app.services.rate_limit import require_flag_report_rate_limit, require_photo_upload_rate_limit
@@ -132,10 +133,12 @@ def _get_owned_certificate_or_404(
 def upload_public_certificate_photo(
     restaurant_id: uuid.UUID,
     request: Request,
+    background_tasks: BackgroundTasks,
     certificate_id: uuid.UUID = Form(...),
     file: UploadFile = File(...),
     session: Session = Depends(get_session),
     storage: MediaStorage = Depends(get_media_storage),
+    email_sender: EmailSender = Depends(get_email_sender),
     _rate_limit: None = Depends(require_photo_upload_rate_limit),
 ) -> PublicPhotoUploadResponse:
     """Anonymous upload of a photo of one of a restaurant's certificates.
@@ -161,6 +164,12 @@ def upload_public_certificate_photo(
     on one certificate are legitimate when a moderator uploads them, so uniqueness
     can only be "at most one *public* pending upload", which is a query, not a
     constraint — the lock is what makes that query race-free.
+
+    An email notification (``app.services.notifications``) is queued via
+    ``BackgroundTasks`` after the photo row is committed, exactly like
+    ``create_public_flag`` below — a rate-limited, rejected (409/413/415) or
+    otherwise failed upload raises before this point and so never queues one.
+    Admin/moderator uploads (``app.api.admin.photos``) never queue one either.
     """
     certificate = _get_owned_certificate_or_404(
         session, restaurant_id, certificate_id, for_update=True
@@ -178,6 +187,36 @@ def upload_public_certificate_photo(
     if pending_photo_id is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, detail=ERROR_PHOTO_PENDING)
 
+    def _finalize(photo: CertificateEvidencePhoto) -> PublicPhotoUploadResponse:
+        """
+        Queue the upload-notification email and build the 201 response.
+
+        Parameters:
+            photo (CertificateEvidencePhoto): The newly created, PENDING_REVIEW
+                photo row.
+
+        Return:
+            PublicPhotoUploadResponse: The response body for this upload.
+        """
+        background_tasks.add_task(
+            notify_photo_uploaded,
+            email_sender,
+            to=parse_recipients(settings.report_email_to),
+            restaurant_id=restaurant_id,
+            restaurant_name=certificate.restaurant.name_he
+            or certificate.restaurant.name_en
+            or str(restaurant_id),
+            certificate_id=certificate.id,
+            certifier_name=certificate.certifier.name_he,
+            photo_id=photo.id,
+            content_type=photo.content_type,
+            size_bytes=photo.size_bytes,
+            uploaded_at=photo.uploaded_at,
+            admin_base_url=settings.admin_base_url,
+        )
+
+        return PublicPhotoUploadResponse(photo_id=photo.id, status="pending")
+
     return store_evidence_photo(
         session,
         storage,
@@ -187,7 +226,7 @@ def upload_public_certificate_photo(
         uploaded_by=PUBLIC_ANONYMOUS_ACTOR,
         actor=PUBLIC_ANONYMOUS_ACTOR,
         audit_evidence={"filename": file.filename, "restaurant_id": restaurant_id},
-        finalize=lambda photo: PublicPhotoUploadResponse(photo_id=photo.id, status="pending"),
+        finalize=_finalize,
         allowed_types=IMAGE_ONLY_PHOTO_EXTENSIONS,
     )
 
