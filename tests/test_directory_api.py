@@ -208,6 +208,26 @@ def test_directory_omits_inactive_certifier(client, session) -> None:
     assert entry["certifier_names_en"] == [active.name_en]
 
 
+def test_directory_city_en_majority_wins_ties_alphabetical_and_null_when_none(
+    client, session
+) -> None:
+    make_restaurant(session, city_he="ירושלים", city_en="Jerusalem")
+    make_restaurant(session, city_he="ירושלים", city_en="Jerusalem")
+    make_restaurant(session, city_he="ירושלים", city_en="Yerushalayim")
+    make_restaurant(session, city_he="ירושלים", city_en=None)
+    make_restaurant(session, city_he="תל אביב", city_en="Tel Aviv")
+    make_restaurant(session, city_he="תל אביב", city_en="Jaffa")
+    make_restaurant(session, city_he="חיפה", city_en=None)
+    session.commit()
+
+    response = client.get("/v1/directory")
+    cities_by_name = {city["city_he"]: city for city in response.json()["cities"]}
+
+    assert cities_by_name["ירושלים"]["city_en"] == "Jerusalem"
+    assert cities_by_name["תל אביב"]["city_en"] == "Jaffa"
+    assert cities_by_name["חיפה"]["city_en"] is None
+
+
 def test_directory_null_city_excluded_from_cities_but_counted(client, session) -> None:
     make_restaurant(session, city_he="ירושלים")
     make_restaurant(session, city_he=None)

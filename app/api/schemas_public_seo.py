@@ -104,6 +104,11 @@ class DirectoryCityOut(BaseModel):
     """One city's group within the ``GET /v1/directory`` landing-page response."""
 
     city_he: str
+    #: The city's English name, taken from ``Restaurant.city_en`` across the city's
+    #: restaurants — the most common non-null value (ties broken alphabetically), or
+    #: ``None`` when none of them has one. Grouping itself stays keyed by ``city_he``
+    #: only; this is a display label, never a second grouping key.
+    city_en: str | None
     #: The full count of public restaurants in this city — independent of how many
     #: of them ``restaurants`` samples.
     restaurant_count: int

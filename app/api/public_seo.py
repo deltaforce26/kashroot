@@ -142,6 +142,15 @@ def get_restaurant_public_facts(
 
     Unlike ``POST /v1/restaurants/{id}``, this is a plain GET with no request body —
     there is no profile to carry, so nothing to POST.
+
+    Parameters:
+        restaurant_id (uuid.UUID): the restaurant's primary key, from the path.
+        response (Response): the outgoing response, mutated in place to set the
+            cache-control header.
+        session (Session): the database session.
+
+    Return:
+        RestaurantPublicOut: the restaurant's facts as an API output model.
     """
     restaurant = session.get(
         Restaurant,
@@ -209,6 +218,14 @@ def get_sitemap(request: Request, session: Session = Depends(get_session)) -> Re
     ``SITEMAP_MAX_URLS`` (the sitemaps.org limit for one file); the corpus is ~375
     restaurants today, so a single file is enough — a larger corpus later needs a
     sitemap *index* file instead, which is out of scope here.
+
+    Parameters:
+        request (Request): the incoming request, used to resolve the web origin.
+        session (Session): the database session.
+
+    Return:
+        Response: the XML sitemap document, with sitemap-specific cache and vary
+            headers set.
     """
     origin = resolve_public_web_origin(request)
 
@@ -288,6 +305,29 @@ def _directory_restaurant_out(restaurant: Restaurant) -> DirectoryRestaurantOut:
     )
 
 
+def _city_en_for_group(city_restaurants: list[Restaurant]) -> str | None:
+    """The English display label for one ``city_he`` group: the most common non-null
+    ``Restaurant.city_en`` among its restaurants, ties broken alphabetically. Grouping
+    itself stays keyed by ``city_he`` only — this only picks the label shown for it.
+
+    Parameters:
+        city_restaurants (list[Restaurant]): every restaurant already grouped under
+            one ``city_he`` value.
+
+    Return:
+        str | None: the majority ``city_en``, or ``None`` if none of them has one.
+    """
+    counts: dict[str, int] = {}
+    for restaurant in city_restaurants:
+        if restaurant.city_en is not None:
+            counts[restaurant.city_en] = counts.get(restaurant.city_en, 0) + 1
+
+    if not counts:
+        return None
+
+    return max(sorted(counts), key=lambda city_en: counts[city_en])
+
+
 @router.get("/directory", response_model=DirectoryResponse)
 def get_directory(response: Response, session: Session = Depends(get_session)) -> DirectoryResponse:
     """Profile-free, facts-only directory grouped by city, for the web app's landing
@@ -310,6 +350,15 @@ def get_directory(response: Response, session: Session = Depends(get_session)) -
     not appear under ``cities``, since there is nowhere to group them. Each city's
     ``restaurants`` is capped at ``DIRECTORY_SAMPLE_PER_CITY`` (a landing-page sample,
     not a full listing); ``restaurant_count`` on that city is always the full count.
+
+    Parameters:
+        response (Response): the outgoing response, mutated in place to set the
+            cache-control header.
+        session (Session): the database session.
+
+    Return:
+        DirectoryResponse: every public restaurant grouped by city, as an API
+            output model.
     """
     restaurants = (
         session.execute(
@@ -336,6 +385,7 @@ def get_directory(response: Response, session: Session = Depends(get_session)) -
         cities=[
             DirectoryCityOut(
                 city_he=city_he,
+                city_en=_city_en_for_group(city_restaurants),
                 restaurant_count=len(city_restaurants),
                 restaurants=[
                     _directory_restaurant_out(restaurant)
