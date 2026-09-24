@@ -292,17 +292,19 @@ export const FLAG_MESSAGE_MAX = 1000;
 /** POST /v1/restaurants/{id}/flags. */
 export interface FlagRequest {
   type: FlagType;
+  /** The certificate card being reported, if any — the id from `CertificateEvidenceOut`. */
+  certificate_id?: string;
   message?: string;
 }
 
 export interface FlagCreatedOut {
-  flag_id: number;
+  flag_id: string;
   state: "open";
 }
 
 /** POST /v1/restaurants/{id}/certificate-photo → 201. */
 export interface PhotoUploadOut {
-  photo_id: number;
+  photo_id: string;
   status: "pending";
 }
 

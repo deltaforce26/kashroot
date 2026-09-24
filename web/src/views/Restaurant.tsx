@@ -300,7 +300,13 @@ export function Restaurant() {
         )}
       </div>
 
-      {reporting && <ReportSheet restaurantId={data.id} onClose={closeReport} />}
+      {reporting && (
+        <ReportSheet
+          restaurantId={data.id}
+          {...(deciding ? { certificateId: deciding.certificate_id } : {})}
+          onClose={closeReport}
+        />
+      )}
       <SaveToListHost />
     </div>
   );

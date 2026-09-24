@@ -347,7 +347,7 @@ function toEvidence(
 
 /* ── Photo and report state, mutable like the server's tables ────────────── */
 
-/** Keyed by restaurant id: the photo belongs to the deciding certificate. */
+/** Keyed by certificate id — a fixture's `photo` is assigned to its first certificate. */
 let photoState = new Map<string, FixturePhoto>();
 let flagLog: Array<{ restaurant_id: string; body: FlagRequest }> = [];
 let nextId = 1;
@@ -355,9 +355,12 @@ let nextId = 1;
 /** Back to the fixtures' own photo states, with no reports. For tests. */
 export function resetMockSubmissions(): void {
   photoState = new Map(
-    RESTAURANTS.flatMap((restaurant) =>
-      restaurant.photo ? [[restaurant.id, { ...restaurant.photo }] as const] : [],
-    ),
+    RESTAURANTS.flatMap((restaurant) => {
+      const certificate = restaurant.certificates[0];
+      return restaurant.photo && certificate
+        ? [[certificate.certificate_id, { ...restaurant.photo }] as const]
+        : [];
+    }),
   );
   flagLog = [];
   nextId = 1;
@@ -518,10 +521,7 @@ export function mockRestaurant(
     certificates: restaurant.certificates.map((cert, index) => {
       const evaluation = evaluations[index];
       if (!evaluation) throw new Error("unreachable: evaluation per certificate");
-      const photo =
-        cert.certificate_id === kashrut.deciding_certificate_id
-          ? (photoState.get(restaurant.id) ?? null)
-          : null;
+      const photo = photoState.get(cert.certificate_id) ?? null;
       return toEvidence(cert, evaluation, now, photo);
     }),
   });
@@ -529,15 +529,23 @@ export function mockRestaurant(
 
 /**
  * POST /v1/restaurants/{id}/certificate-photo, replayed: the same refusals in the
- * same order as the API — unknown place or no certificate 404, an accepted photo
- * 409 `photo_exists`, one already waiting 409 `photo_pending`, then 415 and 413.
+ * same order as the API — unknown restaurant or a `certificate_id` that is not one
+ * of its own certificates 404, an accepted photo 409 `photo_exists`, one already
+ * waiting 409 `photo_pending`, then 415 and 413.
  */
-export function mockUploadCertificatePhoto(restaurantId: string, file: File): Promise<PhotoUploadOut> {
+export function mockUploadCertificatePhoto(
+  restaurantId: string,
+  certificateId: string,
+  file: File,
+): Promise<PhotoUploadOut> {
   const restaurant = RESTAURANTS.find((candidate) => candidate.id === restaurantId);
-  if (!restaurant || restaurant.certificates.length === 0) {
-    return delayReject(new ApiError(404, "not_found"));
-  }
-  const current = photoState.get(restaurantId);
+  if (!restaurant) return delayReject(new ApiError(404, "not_found"));
+  const certificate = restaurant.certificates.find(
+    (candidate) => candidate.certificate_id === certificateId,
+  );
+  if (!certificate) return delayReject(new ApiError(404, "not_found"));
+
+  const current = photoState.get(certificateId);
   if (current?.status === "accepted") return delayReject(new ApiError(409, "photo_exists"));
   if (current?.status === "pending") return delayReject(new ApiError(409, "photo_pending"));
   if (!PHOTO_MIME_TYPES.includes(file.type)) {
@@ -545,15 +553,20 @@ export function mockUploadCertificatePhoto(restaurantId: string, file: File): Pr
   }
   if (file.size > PHOTO_MAX_BYTES) return delayReject(new ApiError(413, "file_too_large"));
 
-  photoState.set(restaurantId, { status: "pending", url: null });
-  return delay({ photo_id: nextId++, status: "pending" as const });
+  photoState.set(certificateId, { status: "pending", url: null });
+  return delay({ photo_id: `mock-photo-${nextId++}`, status: "pending" as const });
 }
 
 /** POST /v1/restaurants/{id}/flags, replayed. A report never touches a verdict. */
 export function mockReportRestaurant(restaurantId: string, body: FlagRequest): Promise<FlagCreatedOut> {
-  if (!RESTAURANTS.some((candidate) => candidate.id === restaurantId)) {
+  const restaurant = RESTAURANTS.find((candidate) => candidate.id === restaurantId);
+  if (!restaurant) return delayReject(new ApiError(404, "not_found"));
+  if (
+    body.certificate_id &&
+    !restaurant.certificates.some((candidate) => candidate.certificate_id === body.certificate_id)
+  ) {
     return delayReject(new ApiError(404, "not_found"));
   }
   flagLog.push({ restaurant_id: restaurantId, body });
-  return delay({ flag_id: nextId++, state: "open" as const });
+  return delay({ flag_id: `mock-flag-${nextId++}`, state: "open" as const });
 }

@@ -52,12 +52,17 @@ export interface KashrootApi {
     signal?: AbortSignal,
   ): Promise<DetailView>;
   /**
-   * Anonymous certificate photo upload for the restaurant's deciding certificate.
-   * It lands as `pending` in the moderation queue and changes nothing until a
-   * moderator accepts it. Rejects with `ApiError` — 409 carries `photo_exists` or
-   * `photo_pending` as its message.
+   * Anonymous certificate photo upload for the specific certificate card the user is
+   * looking at (chosen by their own profile on the client — the server only checks
+   * it belongs to `restaurantId`). It lands as `pending` in the moderation queue and
+   * changes nothing until a moderator accepts it. Rejects with `ApiError` — 409
+   * carries `photo_exists` or `photo_pending` as its message.
    */
-  uploadCertificatePhoto(restaurantId: string, file: File): Promise<PhotoUploadOut>;
+  uploadCertificatePhoto(
+    restaurantId: string,
+    certificateId: string,
+    file: File,
+  ): Promise<PhotoUploadOut>;
   /** A public report. It opens a moderation flag and never moves a verdict. */
   reportRestaurant(restaurantId: string, body: FlagRequest): Promise<FlagCreatedOut>;
 }
@@ -82,8 +87,9 @@ const liveApi: KashrootApi = {
       body: { profile, ...(center ? { center } : {}) },
       ...(signal ? { signal } : {}),
     }).then(toDetailView),
-  uploadCertificatePhoto: (restaurantId, file) => {
+  uploadCertificatePhoto: (restaurantId, certificateId, file) => {
     const form = new FormData();
+    form.append("certificate_id", certificateId);
     form.append("file", file);
     return postForm<PhotoUploadOut>(
       `/v1/restaurants/${encodeURIComponent(restaurantId)}/certificate-photo`,
@@ -102,7 +108,8 @@ const mockApi: KashrootApi = {
   search: (request) => mockSearch(request).then(toSearchView),
   getRestaurant: (id, profile, center) =>
     mockRestaurant(id, profile, undefined, center).then(toDetailView),
-  uploadCertificatePhoto: (restaurantId, file) => mockUploadCertificatePhoto(restaurantId, file),
+  uploadCertificatePhoto: (restaurantId, certificateId, file) =>
+    mockUploadCertificatePhoto(restaurantId, certificateId, file),
   reportRestaurant: (restaurantId, body) => mockReportRestaurant(restaurantId, body),
 };
 

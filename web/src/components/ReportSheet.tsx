@@ -14,7 +14,18 @@ import { CloseIcon } from "./icons";
 
 type Phase = "idle" | "sending" | "sent" | "error";
 
-export function ReportSheet({ restaurantId, onClose }: { restaurantId: string; onClose: () => void }) {
+export function ReportSheet({
+  restaurantId,
+  certificateId,
+  onClose,
+}: {
+  restaurantId: string;
+  /** The certificate card the user was looking at, if any (their profile's deciding
+   * certificate) — attaches the report to it. Omitted for a general restaurant-level
+   * report, e.g. when there is no deciding certificate to attach to. */
+  certificateId?: string;
+  onClose: () => void;
+}) {
   const { t } = useI18n();
   const strings = t.restaurant.report;
 
@@ -37,6 +48,7 @@ export function ReportSheet({ restaurantId, onClose }: { restaurantId: string; o
     try {
       await kashrootApi.reportRestaurant(restaurantId, {
         type,
+        ...(certificateId ? { certificate_id: certificateId } : {}),
         ...(trimmed ? { message: trimmed } : {}),
       });
       setPhase("sent");

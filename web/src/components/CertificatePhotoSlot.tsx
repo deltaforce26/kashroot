@@ -30,7 +30,7 @@ export function CertificatePhotoSlot({
   onStale,
 }: {
   restaurantId: string;
-  evidence: Pick<CertificateEvidenceOut, "photo_status" | "photo_url">;
+  evidence: Pick<CertificateEvidenceOut, "certificate_id" | "photo_status" | "photo_url">;
   /** Opens the report sheet; the button lives here only when a photo is shown. */
   onReport: () => void;
   /** The server knows of a photo this screen does not — refetch the detail. */
@@ -90,7 +90,7 @@ export function CertificatePhotoSlot({
     setErrorKey(null);
     setPhase("uploading");
     try {
-      await kashrootApi.uploadCertificatePhoto(restaurantId, file);
+      await kashrootApi.uploadCertificatePhoto(restaurantId, evidence.certificate_id, file);
       setLocalStatus("pending");
       setPhase("sent");
     } catch (error) {

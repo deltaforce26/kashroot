@@ -12,23 +12,15 @@ with the file's magic bytes, because the header alone is client-controlled.
 from __future__ import annotations
 
 import datetime as dt
-import hashlib
 import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.admin.audit import apply_changes, jsonable, write_audit
-from app.api.admin.consts import (
-    AUDITED_UPLOAD_FIELDS,
-    MAX_PHOTO_BYTES,
-    MULTIPART_OVERHEAD_ALLOWANCE,
-    PHOTO_EXTENSIONS,
-    PHOTO_VERIFIED_SOURCE,
-)
+from app.api.admin.audit import apply_changes, write_audit
+from app.api.admin.consts import PHOTO_VERIFIED_SOURCE
 from app.api.admin.helpers import get_or_404, photo_out, today
 from app.api.deps import get_media_storage, require_moderator
 from app.api.schemas import EvidencePhotoOut, ReviewPhotoRequest
@@ -40,55 +32,14 @@ from app.models import (
     CertificateEvidencePhoto,
     EvidencePhotoStatus,
 )
+from app.services.evidence_photos import (
+    content_length_exceeds_cap,  # noqa: F401
+    magic_bytes_match,  # noqa: F401
+    store_evidence_photo,
+)
 from app.storage import MediaStorage
 
 router = APIRouter()
-
-
-def content_length_exceeds_cap(content_length: str | None) -> bool:
-    """
-    Judge whether a declared request Content-Length can only mean an oversize file.
-
-    Absent or malformed headers return False — those requests fall through to the
-    post-read size check (chunked transfer has no Content-Length at all).
-
-    Parameters:
-        content_length (str | None): The raw header value.
-
-    Return:
-        bool: True when the request cannot possibly carry a valid file.
-    """
-    if content_length is None:
-        return False
-    try:
-        declared = int(content_length)
-    except ValueError:
-        return False
-
-    return declared > MAX_PHOTO_BYTES + MULTIPART_OVERHEAD_ALLOWANCE
-
-
-def magic_bytes_match(content_type: str, head: bytes) -> bool:
-    """
-    Sniff the file signature and require it to agree with the declared type.
-
-    Parameters:
-        content_type (str): The normalized declared Content-Type.
-        head (bytes): The first bytes of the uploaded file.
-
-    Return:
-        bool: True when the signature matches the declared type.
-    """
-    if content_type == "image/jpeg":
-        return head.startswith(b"\xff\xd8\xff")
-    if content_type == "image/png":
-        return head.startswith(b"\x89PNG\r\n\x1a\n")
-    if content_type == "image/webp":
-        return len(head) >= 12 and head[:4] == b"RIFF" and head[8:12] == b"WEBP"
-    if content_type == "application/pdf":
-        return head.startswith(b"%PDF-")
-
-    return False
 
 
 @router.post(
@@ -113,112 +64,19 @@ def upload_certificate_photo(
     untrusted), ≤ 15 MB, and not a byte-identical duplicate of an existing photo of
     the same certificate (409).
     """
-    # Cheapest rejection first: a declared Content-Length that cannot possibly carry a
-    # valid file dies on the header, before this handler touches the (spooled) body.
-    # Chunked/absent/malformed Content-Length falls through to the post-read check.
-    if content_length_exceeds_cap(request.headers.get("content-length")):
-        raise HTTPException(
-            status.HTTP_413_CONTENT_TOO_LARGE,
-            detail=f"request exceeds the {MAX_PHOTO_BYTES // (1024 * 1024)} MB upload limit",
-        )
-
     certificate = get_or_404(session, Certificate, certificate_id, "certificate")
 
-    content_type = (file.content_type or "").split(";")[0].strip().lower()
-    extension = PHOTO_EXTENSIONS.get(content_type)
-    if extension is None:
-        raise HTTPException(
-            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=(
-                f"unsupported content type {content_type or '(none)'}; accepted: "
-                + ", ".join(sorted(PHOTO_EXTENSIONS))
-            ),
-        )
-
-    data = file.file.read(MAX_PHOTO_BYTES + 1)
-    if len(data) > MAX_PHOTO_BYTES:
-        raise HTTPException(
-            status.HTTP_413_CONTENT_TOO_LARGE,
-            detail=f"file exceeds the {MAX_PHOTO_BYTES // (1024 * 1024)} MB limit",
-        )
-    if not data:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="empty file")
-    if not magic_bytes_match(content_type, data[:16]):
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"file signature does not match declared content type {content_type}; "
-                "the header alone is not trusted"
-            ),
-        )
-
-    sha256 = hashlib.sha256(data).hexdigest()
-    duplicate = session.scalar(
-        select(CertificateEvidencePhoto.id).where(
-            CertificateEvidencePhoto.certificate_id == certificate.id,
-            CertificateEvidencePhoto.sha256 == sha256,
-        )
-    )
-    if duplicate is not None:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            detail=f"an identical file is already uploaded for this certificate ({duplicate})",
-        )
-
-    storage_key = f"cert-evidence/{certificate.id}/{uuid.uuid4()}.{extension}"
-    photo = CertificateEvidencePhoto(
-        certificate_id=certificate.id,
-        storage_key=storage_key,
-        content_type=content_type,
-        size_bytes=len(data),
-        sha256=sha256,
+    return store_evidence_photo(
+        session,
+        storage,
+        certificate,
+        request,
+        file,
         uploaded_by=f"moderator:{actor}",
-        uploaded_at=dt.datetime.now(dt.UTC),
-        status=EvidencePhotoStatus.PENDING_REVIEW,
+        actor=actor,
+        audit_evidence={"filename": file.filename},
+        finalize=lambda photo: photo_out(photo, storage),
     )
-    session.add(photo)
-    try:
-        session.flush()  # assign the id before auditing; a DB failure aborts pre-upload
-    except IntegrityError:
-        # Dedupe race: a concurrent identical upload won between our pre-check and the
-        # flush. The unique (certificate_id, sha256) constraint is the backstop —
-        # surface it as the same 409 the pre-check gives, not a 500.
-        session.rollback()
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            detail="an identical file is already uploaded for this certificate",
-        ) from None
-    storage.put(storage_key, data, content_type)
-
-    try:
-        write_audit(
-            session,
-            "certificate_evidence_photo",
-            photo.id,
-            AuditAction.CREATE,
-            {
-                field: {"before": None, "after": jsonable(getattr(photo, field))}
-                for field in AUDITED_UPLOAD_FIELDS
-            },
-            actor,
-            {
-                "action": "upload_photo",
-                "certificate_id": certificate.id,
-                "filename": file.filename,
-            },
-        )
-
-        return photo_out(photo, storage)
-    except Exception:
-        # The object is already in storage but this request will not commit its DB
-        # row — best-effort cleanup so it does not become an orphan. (Commit failures
-        # after this handler returns, and cascade deletes, can still orphan objects;
-        # accepted ops debt — see NOTES.md, orphan sweep.)
-        try:
-            storage.delete(storage_key)
-        except Exception:  # noqa: BLE001 - cleanup must never mask the real error
-            pass
-        raise
 
 
 @router.get("/certificates/{certificate_id}/photos", response_model=list[EvidencePhotoOut])

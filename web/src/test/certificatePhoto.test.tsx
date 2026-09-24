@@ -57,7 +57,11 @@ describe("CertificatePhotoSlot", () => {
     renderHe(
       <CertificatePhotoSlot
         restaurantId="r-1"
-        evidence={{ photo_status: "accepted", photo_url: "https://example.test/c.jpg" }}
+        evidence={{
+          certificate_id: "c-1",
+          photo_status: "accepted",
+          photo_url: "https://example.test/c.jpg",
+        }}
         onReport={onReport}
       />,
     );
@@ -80,7 +84,7 @@ describe("CertificatePhotoSlot", () => {
     renderHe(
       <CertificatePhotoSlot
         restaurantId="r-1"
-        evidence={{ photo_status: "pending", photo_url: null }}
+        evidence={{ certificate_id: "c-1", photo_status: "pending", photo_url: null }}
         onReport={vi.fn()}
       />,
     );
@@ -94,7 +98,7 @@ describe("CertificatePhotoSlot", () => {
     renderHe(
       <CertificatePhotoSlot
         restaurantId="r-1"
-        evidence={{ photo_status: "none", photo_url: null }}
+        evidence={{ certificate_id: "c-1", photo_status: "none", photo_url: null }}
         onReport={vi.fn()}
       />,
     );
@@ -118,11 +122,11 @@ describe("CertificatePhotoSlot", () => {
     const user = userEvent.setup();
     const upload = vi
       .spyOn(kashrootApi, "uploadCertificatePhoto")
-      .mockResolvedValue({ photo_id: 7, status: "pending" });
+      .mockResolvedValue({ photo_id: "mock-photo-7", status: "pending" });
     renderHe(
       <CertificatePhotoSlot
         restaurantId="r-1"
-        evidence={{ photo_status: "none", photo_url: null }}
+        evidence={{ certificate_id: "c-1", photo_status: "none", photo_url: null }}
         onReport={vi.fn()}
       />,
     );
@@ -130,7 +134,7 @@ describe("CertificatePhotoSlot", () => {
     const file = image();
     await user.upload(screen.getByLabelText(photo.chooseFile), file);
 
-    expect(upload).toHaveBeenCalledWith("r-1", file);
+    expect(upload).toHaveBeenCalledWith("r-1", "c-1", file);
     expect(await screen.findByRole("status")).toHaveTextContent(photo.sent);
     expect(screen.getByText(photo.pending)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: photo.upload })).toBeNull();
@@ -144,7 +148,7 @@ describe("CertificatePhotoSlot", () => {
     renderHe(
       <CertificatePhotoSlot
         restaurantId="r-1"
-        evidence={{ photo_status: "none", photo_url: null }}
+        evidence={{ certificate_id: "c-1", photo_status: "none", photo_url: null }}
         onReport={vi.fn()}
       />,
     );
@@ -163,7 +167,7 @@ describe("CertificatePhotoSlot", () => {
     renderHe(
       <CertificatePhotoSlot
         restaurantId="r-1"
-        evidence={{ photo_status: "none", photo_url: null }}
+        evidence={{ certificate_id: "c-1", photo_status: "none", photo_url: null }}
         onReport={vi.fn()}
         onStale={onStale}
       />,
@@ -179,7 +183,7 @@ describe("CertificatePhotoSlot", () => {
     renderHe(
       <CertificatePhotoSlot
         restaurantId="r-1"
-        evidence={{ photo_status: "none", photo_url: null }}
+        evidence={{ certificate_id: "c-1", photo_status: "none", photo_url: null }}
         onReport={vi.fn()}
       />,
     );
@@ -200,8 +204,8 @@ describe("ReportSheet", () => {
     const user = userEvent.setup();
     const send = vi
       .spyOn(kashrootApi, "reportRestaurant")
-      .mockResolvedValue({ flag_id: 3, state: "open" });
-    renderHe(<ReportSheet restaurantId="r-1" onClose={vi.fn()} />);
+      .mockResolvedValue({ flag_id: "mock-flag-3", state: "open" });
+    renderHe(<ReportSheet restaurantId="r-1" certificateId="c-1" onClose={vi.fn()} />);
 
     const submit = screen.getByRole("button", { name: report.submit });
     expect(submit).toBeDisabled();
@@ -212,12 +216,13 @@ describe("ReportSheet", () => {
 
     expect(send).toHaveBeenCalledWith("r-1", {
       type: "expired_certificate",
+      certificate_id: "c-1",
       message: "פג בחודש שעבר",
     });
     expect(await screen.findByText(report.sent)).toBeInTheDocument();
   });
 
-  it("leaves the message out when it is blank, and shows an error on failure", async () => {
+  it("leaves out certificate_id and message when neither is given, and shows an error on failure", async () => {
     const user = userEvent.setup();
     const send = vi.spyOn(kashrootApi, "reportRestaurant").mockRejectedValue(new ApiError(500, "x"));
     renderHe(<ReportSheet restaurantId="r-1" onClose={vi.fn()} />);
@@ -240,34 +245,62 @@ describe("mock submissions", () => {
     wanted_amenities: [],
   };
 
-  it("an upload turns the deciding certificate pending, and a second is refused", async () => {
+  it("an upload turns the named certificate pending, and a second is refused", async () => {
     const before = await mockRestaurant("r-katzefet", PROFILE, NOW);
     expect(before.certificates[0]?.photo_status).toBe("none");
 
-    await mockUploadCertificatePhoto("r-katzefet", image());
+    await mockUploadCertificatePhoto("r-katzefet", "c-katzefet-1", image());
     const after = await mockRestaurant("r-katzefet", PROFILE, NOW);
     expect(after.certificates[0]?.photo_status).toBe("pending");
     expect(after.certificates[0]?.photo_url).toBeNull();
     expect(after.kashrut).toEqual(before.kashrut);
 
-    await expect(mockUploadCertificatePhoto("r-katzefet", image())).rejects.toMatchObject({
+    await expect(
+      mockUploadCertificatePhoto("r-katzefet", "c-katzefet-1", image()),
+    ).rejects.toMatchObject({
       status: 409,
       message: "photo_pending",
     });
-    await expect(mockUploadCertificatePhoto("r-nougatine", image())).rejects.toMatchObject({
+    await expect(
+      mockUploadCertificatePhoto("r-nougatine", "c-nougatine-1", image()),
+    ).rejects.toMatchObject({
       status: 409,
       message: "photo_exists",
     });
-    await expect(mockUploadCertificatePhoto("r-sushi-bvg", image())).rejects.toMatchObject({
+    await expect(
+      mockUploadCertificatePhoto("r-sushi-bvg", "c-does-not-exist", image()),
+    ).rejects.toMatchObject({
+      status: 404,
+    });
+    await expect(
+      mockUploadCertificatePhoto("r-katzefet", "c-nougatine-1", image()),
+    ).rejects.toMatchObject({
       status: 404,
     });
   });
 
   it("a report is recorded and changes nothing", async () => {
     const before = await mockRestaurant("r-katzefet", PROFILE, NOW);
-    await kashrootApi.reportRestaurant("r-katzefet", { type: "closed" });
-    expect(mockFlags()).toEqual([{ restaurant_id: "r-katzefet", body: { type: "closed" } }]);
+    await kashrootApi.reportRestaurant("r-katzefet", {
+      type: "closed",
+      certificate_id: "c-katzefet-1",
+    });
+    expect(mockFlags()).toEqual([
+      {
+        restaurant_id: "r-katzefet",
+        body: { type: "closed", certificate_id: "c-katzefet-1" },
+      },
+    ]);
     expect((await mockRestaurant("r-katzefet", PROFILE, NOW)).kashrut).toEqual(before.kashrut);
+  });
+
+  it("rejects a certificate_id that belongs to a different restaurant", async () => {
+    await expect(
+      kashrootApi.reportRestaurant("r-katzefet", {
+        type: "other",
+        certificate_id: "c-nougatine-1",
+      }),
+    ).rejects.toMatchObject({ status: 404 });
   });
 });
 
