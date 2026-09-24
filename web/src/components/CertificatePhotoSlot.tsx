@@ -6,22 +6,32 @@
  *     report button as the only action. No second upload.
  *   - `pending`: a photo is waiting in the moderation queue. Nothing to do here, so
  *     nothing is offered — one pending photo per certificate is the limit.
- *   - `none`: an upload button with two ways in, the camera or a file.
+ *   - `none`: a full-width "Upload certificate photo" button under the card (the
+ *     empty photo box opens the same thing), leading to a bottom sheet with two ways
+ *     in — the camera or the gallery — then a preview to confirm before anything is
+ *     sent.
  *
  * An upload is evidence for a human to review, never a fact: it lands as pending and
  * the verdict above does not move until a moderator accepts it on the server.
  */
 
-import { Camera, Clock, Flag, ImagePlus, X } from "lucide-react";
+import { Camera, Clock, Flag, X } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { ApiError, PHOTO_MAX_BYTES, PHOTO_MIME_TYPES, kashrootApi, photoConflict } from "../api";
 import type { CertificateEvidenceOut, PhotoStatus } from "../api/types";
 import { useI18n } from "../i18n/I18nProvider";
-import type { Strings } from "../i18n/strings";
+import {
+  PhotoUploadSheet,
+  type PhotoErrorKey,
+  type PhotoSource,
+  type SheetStep,
+} from "./PhotoUploadSheet";
 
-type Phase = "idle" | "uploading" | "sent" | "error";
-type ErrorKey = keyof Strings["restaurant"]["photo"]["errors"];
+/** A preview URL for the picked file; absent in engines without object URLs. */
+function objectUrl(file: File): string | null {
+  return typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : null;
+}
 
 export function CertificatePhotoSlot({
   restaurantId,
@@ -41,58 +51,96 @@ export function CertificatePhotoSlot({
 
   // A successful upload flips the slot to pending without waiting for a refetch.
   const [localStatus, setLocalStatus] = useState<PhotoStatus | null>(null);
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [errorKey, setErrorKey] = useState<ErrorKey | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [step, setStep] = useState<SheetStep>("choose");
+  const [source, setSource] = useState<PhotoSource>("camera");
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<PhotoErrorKey | null>(null);
+  // The card's own line once the sheet is gone: "sent, pending approval".
+  const [sent, setSent] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
 
   const cameraInput = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const menuRoot = useRef<HTMLDivElement>(null);
 
   const status: PhotoStatus = localStatus ?? evidence.photo_status;
   const photoUrl = status === "accepted" ? evidence.photo_url : null;
 
+  // One object URL per picked file, released when the file changes or the slot goes.
   useEffect(() => {
-    if (!menuOpen && !viewerOpen) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      setMenuOpen(false);
-      setViewerOpen(false);
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = objectUrl(file);
+    setPreviewUrl(url);
+    return () => {
+      if (url) URL.revokeObjectURL(url);
     };
-    const onPointer = (event: PointerEvent) => {
-      if (menuRoot.current && !menuRoot.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
+  }, [file]);
+
+  useEffect(() => {
+    if (!viewerOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setViewerOpen(false);
     };
     window.addEventListener("keydown", onKey);
-    document.addEventListener("pointerdown", onPointer);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.removeEventListener("pointerdown", onPointer);
-    };
-  }, [menuOpen, viewerOpen]);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [viewerOpen]);
 
-  function fail(key: ErrorKey) {
-    setErrorKey(key);
-    setPhase("error");
+  function openSheet() {
+    setStep("choose");
+    setFile(null);
+    setErrorKey(null);
+    setSheetOpen(true);
   }
 
-  async function handlePick(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+  function closeSheet() {
+    setSheetOpen(false);
+    setFile(null);
+    setErrorKey(null);
+  }
+
+  function fail(key: PhotoErrorKey) {
+    setErrorKey(key);
+    setStep("error");
+  }
+
+  function pick(from: PhotoSource) {
+    setSource(from);
+    (from === "camera" ? cameraInput : fileInput).current?.click();
+  }
+
+  function handlePick(event: ChangeEvent<HTMLInputElement>) {
+    const picked = event.target.files?.[0];
     // Cleared so picking the same file again after an error still fires a change.
     event.target.value = "";
-    setMenuOpen(false);
-    if (!file) return;
-    if (!PHOTO_MIME_TYPES.includes(file.type)) return fail("badType");
-    if (file.size > PHOTO_MAX_BYTES) return fail("tooLarge");
-
+    if (!picked) return;
+    setSource(event.target === cameraInput.current ? "camera" : "gallery");
+    // The checks run before the preview, so nothing unsendable is ever offered.
+    if (!PHOTO_MIME_TYPES.includes(picked.type)) {
+      setFile(null);
+      return fail("badType");
+    }
+    if (picked.size > PHOTO_MAX_BYTES) {
+      setFile(null);
+      return fail("tooLarge");
+    }
     setErrorKey(null);
-    setPhase("uploading");
+    setFile(picked);
+    setStep("preview");
+  }
+
+  async function send() {
+    if (!file || step === "uploading") return;
+    setErrorKey(null);
+    setStep("uploading");
     try {
       await kashrootApi.uploadCertificatePhoto(restaurantId, evidence.certificate_id, file);
       setLocalStatus("pending");
-      setPhase("sent");
+      setSent(true);
+      setStep("sent");
     } catch (error) {
       if (!(error instanceof ApiError)) return fail("generic");
       if (error.isNetwork) return fail("network");
@@ -112,12 +160,9 @@ export function CertificatePhotoSlot({
     }
   }
 
-  const statusLine =
-    phase === "sent" ? strings.sent : phase === "error" && errorKey ? strings.errors[errorKey] : null;
-
   return (
     <>
-      <div className="cert-photo" ref={menuRoot}>
+      <div className="cert-photo">
         {status === "accepted" && photoUrl ? (
           <>
             <button
@@ -129,7 +174,7 @@ export function CertificatePhotoSlot({
               <img src={photoUrl} alt={strings.alt} />
             </button>
             <button type="button" className="cert-photo__report" onClick={onReport}>
-              <Flag size={12} aria-hidden="true" />
+              <Flag size={14} aria-hidden="true" />
               <span>{t.restaurant.report.button}</span>
             </button>
           </>
@@ -139,95 +184,102 @@ export function CertificatePhotoSlot({
             <span className="cert-photo__badge">{strings.pending}</span>
           </div>
         ) : (
-          <>
-            <button
-              type="button"
-              className="cert-card__photo cert-photo__upload"
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              disabled={phase === "uploading"}
-              onClick={() => setMenuOpen((open) => !open)}
-            >
-              <ImagePlus size={18} aria-hidden="true" />
-              <span>{phase === "uploading" ? strings.uploading : strings.upload}</span>
-            </button>
-            {menuOpen && (
-              <div className="cert-photo__menu" role="menu">
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => cameraInput.current?.click()}
-                >
-                  <Camera size={15} aria-hidden="true" />
-                  {strings.takePhoto}
-                </button>
-                <button type="button" role="menuitem" onClick={() => fileInput.current?.click()}>
-                  <ImagePlus size={15} aria-hidden="true" />
-                  {strings.chooseFile}
-                </button>
-              </div>
-            )}
-            {/* Mobile browsers open the camera for `capture`; desktop falls back to a
-                file dialog. The second input keeps to the types the server takes. */}
-            <input
-              ref={cameraInput}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="sr-only"
-              tabIndex={-1}
-              aria-hidden="true"
-              aria-label={strings.takePhoto}
-              onChange={handlePick}
-            />
-            <input
-              ref={fileInput}
-              type="file"
-              accept={PHOTO_MIME_TYPES.join(",")}
-              className="sr-only"
-              tabIndex={-1}
-              aria-hidden="true"
-              aria-label={strings.chooseFile}
-              onChange={handlePick}
-            />
-          </>
+          // A second, bigger target for the same sheet. Out of the tab order and the
+          // accessibility tree: the labelled button below is the one control.
+          <button
+            type="button"
+            className="cert-card__photo cert-photo__add"
+            tabIndex={-1}
+            aria-hidden="true"
+            onClick={openSheet}
+          >
+            <Camera size={26} strokeWidth={1.75} />
+          </button>
         )}
       </div>
 
-      {statusLine && (
-        <p
-          className={`cert-photo__status${phase === "error" ? " cert-photo__status--error" : ""}`}
-          role="status"
-        >
-          {statusLine}
+      {status === "none" && (
+        <div className="cert-photo__cta">
+          <button
+            type="button"
+            className="cta cert-photo__upload"
+            aria-haspopup="dialog"
+            aria-expanded={sheetOpen}
+            onClick={openSheet}
+          >
+            <Camera size={20} aria-hidden="true" />
+            <span>{strings.upload}</span>
+          </button>
+          <p className="cert-photo__hint">{strings.uploadHint}</p>
+          {/* Mobile browsers open the camera for `capture`; desktop falls back to a
+              file dialog. The second input keeps to the types the server takes. */}
+          <input
+            ref={cameraInput}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden="true"
+            data-testid="photo-camera-input"
+            onChange={handlePick}
+          />
+          <input
+            ref={fileInput}
+            type="file"
+            accept={PHOTO_MIME_TYPES.join(",")}
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden="true"
+            data-testid="photo-gallery-input"
+            onChange={handlePick}
+          />
+        </div>
+      )}
+
+      {sent && !sheetOpen && (
+        <p className="cert-photo__status" role="status">
+          {strings.sent}
         </p>
+      )}
+
+      {sheetOpen && (
+        <PhotoUploadSheet
+          step={step}
+          source={source}
+          previewUrl={previewUrl}
+          errorKey={errorKey}
+          onPick={pick}
+          onSend={() => void send()}
+          onClose={closeSheet}
+        />
       )}
 
       {/* Portalled: the card is glass, and a backdrop filter traps fixed children. */}
       {viewerOpen &&
         photoUrl &&
         createPortal(
-        <>
-          <button
-            type="button"
-            className="photo-viewer__scrim"
-            aria-label={strings.close}
-            onClick={() => setViewerOpen(false)}
-          />
-          <div className="photo-viewer" role="dialog" aria-modal="true" aria-label={strings.alt}>
-            <img src={photoUrl} alt={strings.alt} />
+          <>
             <button
               type="button"
-              className="circle circle--sm glass photo-viewer__close"
+              className="photo-viewer__scrim"
               aria-label={strings.close}
               onClick={() => setViewerOpen(false)}
-            >
-              <X size={15} aria-hidden="true" />
-            </button>
-          </div>
-        </>,
-        document.body,
-      )}
+            />
+            <div className="photo-viewer" role="dialog" aria-modal="true" aria-label={strings.alt}>
+              <img src={photoUrl} alt={strings.alt} />
+              <button
+                type="button"
+                className="circle glass photo-viewer__close"
+                aria-label={strings.close}
+                onClick={() => setViewerOpen(false)}
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
+          </>,
+          document.body,
+        )}
     </>
   );
 }

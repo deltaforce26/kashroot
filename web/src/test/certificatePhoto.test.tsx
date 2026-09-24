@@ -2,6 +2,8 @@
  * The certificate photo slot and the report sheet.
  *
  *   - three slot states, each offering exactly what it should and nothing more;
+ *   - an upload goes camera/gallery -> preview -> Send, in a bottom sheet that a
+ *     phone can drive: Escape, the scrim and the back gesture all close it;
  *   - an upload lands as pending, and the server's 409s land where a person can read
  *     them;
  *   - a report sends a flag type and an optional message, and says thank you;
@@ -12,7 +14,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import App from "../App";
 import { ApiError, kashrootApi } from "../api";
 import {
@@ -49,6 +51,28 @@ afterEach(() => {
   vi.restoreAllMocks();
   resetMockSubmissions();
 });
+
+// jsdom has no object URLs; the preview needs one.
+beforeAll(() => {
+  URL.createObjectURL = () => "blob:preview";
+  URL.revokeObjectURL = () => {};
+});
+
+const cameraInput = () => screen.getByTestId<HTMLInputElement>("photo-camera-input");
+const galleryInput = () => screen.getByTestId<HTMLInputElement>("photo-gallery-input");
+
+/** Opens the upload sheet, picks `file` through `input`, and returns the sheet. */
+async function pickInSheet(
+  user: ReturnType<typeof userEvent.setup>,
+  input: () => HTMLInputElement,
+  file: File,
+): Promise<HTMLElement> {
+  await user.click(screen.getByRole("button", { name: photo.upload }));
+  const sheet = screen.getByRole("dialog", { name: photo.sheetTitle });
+  await user.upload(input(), file);
+  await within(sheet).findByRole("button", { name: photo.send });
+  return sheet;
+}
 
 describe("CertificatePhotoSlot", () => {
   it("accepted: shows the photo, opens it full size, and offers only a report", async () => {
@@ -93,7 +117,7 @@ describe("CertificatePhotoSlot", () => {
     expect(screen.queryByLabelText(photo.takePhoto)).toBeNull();
   });
 
-  it("none: an upload button whose menu offers the camera and a file", async () => {
+  it("none: a full-width upload button and a hint; the sheet offers the camera and the gallery", async () => {
     const user = userEvent.setup();
     renderHe(
       <CertificatePhotoSlot
@@ -103,22 +127,69 @@ describe("CertificatePhotoSlot", () => {
       />,
     );
     expect(screen.queryByRole("button", { name: report.button })).toBeNull();
+    expect(screen.getByText(photo.uploadHint)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: photo.upload }));
-    const menu = screen.getByRole("menu");
-    expect(within(menu).getByRole("menuitem", { name: photo.takePhoto })).toBeInTheDocument();
-    expect(within(menu).getByRole("menuitem", { name: photo.chooseFile })).toBeInTheDocument();
+    const upload = screen.getByRole("button", { name: photo.upload });
+    expect(upload).toHaveAttribute("aria-haspopup", "dialog");
+    expect(upload).toHaveAttribute("aria-expanded", "false");
+    await user.click(upload);
 
-    const camera = screen.getByLabelText(photo.takePhoto);
-    expect(camera).toHaveAttribute("capture", "environment");
-    expect(camera).toHaveAttribute("accept", "image/*");
-    expect(screen.getByLabelText(photo.chooseFile)).toHaveAttribute(
-      "accept",
-      "image/jpeg,image/png,image/webp",
-    );
+    const sheet = screen.getByRole("dialog", { name: photo.sheetTitle });
+    expect(sheet).toHaveAttribute("aria-modal", "true");
+    // Portalled to <body>, out of the glass card that would clip it.
+    expect(sheet.parentElement).toBe(document.body);
+    expect(upload).toHaveAttribute("aria-expanded", "true");
+    expect(document.body.style.overflow).toBe("hidden");
+
+    const camera = within(sheet).getByRole("button", { name: photo.takePhoto });
+    expect(camera).toHaveAccessibleDescription(photo.takePhotoHint);
+    expect(within(sheet).getByRole("button", { name: photo.chooseFile })).toBeInTheDocument();
+    // Focus moves into the sheet.
+    expect(sheet).toContainElement(document.activeElement as HTMLElement);
+
+    expect(cameraInput()).toHaveAttribute("capture", "environment");
+    expect(cameraInput()).toHaveAttribute("accept", "image/*");
+    expect(galleryInput()).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
+
+    const click = vi.spyOn(cameraInput(), "click");
+    await user.click(camera);
+    expect(click).toHaveBeenCalledOnce();
+
+    await user.click(within(sheet).getByRole("button", { name: photo.cancel }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.body.style.overflow).toBe("");
+    expect(upload).toHaveFocus();
   });
 
-  it("uploads, says so, and switches to pending", async () => {
+  it("closes the sheet on Escape, on the scrim, and on the back gesture", async () => {
+    const user = userEvent.setup();
+    renderHe(
+      <CertificatePhotoSlot
+        restaurantId="r-1"
+        evidence={{ certificate_id: "c-1", photo_status: "none", photo_url: null }}
+        onReport={vi.fn()}
+      />,
+    );
+    const upload = screen.getByRole("button", { name: photo.upload });
+
+    await user.click(upload);
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    await user.click(upload);
+    fireEvent.click(document.querySelector(".bsheet__scrim")!);
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    // Let the closed sheet drop its history entry before opening the next.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await user.click(upload);
+    expect(window.history.state).toMatchObject({ kashrootSheet: true });
+    window.history.replaceState({}, "");
+    fireEvent.popState(window);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("previews the picked photo, sends only on Send, then says so and switches to pending", async () => {
     const user = userEvent.setup();
     const upload = vi
       .spyOn(kashrootApi, "uploadCertificatePhoto")
@@ -132,12 +203,89 @@ describe("CertificatePhotoSlot", () => {
     );
 
     const file = image();
-    await user.upload(screen.getByLabelText(photo.chooseFile), file);
+    const sheet = await pickInSheet(user, galleryInput, file);
 
+    expect(within(sheet).getByRole("img", { name: photo.previewAlt })).toHaveAttribute(
+      "src",
+      "blob:preview",
+    );
+    expect(within(sheet).getByRole("button", { name: photo.chooseAnother })).toBeInTheDocument();
+    expect(upload).not.toHaveBeenCalled();
+
+    await user.click(within(sheet).getByRole("button", { name: photo.send }));
     expect(upload).toHaveBeenCalledWith("r-1", "c-1", file);
-    expect(await screen.findByRole("status")).toHaveTextContent(photo.sent);
+    expect(await within(sheet).findByRole("status")).toHaveTextContent(photo.sentLead);
     expect(screen.getByText(photo.pending)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: photo.upload })).toBeNull();
+
+    await user.click(within(sheet).getByRole("button", { name: photo.done }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent(photo.sent);
+  });
+
+  it("shows progress while sending and holds the buttons", async () => {
+    const user = userEvent.setup();
+    let resolve: (value: { photo_id: string; status: "pending" }) => void = () => {};
+    vi.spyOn(kashrootApi, "uploadCertificatePhoto").mockReturnValue(
+      new Promise((r) => {
+        resolve = r;
+      }),
+    );
+    renderHe(
+      <CertificatePhotoSlot
+        restaurantId="r-1"
+        evidence={{ certificate_id: "c-1", photo_status: "none", photo_url: null }}
+        onReport={vi.fn()}
+      />,
+    );
+    const sheet = await pickInSheet(user, cameraInput, image());
+    expect(within(sheet).getByRole("button", { name: photo.retake })).toBeInTheDocument();
+
+    await user.click(within(sheet).getByRole("button", { name: photo.send }));
+    expect(within(sheet).getByRole("progressbar", { name: photo.uploading })).toBeInTheDocument();
+    expect(within(sheet).getByRole("button", { name: photo.uploading })).toBeDisabled();
+    expect(within(sheet).getByRole("button", { name: photo.retake })).toBeDisabled();
+
+    resolve({ photo_id: "p", status: "pending" });
+    expect(await within(sheet).findByText(photo.sentLead)).toBeInTheDocument();
+  });
+
+  it("retake re-opens the same source", async () => {
+    const user = userEvent.setup();
+    renderHe(
+      <CertificatePhotoSlot
+        restaurantId="r-1"
+        evidence={{ certificate_id: "c-1", photo_status: "none", photo_url: null }}
+        onReport={vi.fn()}
+      />,
+    );
+    const sheet = await pickInSheet(user, cameraInput, image());
+    const click = vi.spyOn(cameraInput(), "click");
+    await user.click(within(sheet).getByRole("button", { name: photo.retake }));
+    expect(click).toHaveBeenCalledOnce();
+  });
+
+  it("a network failure offers a retry of the same photo", async () => {
+    const user = userEvent.setup();
+    const upload = vi
+      .spyOn(kashrootApi, "uploadCertificatePhoto")
+      .mockRejectedValueOnce(new ApiError(0, "offline"))
+      .mockResolvedValueOnce({ photo_id: "p", status: "pending" });
+    renderHe(
+      <CertificatePhotoSlot
+        restaurantId="r-1"
+        evidence={{ certificate_id: "c-1", photo_status: "none", photo_url: null }}
+        onReport={vi.fn()}
+      />,
+    );
+    const file = image();
+    const sheet = await pickInSheet(user, galleryInput, file);
+    await user.click(within(sheet).getByRole("button", { name: photo.send }));
+
+    expect(await within(sheet).findByRole("alert")).toHaveTextContent(photo.errors.network);
+    await user.click(within(sheet).getByRole("button", { name: photo.tryAgain }));
+    expect(upload).toHaveBeenNthCalledWith(2, "r-1", "c-1", file);
+    expect(await within(sheet).findByText(photo.sentLead)).toBeInTheDocument();
   });
 
   it("maps 409 photo_pending to a message and the pending state", async () => {
@@ -152,9 +300,11 @@ describe("CertificatePhotoSlot", () => {
         onReport={vi.fn()}
       />,
     );
-    await user.upload(screen.getByLabelText(photo.chooseFile), image());
+    const sheet = await pickInSheet(user, galleryInput, image());
+    await user.click(within(sheet).getByRole("button", { name: photo.send }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent(photo.errors.pending);
+    expect(await within(sheet).findByRole("alert")).toHaveTextContent(photo.errors.pending);
+    expect(within(sheet).queryByRole("button", { name: photo.tryAgain })).toBeNull();
     expect(screen.getByText(photo.pending)).toBeInTheDocument();
   });
 
@@ -172,13 +322,15 @@ describe("CertificatePhotoSlot", () => {
         onStale={onStale}
       />,
     );
-    await user.upload(screen.getByLabelText(photo.chooseFile), image());
+    const sheet = await pickInSheet(user, galleryInput, image());
+    await user.click(within(sheet).getByRole("button", { name: photo.send }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent(photo.errors.exists);
+    expect(await within(sheet).findByRole("alert")).toHaveTextContent(photo.errors.exists);
     expect(onStale).toHaveBeenCalledOnce();
   });
 
-  it("refuses a wrong type or an oversize file before sending anything", async () => {
+  it("refuses a wrong type or an oversize file before any preview or request", async () => {
+    const user = userEvent.setup();
     const upload = vi.spyOn(kashrootApi, "uploadCertificatePhoto");
     renderHe(
       <CertificatePhotoSlot
@@ -187,13 +339,19 @@ describe("CertificatePhotoSlot", () => {
         onReport={vi.fn()}
       />,
     );
-    const input = screen.getByLabelText(photo.takePhoto);
+    await user.click(screen.getByRole("button", { name: photo.upload }));
+    const sheet = screen.getByRole("dialog", { name: photo.sheetTitle });
 
-    fireEvent.change(input, { target: { files: [image("c.heic", "image/heic")] } });
-    expect(await screen.findByRole("status")).toHaveTextContent(photo.errors.badType);
+    fireEvent.change(cameraInput(), { target: { files: [image("c.heic", "image/heic")] } });
+    expect(await within(sheet).findByRole("alert")).toHaveTextContent(photo.errors.badType);
+    expect(within(sheet).queryByRole("img")).toBeNull();
+    expect(within(sheet).queryByRole("button", { name: photo.send })).toBeNull();
+    expect(within(sheet).getByRole("button", { name: photo.retake })).toBeInTheDocument();
 
-    fireEvent.change(input, { target: { files: [image("c.jpg", "image/jpeg", 16 * 1024 * 1024)] } });
-    expect(await screen.findByRole("status")).toHaveTextContent(photo.errors.tooLarge);
+    fireEvent.change(cameraInput(), {
+      target: { files: [image("c.jpg", "image/jpeg", 16 * 1024 * 1024)] },
+    });
+    expect(await within(sheet).findByRole("alert")).toHaveTextContent(photo.errors.tooLarge);
 
     expect(upload).not.toHaveBeenCalled();
   });
