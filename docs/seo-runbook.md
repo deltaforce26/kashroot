@@ -16,8 +16,8 @@ and the one-time Search Console steps. Companion to `deploy-runbook.md`.
 | URL | Indexable? | Notes |
 |---|---|---|
 | `/` | via redirect | An anonymous visit redirects to `/onboarding/preset`, so its title/description are what Google shows for the home page. The `WebSite` JSON-LD lives on Home for signed-in users. |
-| `/r/<id>` | **yes** | Profile-free facts page. `Restaurant` JSON-LD (name, address, geo, `servesCuisine: Kosher`). No verdict, no rating markup — the app reports facts, it never rules. |
-| `/onboarding/*`, `/search`, `/saved*`, `/map`, `/profile` | `noindex` | Thin or profile-dependent. Also disallowed in `robots.txt`. |
+| `/r/<id>` | **yes** | Profile-free facts page. `Restaurant` JSON-LD (name, address, geo, phone). No verdict, no cuisine claim, no rating markup — a certificate says "certified by X", never "is kosher"; the app reports facts, it never rules. |
+| `/onboarding/*`, `/search`, `/saved*`, `/map`, `/profile`, `/filters` | `noindex` | Thin, profile-dependent, or legacy redirects. Also disallowed in `robots.txt`. |
 | `/robots.txt` | static | Served by Vercel from `web/public/`. **Never** proxied to the API: if the API is asleep and `robots.txt` times out, Google pauses crawling the whole site. |
 | `/sitemap.xml` | proxied | `web/vercel.json` rewrites it to `GET /v1/sitemap.xml` on the API, which lists `/` and every `/r/<id>` with `lastmod`. |
 
@@ -32,7 +32,7 @@ Absolute URLs (sitemap entries, canonical, `og:url`) need to know the site's ori
 
 | Where | Key | Effect |
 |---|---|---|
-| Render (API) | `KASHROOT_PUBLIC_WEB_ORIGIN` | Origin used in sitemap URLs, e.g. `https://kashroot.app`. Optional: without it the API uses Vercel's `X-Forwarded-Host`/`X-Forwarded-Proto`, which is correct for the proxied `/sitemap.xml` request. Set it anyway once you have a custom domain, so the sitemap never names a preview deployment. |
+| Render (API) | `KASHROOT_PUBLIC_WEB_ORIGIN` | Origin used in sitemap URLs, e.g. `https://kashroot.app`. **Set it in production.** Without it the API falls back to `X-Forwarded-Host`, and only when that host ends in `.vercel.app` (anything else is client input and is ignored in favour of the API's own host, which would put `onrender.com` URLs in the sitemap). A custom domain therefore *needs* this setting. |
 | Vercel (web) | `VITE_SITE_ORIGIN` | Build-time. Adds the `Sitemap:` line to `robots.txt` and pins canonical/`og:url` to this origin. Without it canonicals use `window.location.origin` and `robots.txt` has no `Sitemap:` line (submit it in Search Console instead). Redeploy after changing it. |
 
 Set both to the **same** canonical origin, without a trailing slash. If you attach a
