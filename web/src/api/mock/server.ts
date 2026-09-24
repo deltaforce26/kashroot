@@ -599,6 +599,29 @@ function toDirectoryRow(restaurant: FixtureRestaurant): DirectoryRestaurantOut {
 }
 
 /**
+ * A city group's English label, as `_city_en_for_group` (app/api/public_seo.py)
+ * picks it: the most common non-null `city_en` among the group's restaurants, ties
+ * broken alphabetically, `null` when none has one. Grouping stays keyed by
+ * `city_he`; this only names the group. Exported so the rule is tested directly.
+ */
+export function directoryCityEn(group: ReadonlyArray<{ city_en: string | null }>): string | null {
+  const counts = new Map<string, number>();
+  for (const restaurant of group) {
+    if (restaurant.city_en !== null) {
+      counts.set(restaurant.city_en, (counts.get(restaurant.city_en) ?? 0) + 1);
+    }
+  }
+  let best: string | null = null;
+  for (const [cityEn, count] of counts) {
+    const bestCount = best === null ? -1 : (counts.get(best) ?? 0);
+    if (count > bestCount || (count === bestCount && best !== null && cityEn < best)) {
+      best = cityEn;
+    }
+  }
+  return best;
+}
+
+/**
  * GET /v1/directory, replayed (app/api/public_seo.py): every fixture grouped by
  * `city_he`, cities from largest to smallest (ties alphabetical), each city's rows
  * alphabetical by name and capped at the sample size. `evaluateRestaurant` is not
@@ -619,6 +642,7 @@ export function mockDirectory(): Promise<DirectoryOut> {
     )
     .map(([city_he, group]) => ({
       city_he,
+      city_en: directoryCityEn(group),
       restaurant_count: group.length,
       restaurants: [...group]
         .sort((a, b) => byHebrewName(a.name_he, b.name_he))

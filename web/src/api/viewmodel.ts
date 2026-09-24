@@ -220,6 +220,8 @@ export interface DirectoryRestaurantView {
 
 export interface DirectoryCityView {
   cityHe: string;
+  /** The records' own English name for the city, when they have one. */
+  cityEn: string | null;
   restaurantCount: number;
   restaurants: DirectoryRestaurantView[];
 }
@@ -247,6 +249,7 @@ function toDirectoryRestaurantView(item: DirectoryRestaurantOut): DirectoryResta
 function toDirectoryCityView(city: DirectoryCityOut): DirectoryCityView {
   return {
     cityHe: city.city_he,
+    cityEn: city.city_en,
     restaurantCount: city.restaurant_count,
     restaurants: city.restaurants.map(toDirectoryRestaurantView),
   };

@@ -385,6 +385,12 @@ export interface DirectoryRestaurantOut {
 /** schemas_public_seo.py :: DirectoryCityOut */
 export interface DirectoryCityOut {
   city_he: string;
+  /**
+   * The city's English name, from `Restaurant.city_en` across its restaurants: the
+   * most common non-null value (ties alphabetical), or `null` when none has one. A
+   * display label only — grouping is keyed by `city_he`.
+   */
+  city_en: string | null;
   /** The full count for the city, however many rows `restaurants` samples. */
   restaurant_count: number;
   /** A sample of at most twelve, alphabetical by `name_he`. */

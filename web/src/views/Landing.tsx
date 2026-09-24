@@ -55,34 +55,49 @@ function BrandMark() {
   );
 }
 
+/** The visual " · " between certifier names; hidden from the accessible tree. */
+const SEPARATOR = " · ";
+
 function RestaurantRow({ restaurant }: { restaurant: DirectoryRestaurantView }) {
   const { t, lang } = useI18n();
-  // Every certifier on the record, joined — the whole set in the API's order, which
-  // is alphabetical. Not a ranking, and not a pick of one over another.
-  const certifiers = restaurant.certifiers
-    .map((certifier) => pickName(lang, certifier.nameHe, certifier.nameEn))
-    .join(" · ");
+  const name = pickName(lang, restaurant.nameHe, restaurant.nameEn);
+  // Every certifier on the record — the whole set in the API's order, which is
+  // alphabetical. Not a ranking, and not a pick of one over another.
+  const certifiers = restaurant.certifiers.map((certifier) =>
+    pickName(lang, certifier.nameHe, certifier.nameEn),
+  );
 
   return (
     <li>
-      {/* A real anchor: this is the link a crawler follows to the restaurant page. */}
-      <Link className="landing__row" to={`/r/${restaurant.id}`}>
-        <span className="landing__rowName">
-          {pickName(lang, restaurant.nameHe, restaurant.nameEn)}
-        </span>
+      {/* A real anchor: this is the link a crawler follows to the restaurant page.
+          Its accessible name is the restaurant's name alone; the address and the
+          certifiers stay visible, and separators are decoration. */}
+      <Link className="landing__row" to={`/r/${restaurant.id}`} aria-label={name}>
+        <span className="landing__rowName">{name}</span>
         {restaurant.addressHe && <span className="landing__rowSub">{restaurant.addressHe}</span>}
-        <span className="landing__rowSub">{certifiers || t.landing.noCertificate}</span>
+        <span className="landing__rowSub">
+          {certifiers.length === 0
+            ? t.landing.noCertificate
+            : certifiers.map((certifier, index) => (
+                <span key={`${index}-${certifier}`}>
+                  {index > 0 && <span aria-hidden="true">{SEPARATOR}</span>}
+                  {certifier}
+                </span>
+              ))}
+        </span>
       </Link>
     </li>
   );
 }
 
 function CityPanel({ city }: { city: DirectoryCityView }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const headingId = useId();
-  // The records spell cities in Hebrew; the English UI has names for the launch
-  // cities and shows any other city as the records spell it.
-  const name = t.landing.cityNames[city.cityHe] ?? city.cityHe;
+  // The records spell cities in Hebrew, and in Hebrew that is the heading. In
+  // English: the records' own `city_en` when they have one, else the string table's
+  // fallback for a launch city, else the city as the records spell it.
+  const name =
+    lang === "he" ? city.cityHe : (city.cityEn ?? t.landing.cityNames[city.cityHe] ?? city.cityHe);
 
   return (
     <section className="panel glass" aria-labelledby={headingId}>

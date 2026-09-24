@@ -485,9 +485,9 @@ const he = {
     browse: "או לעיין במסעדות שלמטה",
     citiesTitle: "מסעדות לפי עיר",
     restaurantCount: (n: number) => (n === 1 ? "מסעדה אחת" : `${n} מסעדות`),
-    // The English UI's names for the launch cities, keyed by the records' own
-    // `city_he`. A city not listed is shown as the records spell it. Empty in
-    // Hebrew: the records are already in Hebrew.
+    // The English UI's fallback names for the launch cities, keyed by the records'
+    // own `city_he`, used only when the directory carries no `city_en`. Empty in
+    // Hebrew: the heading is always `city_he` there.
     cityNames: {} as Record<string, string>,
     noCertificate: "לא רשומה תעודת כשרות",
     loading: "טוענים את רשימת המסעדות…",
@@ -935,12 +935,15 @@ const en: Strings = {
     browse: "or browse the restaurants below",
     citiesTitle: "Restaurants by city",
     restaurantCount: (n: number) => (n === 1 ? "1 restaurant" : `${n} restaurants`),
+    // A fallback for the five launch cities only, used when the directory carries no
+    // `city_en` for a city. Keyed by the corpus's exact `city_he` spellings. The
+    // corpus currently has no Tel Aviv or Beer Sheva rows, so those two entries are
+    // pure fallbacks — spelled as the corpus is expected to spell them.
     cityNames: {
-      "תל אביב": "Tel Aviv",
-      "תל אביב-יפו": "Tel Aviv-Yafo",
       "ירושלים": "Jerusalem",
       "בני ברק": "Bnei Brak",
       "חיפה": "Haifa",
+      "תל אביב-יפו": "Tel Aviv-Yafo",
       "באר שבע": "Beer Sheva",
     },
     noCertificate: "No kashrut certificate on record",

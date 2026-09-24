@@ -133,6 +133,10 @@ describe("the landing page", () => {
     expect(row).toHaveTextContent("נוגטין");
     expect(row).toHaveTextContent("עוזיאל 28, בית וגן");
     expect(row).toHaveTextContent("בד״ץ מהדרין — הרב רובין");
+    // The link's accessible name is the restaurant's name alone — not the name,
+    // address and certifiers run together.
+    expect(screen.getByRole("link", { name: "נוגטין" })).toBe(row);
+    expect(screen.queryByRole("link", { name: /עוזיאל 28/ })).toBeNull();
 
     // Every fixture is reachable from the root — this is how the long tail is found.
     for (const restaurant of RESTAURANTS) {
@@ -151,6 +155,43 @@ describe("the landing page", () => {
     expect(container.querySelector('a[href="/r/r-sushi-bvg"]')).toHaveTextContent(
       he.landing.noCertificate,
     );
+  });
+
+  it("separates certifier names visually only: the ' · ' is hidden from assistive tech", async () => {
+    vi.spyOn(kashrootApi, "getDirectory").mockResolvedValue({
+      totalRestaurants: 1,
+      cities: [
+        {
+          cityHe: "ירושלים",
+          cityEn: "Jerusalem",
+          restaurantCount: 1,
+          restaurants: [
+            {
+              id: "r-two",
+              nameHe: "שתי תעודות",
+              nameEn: null,
+              addressHe: "רחוב 1",
+              certifiers: [
+                { nameHe: "בד״ץ א", nameEn: null },
+                { nameHe: "בד״ץ ב", nameEn: null },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const { container } = renderApp("/");
+    await screen.findByRole("heading", { name: "ירושלים" });
+
+    // Two certifiers on the record: both names shown, one separator between them,
+    // rendered but decorative — and the link is still named by the restaurant alone.
+    const row = container.querySelector('a[href="/r/r-two"]');
+    expect(row).not.toBeNull();
+    expect(row).toHaveTextContent("בד״ץ א · בד״ץ ב");
+    const separators = row?.querySelectorAll('[aria-hidden="true"]') ?? [];
+    expect(separators).toHaveLength(1);
+    expect(separators[0]).toHaveTextContent("·");
+    expect(screen.getByRole("link", { name: "שתי תעודות" })).toBe(row);
   });
 
   it("names no verdict anywhere — there is no profile to judge by", async () => {
@@ -227,7 +268,7 @@ describe("the landing page", () => {
     expect(screen.queryByRole("link", { name: he.landing.cta })).toBeNull();
   });
 
-  it("switches language on the spot, naming the launch cities in English and the rest as recorded", async () => {
+  it("switches language on the spot, naming each city by the records' own `city_en`", async () => {
     const user = userEvent.setup();
     renderApp("/");
     await screen.findByRole("heading", { name: "ירושלים" });
@@ -239,12 +280,53 @@ describe("the landing page", () => {
     expect(screen.getByRole("heading", { level: 1, name: en.landing.tagline })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Jerusalem" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Bnei Brak" })).toBeInTheDocument();
-    // Tiberias is not a launch city and has no English name in the table.
-    expect(screen.getByRole("heading", { name: "טבריה" })).toBeInTheDocument();
+    // Tiberias is not a launch city and not in the fallback table; the records
+    // carry its English name and that is what is shown.
+    expect(en.landing.cityNames["טבריה"]).toBeUndefined();
+    expect(screen.getByRole("heading", { name: "Tiberias" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "טבריה" })).toBeNull();
     expect(screen.getByRole("link", { name: en.landing.cta })).toHaveAttribute(
       "href",
       "/onboarding/preset",
     );
+    // The row's accessible name follows the language: the English name where there is one.
+    expect(screen.getByRole("link", { name: "Nougatine" })).toHaveAttribute("href", "/r/r-nougatine");
+  });
+
+  it("falls back from `city_en` to the launch-city table, then to `city_he` — in English only", async () => {
+    const user = userEvent.setup();
+    const row = {
+      id: "r-x",
+      nameHe: "מסעדה",
+      nameEn: null,
+      addressHe: null,
+      certifiers: [],
+    };
+    vi.spyOn(kashrootApi, "getDirectory").mockResolvedValue({
+      totalRestaurants: 3,
+      cities: [
+        // The records' own name wins over the table's spelling.
+        { cityHe: "ירושלים", cityEn: "Yerushalayim", restaurantCount: 1, restaurants: [{ ...row, id: "r-1" }] },
+        // No `city_en`, but a launch city: the table's fallback.
+        { cityHe: "חיפה", cityEn: null, restaurantCount: 1, restaurants: [{ ...row, id: "r-2" }] },
+        // No `city_en` and not a launch city: as the records spell it.
+        { cityHe: "טבריה", cityEn: null, restaurantCount: 1, restaurants: [{ ...row, id: "r-3" }] },
+      ],
+    });
+    renderApp("/");
+
+    // In Hebrew the heading is always `city_he`, whatever `city_en` says.
+    await screen.findByRole("heading", { name: "ירושלים" });
+    expect(screen.queryByRole("heading", { name: "Yerushalayim" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "חיפה" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "טבריה" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "English" }));
+
+    expect(await screen.findByRole("heading", { name: "Yerushalayim" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Jerusalem" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Haifa" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "טבריה" })).toBeInTheDocument();
   });
 
   it("renders Home, not the landing, once a profile exists", async () => {

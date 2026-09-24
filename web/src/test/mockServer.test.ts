@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DIRECTORY_SAMPLE_PER_CITY,
+  directoryCityEn,
   mockDirectory,
   mockRestaurant,
   mockSearch,
@@ -200,6 +201,29 @@ describe("directory response", () => {
       expect(city.restaurants.length).toBeLessThanOrEqual(DIRECTORY_SAMPLE_PER_CITY);
       expect(city.restaurants.length).toBe(Math.min(city.restaurant_count, DIRECTORY_SAMPLE_PER_CITY));
     }
+  });
+
+  it("labels each city with its records' `city_en`, grouped by `city_he` alone", async () => {
+    const response = await mockDirectory();
+    expect(response.cities.map((city) => city.city_en)).toEqual(["Jerusalem", "Bnei Brak", "Tiberias"]);
+    for (const city of response.cities) {
+      const group = RESTAURANTS.filter((restaurant) => restaurant.city_he === city.city_he);
+      expect(city.city_en).toBe(directoryCityEn(group));
+    }
+  });
+
+  it("picks a city's `city_en` as the API does: majority, ties alphabetical, null if none", () => {
+    const named = (...names: (string | null)[]) => names.map((city_en) => ({ city_en }));
+    // The majority wins, wherever the nulls fall.
+    expect(directoryCityEn(named("Jerusalem", null, "Yerushalayim", "Jerusalem"))).toBe("Jerusalem");
+    expect(directoryCityEn(named("Yerushalayim", "Yerushalayim", "Jerusalem"))).toBe("Yerushalayim");
+    // A tie is broken alphabetically, not by first appearance.
+    expect(directoryCityEn(named("Yerushalayim", "Jerusalem"))).toBe("Jerusalem");
+    expect(directoryCityEn(named("Jerusalem", "Yerushalayim"))).toBe("Jerusalem");
+    // Nulls are not values: they never win a tie and never become the label.
+    expect(directoryCityEn(named(null, null, "Haifa"))).toBe("Haifa");
+    expect(directoryCityEn(named(null, null))).toBeNull();
+    expect(directoryCityEn([])).toBeNull();
   });
 
   it("orders a city's rows and each row's certifiers alphabetically — never by anything else", async () => {
