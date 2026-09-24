@@ -5,15 +5,19 @@
  *
  * Facts only, by construction. The title is the name; the description is name,
  * city and the certifiers on record; the JSON-LD is a `schema.org/Restaurant` with
- * its address and coordinates. There is no `aggregateRating`, no review markup, no
- * `kashrut` field and no word about whether the place matches anyone — a verdict is
- * the answer to (Certificate × Profile), and a crawler has no profile. Structured
- * data that implied an app judgement would also be the one place that judgement
- * escaped the app into a search result, where the fail-safe rule cannot follow it.
+ * its address and coordinates. There is no `aggregateRating`, no `review`, no
+ * `servesCuisine`, no `kashrut` field and no word about whether the place matches
+ * anyone — a verdict is the answer to (Certificate × Profile), and a crawler has no
+ * profile. Structured data that implied an app judgement would also be the one
+ * place that judgement escaped the app into a search result, where the fail-safe
+ * rule cannot follow it.
  *
- * `servesCuisine: "Kosher"` is the one kashrut-adjacent word, and it is a category
- * label for what the certificate on record is about, not a claim by us that the
- * food is kosher by any standard.
+ * `servesCuisine: "Kosher"` is deliberately absent, not conditional. A certificate
+ * on record says "certified by X"; it is the app that would be saying "kosher", and
+ * the app never rules on kashrut. A restaurant with no certificate at all would get
+ * the same label, which is exactly the doubt the fail-safe rule resolves to UNKNOWN.
+ * Ratings and reviews are absent for the same reason: the app has no opinion on a
+ * restaurant, and nothing in the head should suggest one.
  */
 
 import type { GeoPointOut } from "../api/types";
@@ -81,7 +85,6 @@ export function restaurantJsonLd(facts: RestaurantFacts, lang: Lang): Record<str
       : {}),
     ...(facts.phone ? { telephone: facts.phone } : {}),
     ...(facts.website ? { sameAs: facts.website } : {}),
-    servesCuisine: "Kosher",
   };
 }
 

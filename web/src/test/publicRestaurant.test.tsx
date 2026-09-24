@@ -137,14 +137,36 @@ describe("the public restaurant page", () => {
     expect(data).toMatchObject({
       name: "נוגטין",
       alternateName: "Nougatine",
-      servesCuisine: "Kosher",
       address: { "@type": "PostalAddress", addressLocality: "ירושלים", addressCountry: "IL" },
       geo: { "@type": "GeoCoordinates", latitude: 31.7651, longitude: 35.1838 },
     });
-    // Nothing that would put an app judgement into a search result.
+    // Nothing that would put an app judgement into a search result — not even a
+    // cuisine label: "kosher" is a verdict, and a certificate only says "certified by X".
+    expect(data).not.toHaveProperty("servesCuisine");
+    expect(jsonLd()).not.toContain("servesCuisine");
     expect(data).not.toHaveProperty("aggregateRating");
     expect(data).not.toHaveProperty("review");
-    expect(jsonLd()).not.toMatch(/kashrut|verdict|"match"|no_match/);
+    expect(jsonLd()).not.toMatch(/kashrut|verdict|"match"|no_match/i);
+    expect(jsonLd()).not.toMatch(/kosher/i);
+  });
+
+  it("gives a place with no certificate the same head — a Restaurant, with no kashrut claim", async () => {
+    renderApp("/r/r-sushi-bvg");
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "סושי בית וגן" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: he.publicRestaurant.cta })).toHaveAttribute(
+      "href",
+      "/onboarding/preset",
+    );
+
+    await waitFor(() => expect(jsonLd()).toContain('"@type":"Restaurant"'));
+    const data = JSON.parse(jsonLd()) as Record<string, unknown>;
+    expect(data).toMatchObject({ name: "סושי בית וגן", alternateName: "Sushi Bayit VeGan" });
+    for (const key of ["servesCuisine", "aggregateRating", "review", "reviews", "rating"]) {
+      expect(data, key).not.toHaveProperty(key);
+    }
+    expect(jsonLd()).not.toMatch(/kosher|servesCuisine|aggregateRating|review|rating/i);
   });
 
   it("walks the call to action through onboarding and back to this restaurant, now with a verdict", async () => {
