@@ -4,6 +4,7 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
+    { "source": "/sitemap.xml", "destination": "https://kashroot-api.onrender.com/v1/sitemap.xml" },
     { "source": "/v1/:path*", "destination": "https://kashroot-api.onrender.com/v1/:path*" },
     { "source": "/api/:path*", "destination": "https://kashroot-api.onrender.com/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }

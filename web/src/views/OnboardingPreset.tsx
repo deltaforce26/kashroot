@@ -17,11 +17,16 @@ import { useProfile } from "../profile/ProfileProvider";
 import { PICKER_PRESETS, PRESET_ORDER, profileFromPreset, type PresetId } from "../profile/profile";
 import { CheckIcon } from "../components/icons";
 import { ErrorState, LoadingList } from "../components/states";
+import { useDocumentHead } from "../seo/useDocumentHead";
 import { useState } from "react";
 
 export function OnboardingPreset() {
   const { t } = useI18n();
   const navigate = useNavigate();
+  // An anonymous visit to `/` is redirected here, so this head is what a first-time
+  // crawler of the front page actually reads: it carries the product one-liner, but
+  // asks not to be indexed — the page itself is an app flow, not content.
+  useDocumentHead({ title: t.seo.onboardingTitle, description: t.seo.siteDescription, noindex: true });
   // A shared restaurant link that hit the gate; `/` for everyone else.
   const returnTo = useReturnTo();
   const { profile, setProfile, certifiers, certifiersLoading, certifiersFailed, reloadCertifiers } =

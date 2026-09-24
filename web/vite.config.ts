@@ -1,14 +1,52 @@
 /// <reference types="vitest/config" />
+import { readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { API_RUNTIME_CACHING } from "./src/pwa/runtimeCaching";
+
+/**
+ * `robots.txt` with a `Sitemap:` line, rendered at build time.
+ *
+ * The sitemap lives on the API (`GET /v1/sitemap.xml`, reached through the
+ * `/sitemap.xml` rewrite in vercel.json) because it needs the database; robots.txt
+ * stays a static file in `public/` because the API host suspends when idle and a
+ * robots.txt that times out makes Google pause crawling the whole site. The two
+ * meet here: when `VITE_SITE_ORIGIN` names the deploy's public origin, the static
+ * file is copied into the build output with an absolute `Sitemap:` URL appended —
+ * the only form the robots standard accepts. Without the variable the file is
+ * left exactly as it is in `public/`, and no sitemap is advertised.
+ */
+function robotsWithSitemap(): Plugin {
+  let origin = "";
+  let outDir = "";
+  let publicDir = "";
+  return {
+    name: "kashroot:robots-sitemap",
+    apply: "build",
+    configResolved(config) {
+      origin = (loadEnv(config.mode, config.root, "VITE_")["VITE_SITE_ORIGIN"] ?? "")
+        .trim()
+        .replace(/\/+$/, "");
+      outDir = path.resolve(config.root, config.build.outDir);
+      publicDir = config.publicDir;
+    },
+    // After Vite has copied `public/` into the output, so this overwrite is final.
+    writeBundle() {
+      if (!origin) return;
+      const source = readFileSync(path.join(publicDir, "robots.txt"), "utf8").trimEnd();
+      writeFileSync(path.join(outDir, "robots.txt"), `${source}\n\nSitemap: ${origin}/sitemap.xml\n`);
+    },
+  };
+}
 
 // Dev proxy: the app always talks to a local FastAPI on :8000, so every request can
 // use a same-origin /api/... path. Deliberately no CORS anywhere — same-origin only.
 export default defineConfig({
   plugins: [
     react(),
+    robotsWithSitemap(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["icons/apple-touch-icon.png", "icons/icon.svg", "fonts/*.woff2", "fonts/fonts.css"],
@@ -36,6 +74,12 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,woff2,png,svg}"],
         navigateFallback: "index.html",
+        // The SPA fallback answers *navigations* with index.html. A browser with the
+        // worker installed that opens /robots.txt or /sitemap.xml is navigating, and
+        // would be handed the app shell instead of the file; the API prefixes are
+        // listed for the same reason. Crawlers run no service worker, so this is
+        // for people — and for anyone checking the sitemap from an installed PWA.
+        navigateFallbackDenylist: [/^\/sitemap\.xml$/, /^\/robots\.txt$/, /^\/v1\//, /^\/api\//],
         // The API is never precached, and the verdict-bearing endpoints are never
         // cached at all. What *is* cached: `GET /v1/certifiers` — names and ids for
         // the whitelist picker, no kashrut status in it.

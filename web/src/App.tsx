@@ -5,6 +5,13 @@
  * one certifier — because without one there is nothing to check a restaurant
  * against. Users without one are sent to onboarding rather than shown a list of
  * verdicts derived from an empty profile.
+ *
+ * The one exception is `/r/:id`. A restaurant page is the address search engines
+ * and shared links land on, and behind the gate it was a redirect — invisible to
+ * Googlebot and to the person who tapped the link. Without a profile it now renders
+ * the facts on record and an invitation to set one (`RestaurantPublic`); with a
+ * profile it is the verdict screen it always was. The gate is not weakened: no
+ * verdict is shown without a profile, because the profile-free page has none.
  */
 
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
@@ -22,18 +29,29 @@ import { OnboardingCertifiers } from "./views/OnboardingCertifiers";
 import { OnboardingPreset } from "./views/OnboardingPreset";
 import { Profile } from "./views/Profile";
 import { Restaurant } from "./views/Restaurant";
+import { RestaurantPublic } from "./views/RestaurantPublic";
 import { Saved } from "./views/Saved";
 import { SavedList } from "./views/SavedList";
 import { Search } from "./views/Search";
 
+function hasUsableProfile(profile: ReturnType<typeof useProfile>["profile"]): boolean {
+  return profile.completedOnboarding && isProfileUsable(profile);
+}
+
 function RequireProfile({ children }: { children: ReactNode }) {
   const { profile } = useProfile();
   const location = useLocation();
-  if (!profile.completedOnboarding || !isProfileUsable(profile)) {
+  if (!hasUsableProfile(profile)) {
     const from = `${location.pathname}${location.search}`;
     return <Navigate to="/onboarding/preset" replace state={{ from }} />;
   }
   return <>{children}</>;
+}
+
+/** `/r/:id` — the verdict screen with a profile, the public facts page without one. */
+function RestaurantRoute() {
+  const { profile } = useProfile();
+  return hasUsableProfile(profile) ? <Restaurant /> : <RestaurantPublic />;
 }
 
 /** Visible while the fixtures stand in for Track B — so no one demos it unknowingly. */
@@ -74,14 +92,8 @@ export default function App() {
               </RequireProfile>
             }
           />
-          <Route
-            path="/r/:id"
-            element={
-              <RequireProfile>
-                <Restaurant />
-              </RequireProfile>
-            }
-          />
+          {/* Deliberately not behind RequireProfile — see the header comment. */}
+          <Route path="/r/:id" element={<RestaurantRoute />} />
           <Route
             path="/saved"
             element={

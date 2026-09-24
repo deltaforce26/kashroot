@@ -44,6 +44,7 @@ import {
   type ReasonCode,
   type ReasonOut,
   type RestaurantDetailResponseOut,
+  type RestaurantPublicOut,
   type SearchRequest,
   type SearchResponseOut,
   type SearchResultItemOut,
@@ -535,6 +536,41 @@ export function mockRestaurant(
       const photo = photoState.get(cert.certificate_id) ?? null;
       return toEvidence(cert, evaluation, now, photo);
     }),
+  });
+}
+
+/**
+ * GET /v1/restaurants/{id}, replayed (app/api/public_seo.py): the restaurant block
+ * and every certificate's stored facts, with no profile and therefore no
+ * evaluation — `evaluateRestaurant` is deliberately not called on this path. A
+ * missing id is a 404, as on the API.
+ */
+export function mockRestaurantPublic(id: string, now = new Date()): Promise<RestaurantPublicOut> {
+  const restaurant = RESTAURANTS.find((candidate) => candidate.id === id);
+  if (!restaurant) return delayReject(new ApiError(404, "not_found"));
+
+  return delay({
+    restaurant_id: restaurant.id,
+    name_he: restaurant.name_he,
+    name_en: restaurant.name_en,
+    address_he: restaurant.address_he,
+    city_he: restaurant.city_he,
+    phone: restaurant.phone,
+    website: null,
+    diet_type: restaurant.diet_type,
+    price_level: restaurant.price_level,
+    amenities: restaurant.amenities as Record<string, boolean>,
+    geo: { lat: restaurant.lat, lon: restaurant.lon },
+    certificates: restaurant.certificates.map((cert) => {
+      const { id: certifierId, name_he, name_en } = chipById(cert.certifier_id);
+      return {
+        certifier: { id: certifierId, name_he, name_en },
+        status: cert.state,
+        valid_until: cert.valid_until,
+        attributes: cert.attributes as Record<string, boolean>,
+      };
+    }),
+    updated_at: now.toISOString(),
   });
 }
 

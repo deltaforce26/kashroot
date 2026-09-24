@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, kashrootApi } from "../api";
 import type { GeoPoint, ProfileRequest, SearchRequest } from "../api/types";
-import type { DetailView, ResultView, SearchView } from "../api/viewmodel";
+import type { DetailView, PublicRestaurantView, ResultView, SearchView } from "../api/viewmodel";
 
 interface QueryState<T> {
   data: T | null;
@@ -103,8 +103,24 @@ export function useRestaurant(
   );
 }
 
+/** The profile-free facts for `/r/:id`. No profile, no centre — the id is the whole question. */
+export function useRestaurantPublic(id: string | undefined): QueryState<PublicRestaurantView> {
+  return useQuery<PublicRestaurantView>(
+    (signal) =>
+      id
+        ? kashrootApi.getRestaurantPublic(id, signal)
+        : Promise.reject(new Error("missing restaurant id")),
+    [id],
+  );
+}
+
 export function isNetworkError(error: Error | null): boolean {
   return error instanceof ApiError && error.isNetwork;
+}
+
+/** The server answered, and said the id is not in our records. */
+export function isNotFoundError(error: Error | null): boolean {
+  return error instanceof ApiError && error.status === 404;
 }
 
 export interface PagedSearchState {

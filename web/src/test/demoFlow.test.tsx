@@ -123,14 +123,16 @@ describe("demo flow", () => {
 
   /**
    * A shared link is the only way most people meet this app, and it lands on a
-   * device with no whitelist — so the gate sends it to onboarding. The link is only
-   * worth sharing if onboarding then continues to the restaurant that was sent,
-   * rather than dropping the visitor on home with the destination lost.
+   * device with no whitelist — so it opens on the profile-free facts page, whose
+   * call to action leads into onboarding. The link is only worth sharing if
+   * onboarding then continues to the restaurant that was sent, rather than
+   * dropping the visitor on home with the destination lost.
    */
   it("carries a shared restaurant link through onboarding instead of losing it", async () => {
     const user = userEvent.setup();
     renderApp("/r/r-hapisga");
 
+    await user.click(await screen.findByRole("link", { name: he.publicRestaurant.cta }));
     await screen.findByText(he.presets.any.title);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));

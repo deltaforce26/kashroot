@@ -439,6 +439,40 @@ const he = {
     dairy_pareve: "חלבי/פרווה",
   },
 
+  // What search engines and share cards read (src/seo/). Facts only: a description
+  // names the place, the city and the certifiers on record, never whether it
+  // matches anyone — a crawler has no profile to match against.
+  seo: {
+    brandTitle: "Kashroot — כשרות לפי הסטנדרט שלך",
+    siteDescription:
+      "מסעדות כשרות שנבדקות מול הסטנדרט שלכם: מגדירים פעם אחת אילו גופי כשרות אתם מקבלים ומה חייב להופיע בתעודה — וכל מסעדה מוצגת עם התשובה והראיות מאחוריה.",
+    onboardingTitle: "הגדרת פרופיל כשרות",
+    restaurantDescription: (name: string, city: string | null, certifiers: string | null) =>
+      [name, city, certifiers ? `כשרות: ${certifiers}` : "לא רשומה אצלנו תעודת כשרות"]
+        .filter(Boolean)
+        .join(" · ") + " · עובדות התעודה כפי שפורסמו, ובדיקה מול פרופיל הכשרות שלכם ב־Kashroot.",
+  },
+
+  // The profile-free restaurant page (views/RestaurantPublic.tsx): the facts on
+  // record and an invitation to set a profile. It states what the certificate says
+  // and is careful never to say what that means for the reader.
+  publicRestaurant: {
+    ctaTitle: "מתאים לסטנדרט שלכם?",
+    ctaBody:
+      "הגדירו פעם אחת את פרופיל הכשרות שלכם — אילו גופי כשרות אתם מקבלים ומה חייב להופיע בתעודה — ותראו כאן אם המקום הזה עונה עליו, עם הראיות.",
+    cta: "הגדרת פרופיל כשרות ובדיקת המקום הזה",
+    factsLead:
+      "עובדות התעודה כפי שפורסמו — לא פסק הלכה. אם זה מתאים לכם תלוי בפרופיל שלכם.",
+    status: "מצב התעודה",
+    states: { active: "בתוקף", expired: "פג תוקף", revoked: "בוטלה", pending: "ממתינה לאימות" },
+    listed: "מצוין בתעודה",
+    yes: "כן",
+    no: "לא",
+    nothingListed: "התעודה לא מפרטת דרישות מיוחדות.",
+    website: "אתר",
+    updatedAt: (date: string) => `הרשומה עודכנה ${date}`,
+  },
+
   photoPlaceholder: "צילום מנה",
   mockBanner: "נתוני הדגמה — ה־API הציבורי עדיין לא מחובר.",
   units: { km: "ק״מ", m: "מ׳", closesAt: (time: string) => `עד ${time}` },
@@ -840,6 +874,35 @@ const en: Strings = {
     fish: "Fish",
     mixed: "Mixed",
     dairy_pareve: "Dairy/Pareve",
+  },
+
+  seo: {
+    brandTitle: "Kashroot — kashrut by your own standard",
+    siteDescription:
+      "Kosher restaurants checked against your own kashrut standard: set once which certifiers you accept and what must appear on the certificate, and every restaurant is shown with the answer and the evidence behind it.",
+    onboardingTitle: "Set up your kashrut profile",
+    restaurantDescription: (name: string, city: string | null, certifiers: string | null) =>
+      [name, city, certifiers ? `Kashrut: ${certifiers}` : "No kashrut certificate on record"]
+        .filter(Boolean)
+        .join(" · ") +
+      " · Certificate facts as published, checked against your own kashrut profile on Kashroot.",
+  },
+
+  publicRestaurant: {
+    ctaTitle: "Does it meet your standard?",
+    ctaBody:
+      "Set your kashrut profile once — which certifiers you accept and what must appear on the certificate — and see here whether this place meets it, with the evidence.",
+    cta: "Set your kashrut profile and check this place",
+    factsLead:
+      "The certificate facts as published — not a halachic ruling. Whether it suits you depends on your profile.",
+    status: "Certificate status",
+    states: { active: "Valid", expired: "Expired", revoked: "Revoked", pending: "Awaiting verification" },
+    listed: "Stated on the certificate",
+    yes: "Yes",
+    no: "No",
+    nothingListed: "The certificate lists no specific requirements.",
+    website: "Website",
+    updatedAt: (date: string) => `Record updated ${date}`,
   },
 
   photoPlaceholder: "dish photo",

@@ -46,12 +46,28 @@ import { useI18n } from "../i18n/I18nProvider";
 import { toPayload } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
 import { useSaveToggle } from "../saved/useSaveToggle";
+import { absoluteUrl } from "../seo/head";
+import { useDocumentHead } from "../seo/useDocumentHead";
 
 /** A radius needs a centre; with nothing pinned the chip would measure from nowhere. */
 const WITHOUT_ORIGIN: readonly FilterId[] = ["radius"];
 
+/**
+ * The site's own structured data, declared on its front page. Name and languages
+ * only — no `SearchAction`, because a sitelinks search box would hand Google a
+ * query URL that lands behind the onboarding gate.
+ */
+const WEBSITE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Kashroot",
+  url: absoluteUrl("/"),
+  inLanguage: ["he", "en"],
+};
+
 export function Home() {
   const { t } = useI18n();
+  useDocumentHead({ description: t.seo.siteDescription, canonicalPath: "/", jsonLd: WEBSITE_JSON_LD });
   const navigate = useNavigate();
   const { profile } = useProfile();
   const { toggle, isSaved } = useSaveToggle();

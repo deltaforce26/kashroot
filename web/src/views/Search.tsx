@@ -38,6 +38,7 @@ import { TabBar } from "../components/TabBar";
 import { PAGE_SIZE } from "../config";
 import { useOrigin } from "../location/useOrigin";
 import { toSearchFilters } from "../filters/model";
+import { useDocumentHead } from "../seo/useDocumentHead";
 import { anyFilterActive, type FilterId } from "../filters/registry";
 import { useFilters } from "../filters/useFilters";
 import { isNetworkError, usePagedSearch } from "../hooks/useApi";
@@ -51,6 +52,8 @@ const WITHOUT_ORIGIN: readonly FilterId[] = ["radius"];
 
 export function Search() {
   const { t } = useI18n();
+  // Every result here is one profile's answer, so the page is not for the index.
+  useDocumentHead({ title: t.nav.search, description: t.seo.siteDescription, noindex: true });
   const navigate = useNavigate();
   const { profile } = useProfile();
   const { toggle, isSaved } = useSaveToggle();

@@ -14,6 +14,7 @@ import {
   mockCertifiers,
   mockReportRestaurant,
   mockRestaurant,
+  mockRestaurantPublic,
   mockSearch,
   mockUploadCertificatePhoto,
 } from "./mock/server";
@@ -25,15 +26,18 @@ import type {
   PhotoUploadOut,
   ProfileRequest,
   RestaurantDetailResponseOut,
+  RestaurantPublicOut,
   SearchRequest,
   SearchResponseOut,
 } from "./types";
 import {
   toCertifierView,
   toDetailView,
+  toPublicView,
   toSearchView,
   type CertifierView,
   type DetailView,
+  type PublicRestaurantView,
   type SearchView,
 } from "./viewmodel";
 
@@ -51,6 +55,12 @@ export interface KashrootApi {
     center?: GeoPoint,
     signal?: AbortSignal,
   ): Promise<DetailView>;
+  /**
+   * The profile-free facts page. No body, no profile, and so no verdict in the
+   * answer: the restaurant, and each certificate exactly as stored. This is what a
+   * crawler — or a first-time visitor who has not set a profile — gets at `/r/:id`.
+   */
+  getRestaurantPublic(id: string, signal?: AbortSignal): Promise<PublicRestaurantView>;
   /**
    * Anonymous certificate photo upload for the specific certificate card the user is
    * looking at (chosen by their own profile on the client — the server only checks
@@ -87,6 +97,10 @@ const liveApi: KashrootApi = {
       body: { profile, ...(center ? { center } : {}) },
       ...(signal ? { signal } : {}),
     }).then(toDetailView),
+  getRestaurantPublic: (id, signal) =>
+    api<RestaurantPublicOut>(`/v1/restaurants/${encodeURIComponent(id)}`, {
+      ...(signal ? { signal } : {}),
+    }).then(toPublicView),
   uploadCertificatePhoto: (restaurantId, certificateId, file) => {
     const form = new FormData();
     form.append("certificate_id", certificateId);
@@ -108,6 +122,7 @@ const mockApi: KashrootApi = {
   search: (request) => mockSearch(request).then(toSearchView),
   getRestaurant: (id, profile, center) =>
     mockRestaurant(id, profile, undefined, center).then(toDetailView),
+  getRestaurantPublic: (id) => mockRestaurantPublic(id).then(toPublicView),
   uploadCertificatePhoto: (restaurantId, certificateId, file) =>
     mockUploadCertificatePhoto(restaurantId, certificateId, file),
   reportRestaurant: (restaurantId, body) => mockReportRestaurant(restaurantId, body),
@@ -129,4 +144,11 @@ export function photoConflict(error: unknown): "photo_exists" | "photo_pending" 
 export { ApiError } from "./client";
 export { FLAG_MESSAGE_MAX, FLAG_TYPES, PHOTO_MAX_BYTES, PHOTO_MIME_TYPES } from "./types";
 export type * from "./types";
-export type { CertifierView, DetailView, ResultView, SearchView } from "./viewmodel";
+export type {
+  CertifierView,
+  DetailView,
+  PublicCertificateView,
+  PublicRestaurantView,
+  ResultView,
+  SearchView,
+} from "./viewmodel";

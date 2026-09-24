@@ -13,6 +13,7 @@
 import type {
   AmenityKey,
   CertificateEvidenceOut,
+  CertificateState,
   CertifierChip,
   CertifierListItem,
   DietType,
@@ -20,7 +21,10 @@ import type {
   GeoPointOut,
   KashrutVerdictOut,
   ProfileRequest,
+  PublicCertificateOut,
+  PublicCertifierOut,
   RestaurantDetailResponseOut,
+  RestaurantPublicOut,
   SearchResponseOut,
   SearchResultItemOut,
 } from "./types";
@@ -125,6 +129,73 @@ export function toDetailView(response: RestaurantDetailResponseOut): DetailView 
     website: response.website,
     amenities: response.amenities,
     certificates: response.certificates,
+  };
+}
+
+/**
+ * One published attribute fact, ready to print: the key names the string-table
+ * label, `published` is the certificate's own true/false. The absent (unknown)
+ * keys are not in the list at all — nothing here is rendered as false by default.
+ */
+export interface PublishedFact {
+  key: string;
+  published: boolean;
+}
+
+/** A certificate on the profile-free page: facts as stored, nothing decided. */
+export interface PublicCertificateView {
+  certifier: PublicCertifierOut;
+  status: CertificateState;
+  validUntil: string | null;
+  facts: PublishedFact[];
+}
+
+export interface PublicRestaurantView {
+  id: string;
+  nameHe: string;
+  nameEn: string | null;
+  cityHe: string | null;
+  addressHe: string | null;
+  geo: GeoPointOut | null;
+  dietType: DietType | null;
+  priceLevel: number | null;
+  phone: string | null;
+  website: string | null;
+  amenities: Record<string, boolean>;
+  certificates: PublicCertificateView[];
+  updatedAt: string;
+}
+
+/**
+ * The attribute map flattened into rows *here*, in the API layer, so the view
+ * prints a list it was handed and never reads the map itself — the boundary
+ * `src/test/no-client-kashrut-logic.test.ts` checks is textual, and it is kept
+ * trivially true by keeping every `.attributes` read on this side of it.
+ */
+function toPublicCertificateView(certificate: PublicCertificateOut): PublicCertificateView {
+  return {
+    certifier: certificate.certifier,
+    status: certificate.status,
+    validUntil: certificate.valid_until,
+    facts: Object.entries(certificate.attributes).map(([key, published]) => ({ key, published })),
+  };
+}
+
+export function toPublicView(response: RestaurantPublicOut): PublicRestaurantView {
+  return {
+    id: response.restaurant_id,
+    nameHe: response.name_he,
+    nameEn: response.name_en,
+    cityHe: response.city_he,
+    addressHe: response.address_he,
+    geo: response.geo,
+    dietType: response.diet_type,
+    priceLevel: response.price_level,
+    phone: response.phone,
+    website: response.website,
+    amenities: response.amenities,
+    certificates: response.certificates.map(toPublicCertificateView),
+    updatedAt: response.updated_at,
   };
 }
 

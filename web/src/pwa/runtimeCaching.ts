@@ -38,6 +38,9 @@ export const CACHING_HANDLERS: readonly RuntimeCachingRule["handler"][] = [
   "StaleWhileRevalidate",
 ];
 
+/** The profile-free facts endpoint, `GET /v1/restaurants/{id}` (app/api/public_seo.py). */
+export const PUBLIC_RESTAURANT_URL_PATTERN = /^\/(v1|api)\/restaurants\//;
+
 export const API_RUNTIME_CACHING: RuntimeCachingRule[] = [
   {
     // Verdict-bearing traffic. Every endpoint that returns a Layer 1 verdict is a
@@ -49,10 +52,18 @@ export const API_RUNTIME_CACHING: RuntimeCachingRule[] = [
     method: "POST",
   },
   {
+    // The public restaurant facts: no verdict, but a certificate's stored state and
+    // expiry are kashrut facts, and a revocation must show the moment it is
+    // published. Registered before the GET rule below so it wins.
+    urlPattern: PUBLIC_RESTAURANT_URL_PATTERN,
+    handler: "NetworkOnly",
+    method: "GET",
+  },
+  {
     // GET traffic only, which today is `GET /v1/certifiers` — a list of certifier
     // names and ids used to build the whitelist picker. It carries no verdict and
     // no kashrut status, so a short-lived copy is safe and keeps the profile screen
-    // usable offline. Nothing else on the API is a GET.
+    // usable offline. The one other GET, the restaurant facts, is excluded above.
     urlPattern: API_URL_PATTERN,
     handler: "NetworkFirst",
     method: "GET",

@@ -324,6 +324,8 @@ describe("restaurant page", () => {
   async function open(route: string) {
     const user = userEvent.setup();
     renderApp(route);
+    // No profile yet: the facts page, whose call to action opens onboarding.
+    await user.click(await screen.findByRole("link", { name: he.publicRestaurant.cta }));
     await screen.findByText(he.presets.any.title);
     await user.click(screen.getByText(he.presets.any.title));
     await user.click(screen.getByRole("button", { name: he.onboarding.continue }));
