@@ -16,7 +16,7 @@ An app that answers "Can I eat here according to MY standards?" — user defines
 - Paid placement never influences match results or organic ranking.
 
 ## Current status (Aug 2026)
-- PRD complete (`docs/`).
+- PRD complete (`docs/`). Go-to-market strategy: `docs/go-to-market-strategy.md`.
 - **Backend scaffolded:** `app/` (FastAPI modular monolith) with PRD §16 models, Alembic
   initial migration `0001_initial_schema`, and `kashroot seed-import` (dry-run by
   default). No match engine, no API beyond `/health` yet — that's next.
