@@ -196,14 +196,13 @@ CERTIFIER_SEED: dict[str, dict[str, Any]] = {
         "name_en": "Beit Yosef",
         "type": CertifierType.PRIVATE,
     },
-    # The source could not attribute these 4 rows to any named body ("קהילות" = an
-    # unspecified community-level hechsher). A placeholder certifier, never a guess at
-    # which real certifier is meant — every row under it already carries
-    # ``needs_review=TRUE`` / ``UNKNOWN_PENDING_VERIFICATION``.
-    "kehilot_unidentified": {
-        "name_he": "כשרות קהילתית לא מזוהה",
-        "name_en": "Unidentified Community Kashrut",
-        "type": CertifierType.PRIVATE,
+    # The source label "קהילות" (misadot_mehadrin) was identified as Badatz Kehilot
+    # (Bnei Brak, est. 2009) by the product owner on 2026-09-25, corroborated by the
+    # certifier's public restaurant listings on kosher-kosher.co.il and easy.co.il.
+    "badatz_kehilot": {
+        "name_he": 'בד"ץ קהילות',
+        "name_en": "Badatz Kehilot",
+        "type": CertifierType.BADATZ,
     },
     # Distinct from ``landa_bnei_brak`` on purpose: these 4 rows carry a Landa-like label
     # the source itself could not confirm is the same badatz. Modeled as its own
@@ -310,6 +309,30 @@ SOURCE_DOCUMENT_SEED: dict[str, dict[str, Any]] = {
             "above this entry."
         ),
     },
+    # Added with the Beit Yosef Ashdod web-directory refresh (2026-09-25). Unlike every
+    # PDF/poster/CSV list above, this is the certifier's own public *online* directory —
+    # scraped, not received as a file — and covers Ashdod only, not beit_yosef's full
+    # territory.
+    #
+    # KNOWN GAP: no raw snapshot of the page was captured, so nothing is checked in under
+    # ``data/sources/`` — the CSV cites 47 rows against it but there is no evidence file
+    # behind them, the same gap as ``misadot_mehadrin_restaurants_csv`` above.
+    # ``test_source_documents_point_at_files_that_exist`` fails on this entry until a
+    # snapshot is added; this is a genuine missing-evidence gap, not a guess to paper over.
+    "badatz_beit_yosef_web_directory": {
+        "title": "Badatz Beit Yosef — web directory (Ashdod)",
+        "kind": SourceDocumentKind.WEB,
+        "certifier_slug": "beit_yosef",
+        "file": "badatz_beit_yosef_web_directory.html",
+        "date_label": "Accessed 2026-09-25",
+        "notes": (
+            "Rows scraped from the certifier's own public online directory, Ashdod "
+            "only. The label is an access date, not a publication date — the "
+            "directory itself carries no publication date. No raw snapshot is "
+            "checked in under data/sources/ — see the module docstring note above "
+            "this entry, a KNOWN GAP in the same sense as misadot_mehadrin."
+        ),
+    },
 }
 
 #: Hebrew-calendar list labels → the **earliest** Gregorian date the label can mean.
@@ -322,6 +345,8 @@ SOURCE_DATE_EARLIEST: dict[str, dt.date] = {
     "Summer 5786 (2026)": dt.date(2026, 6, 1),
     "5786 (2026)": dt.date(2025, 9, 23),  # 1 Tishrei 5786
     "Tishrei 5787 (Sep 2026)": dt.date(2026, 9, 12),  # 1 Tishrei 5787
+    # An access date is exact, not a Hebrew-calendar range — earliest == that date.
+    "Accessed 2026-09-25": dt.date(2026, 9, 25),
 }
 
 RECORD_STATE_MAP: dict[str, RecordState] = {

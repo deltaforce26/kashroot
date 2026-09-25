@@ -1,12 +1,20 @@
 # Seed Data
 
 ## `seed/kashroot_seed_corpus.csv`
-457 records across 8 source documents, following the Tishrei 5787 refresh described
-below (previously 375 records / 7 documents; 142 Landa records had been dropped by the
-Elul 5786 refresh — see that section). The corpus now includes rows added directly from
-the supplied Tishrei 5787 CSV rather than exclusively through `scripts/build_seed.py`,
-so the script is currently **not guaranteed to reproduce this file** — see the Tishrei
-5787 section before re-running it. Encoding: UTF-8 with BOM.
+492 records across 9 source documents (previously 457 records / 8 documents after the
+Tishrei 5787 refresh; 375 records / 7 documents before that; 142 Landa records had been
+dropped by the Elul 5786 refresh — see that section). The corpus now includes rows added
+directly from the supplied Tishrei 5787 CSV rather than exclusively through
+`scripts/build_seed.py`, so the script is currently **not guaranteed to reproduce this
+file** — see the Tishrei 5787 section before re-running it. Encoding: UTF-8 with BOM.
+
+**2026-09-25 reconciliation:** the totals above reflect two changes made directly to the
+CSV after the Tishrei 5787 refresh: the Beit Yosef Ashdod web-directory refresh (+47 rows,
+1 rename, 12 rows removed — see that section below) and the קהילות → `badatz_kehilot`
+reattribution (4 rows moved from `UNKNOWN_PENDING_VERIFICATION`/`needs_review=TRUE` to
+`LIST_VERIFIED`/`needs_review=FALSE` — see the Tishrei 5787 section below). Net effect on
+row count: 457 + 47 − 12 = 492; the reattribution changes state/review flags, not row
+count.
 
 ### Columns
 | Column | Meaning |
@@ -19,8 +27,8 @@ so the script is currently **not guaranteed to reproduce this file** — see the
 | `certifier_ids` | `;`-separated. 23 known slugs as of the Tishrei 5787 refresh — see `CERTIFIER_SEED` in `app/ingestion/seed_import.py` for the full, current list |
 | `corroboration_count` | # of distinct source documents listing this business (36 have 2, 6 have 3) |
 | `source_documents` / `source_date` | Provenance; dates are Hebrew-calendar list dates. Freshest document first — the importer dates the certificate from it. Each document's own date lives in `SOURCE_DOCUMENT_SEED`, never inferred from whichever row cites it first |
-| `record_state` | `LIST_VERIFIED` (clean row from official list, 393 rows) or `UNKNOWN_PENDING_VERIFICATION` (64 rows) |
-| `needs_review` | TRUE where poster layout (or, for the Tishrei 5787 rows, an unresolved certifier attribution) made city/phone/address/certifier assignment ambiguous (64 rows) |
+| `record_state` | `LIST_VERIFIED` (clean row from official list, 435 rows) or `UNKNOWN_PENDING_VERIFICATION` (57 rows) |
+| `needs_review` | TRUE where poster layout (or, for the Tishrei 5787 rows, an unresolved certifier attribution) made city/phone/address/certifier assignment ambiguous (59 rows) |
 | `dedupe_hash_sha256` | Present in the Tishrei 5787 corpus; not read by the importer (dedupe keys are derived at import time by `restaurant_dedupe_key`, not from this column) |
 
 ### Sources (`sources/`)
@@ -34,6 +42,7 @@ so the script is currently **not guaranteed to reproduce this file** — see the
 | `landa_vacation_cities_poster.jpg` | Landa (Bnei Brak) | Poster, readable |
 | `landa_restaurants_elul_5786.csv` | Landa (Bnei Brak) | Clean table, supplied as CSV |
 | `misadot_mehadrin_restaurants.csv` | ~20 certifiers (consolidated directory, no single certifier) | **File missing** — see Tishrei 5787 section below |
+| `badatz_beit_yosef_web_directory.html` | Beit Yosef (Ashdod only) | **File missing** — see Beit Yosef Ashdod web-directory refresh section below |
 
 ### Certifier merges
 - **`rabbanut_bnei_brak` → `landa_bnei_brak`** (Aug 2026, product decision). The Bnei Brak
@@ -121,13 +130,21 @@ knowledge, not published by any list in this repo** — no source here states a 
 rabbinate's official name, a private rabbi's honorific spelling, or which organizational
 type some of them are. Flagged for human review, particularly:
 - `beit_yosef` — could plausibly be a local-rabbinate-administered standard or a private
-  body; modeled as `PRIVATE`, unconfirmed.
-- `kehilot_unidentified` — a placeholder for 4 rows whose community-level hechsher
-  the source itself could not name. Never guess a real certifier onto it.
+  body; modeled as `PRIVATE`, unconfirmed. The 2026-09-25 refresh sourced rows from Badatz
+  Beit Yosef's own web directory, which supports modeling it as a `PRIVATE` badatz — the
+  name/type has not been changed in `CERTIFIER_SEED` pending review.
+- `badatz_kehilot` — **resolved 2026-09-25.** The 4 rows originally labelled only
+  "קהילות" (previously modeled as the placeholder `kehilot_unidentified`) were identified
+  by the product owner as בד"ץ קהילות (Badatz Kehilot HaCharedim, Bnei Brak, est. 2009),
+  corroborated by the certifier's public restaurant listings on kosher-kosher.co.il and
+  easy.co.il. `CERTIFIER_SEED` now carries it as `badatz_kehilot` / `CertifierType.BADATZ`,
+  and the 4 rows were reattributed to it with `record_state=LIST_VERIFIED` and
+  `needs_review=FALSE` — the same treatment as every other named certifier from this
+  source. This certifier is no longer counted among the 20 unverified guesses below.
 - `rav_landa_variant_unverified` — 4 rows carrying a Landa-like label the source could
   not confirm is `landa_bnei_brak`. Deliberately modeled as a separate, unmerged
   certifier so an unverified badge never inherits Landa's standing.
-- All 3 above, plus every Tishrei 5787 row whose certifier is genuinely uncertain,
+- Both above, plus every Tishrei 5787 row whose certifier is genuinely uncertain,
   already carry `record_state=UNKNOWN_PENDING_VERIFICATION` and `needs_review=TRUE` in
   the corpus — the fail-safe rule is doing its job on these rows already.
 
@@ -138,10 +155,43 @@ something to paper over: `tests/test_seed_corpus_contract.py::test_source_docume
 fails on this and should keep failing until the actual source file is supplied and added
 under `data/sources/misadot_mehadrin_restaurants.csv`.
 
+### Beit Yosef Ashdod web-directory refresh (2026-09-25)
+
+A new source document, `badatz_beit_yosef_web_directory`, adds 47 rows from Badatz Beit
+Yosef's own public online directory — Ashdod only, not the certifier's full territory.
+All 47 cite `certifier_ids=beit_yosef` and `source_date="Accessed 2026-09-25"`: 45
+`LIST_VERIFIED`/`needs_review=FALSE`, 2 `LIST_VERIFIED`/`needs_review=TRUE`. Diet mix:
+24 dairy, 17 meat, 4 dairy_pareve, 2 pareve. It is modeled with `kind: WEB` (an online
+directory, scraped, not a received file) in `SOURCE_DOCUMENT_SEED`; `Accessed 2026-09-25`
+is an access date, not a publication date, and is exact rather than a Hebrew-calendar
+range, so `SOURCE_DATE_EARLIEST` maps it straight to that Gregorian date.
+
+The same refresh also carried three other changes, unrelated to the new document:
+- **1 rename**: a Rubin bakery row, `וי אר בית מאפה` → `ויינר בית מאפה` (same
+  address/phone) — a name correction, not a new business.
+- **12 rows removed**: 10 `פיצוחים` (nut/snack shop) rows from the Rubin and Eda Haredit
+  sources — retail, not restaurants, so out of corpus scope — plus 2 Eda Haredit north
+  rows with no address at all (unusable for dedupe/geocoding).
+
+**Known gap — missing raw evidence file.** No snapshot of the Beit Yosef web directory
+was captured, so nothing is checked in under `data/sources/` for this document — the 47
+citing rows have no corresponding evidence file, the same gap as
+`misadot_mehadrin_restaurants_csv` above.
+`tests/test_seed_corpus_contract.py::test_source_documents_point_at_files_that_exist`
+fails on this entry too, and should keep failing until an actual snapshot
+(`data/sources/badatz_beit_yosef_web_directory.html`) is supplied.
+
+This refresh also bears on the open `beit_yosef` certifier-type question raised in the
+Tishrei 5787 section below: sourcing rows from Badatz Beit Yosef's own web directory
+supports modeling it as a `PRIVATE` badatz rather than a rabbanut-administered standard,
+though the certifier's name/type in `CERTIFIER_SEED` has not been changed pending
+review.
+
 ### Known gaps — important
 - **No certificate-level attributes** (glatt, pas yisrael…) and **no expiry dates** — none exist in these sources. These lists establish *status + certifier* only (source-hierarchy level 1 per PRD §13). Certificate photos / field verification required for attributes.
 - List dates are snapshots with no validity window → a per-certifier freshness/staleness rule is needed (configured: stale after 365 days without re-scrape, see `KASHROOT_DEFAULT_FRESHNESS_DAYS`).
 - Records with `needs_review=TRUE` must be manually verified before serving.
 - No geocoding yet — `geo point` population via Google Places is the next pipeline step.
 - **Missing raw source file**: `data/sources/misadot_mehadrin_restaurants.csv` does not exist — see the Tishrei 5787 section above.
-- **20 certifier names/types are unverified guesses** derived from slug + general knowledge, not from any published source in this repo — see the Tishrei 5787 section above for the full list and reasoning.
+- **19 certifier names/types are unverified guesses** derived from slug + general knowledge, not from any published source in this repo — see the Tishrei 5787 section above for the full list and reasoning. (One of the original 20, `badatz_kehilot` — formerly the `kehilot_unidentified` placeholder — was resolved on 2026-09-25; see that section.)
+- **Missing raw source file**: `data/sources/badatz_beit_yosef_web_directory.html` does not exist — see the Beit Yosef Ashdod web-directory refresh section above.
