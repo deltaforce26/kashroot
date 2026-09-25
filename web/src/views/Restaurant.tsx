@@ -34,6 +34,8 @@ import { formatDate, formatDistance, pickName, useI18n } from "../i18n/I18nProvi
 import { toPayload } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
 import { useSaveToggle } from "../saved/useSaveToggle";
+import { restaurantHead, uniqueCertifierNames } from "../seo/restaurantHead";
+import { useDocumentHead } from "../seo/useDocumentHead";
 
 function CertificateCard({
   restaurantId,
@@ -92,6 +94,28 @@ export function Restaurant() {
   const payload = useMemo(() => toPayload(profile), [profile]);
   // Same centre the list used, so the distance shown here is the same number.
   const { data, loading, error, reload } = useRestaurant(id, payload, origin ?? undefined);
+
+  // The same head the profile-free page declares for this address: facts about the
+  // place, and nothing about what the verdict below says — a crawler has no profile,
+  // and the search result must not carry one visitor's answer to everyone.
+  const facts = useMemo(
+    () =>
+      data
+        ? {
+            id: data.id,
+            nameHe: data.nameHe,
+            nameEn: data.nameEn,
+            cityHe: data.cityHe,
+            addressHe: data.addressHe,
+            phone: data.phone,
+            website: data.website,
+            geo: data.geo,
+            certifierNames: uniqueCertifierNames(data.certifiers, lang),
+          }
+        : null,
+    [data, lang],
+  );
+  useDocumentHead(restaurantHead(facts, id ?? "", lang, t, !loading && !error && !data));
 
   if (loading) {
     return (

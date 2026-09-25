@@ -67,6 +67,7 @@ import { createPin, createPopupAnchor, SELECTED_PIN_HEIGHT, type Pin } from "../
 import { MAP_ID, useGoogleMaps } from "../map/useGoogleMaps";
 import { toPayload } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
+import { useDocumentHead } from "../seo/useDocumentHead";
 
 /** Above the pins and above "you are here", so a card is never half-hidden by a pin. */
 const POPUP_Z = 30;
@@ -182,6 +183,8 @@ function MapPopupCard({ item, onClose }: { item: ResultView; onClose: () => void
 
 export function MapView() {
   const { t, lang } = useI18n();
+  // Pins are one profile's verdicts, drawn by a script: nothing for the index.
+  useDocumentHead({ title: t.map.map, description: t.seo.siteDescription, noindex: true });
   const navigate = useNavigate();
   const { profile } = useProfile();
   // The one filter store, shared with home and search, so a chip tapped here is the

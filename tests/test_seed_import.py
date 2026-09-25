@@ -6,7 +6,13 @@ import pytest
 from sqlalchemy import func, select
 
 from app.ingestion.normalize import split_branch_addresses
-from app.ingestion.seed_import import DEFAULT_CSV_PATH, import_seed, read_rows
+from app.ingestion.seed_import import (
+    CERTIFIER_SEED,
+    DEFAULT_CSV_PATH,
+    SOURCE_DOCUMENT_SEED,
+    import_seed,
+    read_rows,
+)
 from app.models import (
     AuditLog,
     Certificate,
@@ -37,11 +43,12 @@ def imported(session):
 
 
 def test_import_creates_certifiers_and_source_documents(session, imported):
-    # 3, not 4: rabbanut_bnei_brak was merged into landa_bnei_brak (Aug 2026). The
-    # source-document count is unchanged by that merge — a merge moves attribution, never
-    # provenance — and grew to 7 with the Elul 5786 Landa restaurants refresh.
-    assert count(session, Certifier) == 3
-    assert count(session, SourceDocument) == 7
+    # 23, not 4: rabbanut_bnei_brak was merged into landa_bnei_brak (Aug 2026), and the
+    # Tishrei 5787 corpus refresh (misadot_mehadrin_restaurants_csv, a multi-certifier
+    # directory) added 20 more certifiers. Source-document count grew to 7 with the Elul
+    # 5786 Landa restaurants refresh, then 8 with that same Tishrei 5787 refresh.
+    assert count(session, Certifier) == len(CERTIFIER_SEED)
+    assert count(session, SourceDocument) == len(SOURCE_DOCUMENT_SEED)
     doc = session.scalar(select(SourceDocument).where(SourceDocument.slug == "rubin_restaurants_pdf"))
     assert doc.source_date_label == "5786 (2026)"
     # Conservative: the earliest date the Hebrew-year label can mean.

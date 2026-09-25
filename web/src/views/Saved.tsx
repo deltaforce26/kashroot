@@ -28,6 +28,7 @@ import { useProfile } from "../profile/ProfileProvider";
 import { useSaved } from "../saved/SavedProvider";
 import { countVerdicts, hasDegraded, type SavedList } from "../saved/saved";
 import { useSavedDetails, type DetailMap } from "../saved/useSavedDetails";
+import { useDocumentHead } from "../seo/useDocumentHead";
 
 /** The one line of facts under a list's name: how many places, and where they are. */
 function listMeta(list: SavedList, placesCount: (n: number) => string): string {
@@ -80,6 +81,8 @@ function ListCard({ list, details }: { list: SavedList; details: DetailMap }) {
 
 export function Saved() {
   const { t } = useI18n();
+  // Device-local lists: there is nothing here for anyone else, crawlers included.
+  useDocumentHead({ title: t.saved.title, description: t.seo.siteDescription, noindex: true });
   const navigate = useNavigate();
   const { state } = useSaved();
   const { profile } = useProfile();

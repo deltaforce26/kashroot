@@ -98,9 +98,10 @@ function seedEverywhere() {
   localStorage.setItem("kashroot.origin.v1", JSON.stringify({ source: "none" }));
 }
 
-/** Through onboarding to home, the way the demo gets there. */
+/** Through the landing's call to action and onboarding to home, the way the demo gets there. */
 async function reachHome(user: User) {
   mount();
+  await user.click(await screen.findByRole("link", { name: he.landing.cta }));
   await screen.findByText(he.presets.any.title);
   await user.click(screen.getByText(he.presets.any.title));
   await user.click(screen.getByRole("button", { name: he.onboarding.continue }));

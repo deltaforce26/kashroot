@@ -96,3 +96,50 @@ ERROR_CERTIFICATE_NOT_FOUND_FOR_RESTAURANT = "certificate not found for this res
 #: ``FlagCreateRequest.message`` (POST /v1/restaurants/{id}/flags) — a short free-text
 #: report, not a certificate-evidence document.
 MAX_FLAG_MESSAGE_LENGTH = 1000
+
+#: SEO endpoints (``app.api.public_seo``) — ``GET /v1/restaurants/{id}`` and
+#: ``GET /v1/sitemap.xml``. Both are public, unauthenticated and profile-free
+#: (Googlebot carries no kashrut profile).
+CACHE_CONTROL_HEADER = "Cache-Control"
+RESTAURANT_PUBLIC_CACHE_CONTROL = "public, max-age=300"
+SITEMAP_CACHE_CONTROL = "public, max-age=3600"
+SITEMAP_CONTENT_TYPE = "application/xml"
+SITEMAP_XML_NAMESPACE = "http://www.sitemaps.org/schemas/sitemap/0.9"
+
+#: sitemaps.org caps a single sitemap file at 50,000 URLs; the corpus is ~375
+#: restaurants today so one file is enough. A larger corpus later needs a sitemap
+#: *index* file instead (out of scope here — see app.api.public_seo.build_sitemap_xml).
+SITEMAP_MAX_URLS = 50000
+
+#: ``GET /v1/directory`` (app.api.public_seo.get_directory) — the web landing page's
+#: profile-free, city-grouped directory. A sample, not the full per-city listing;
+#: ``restaurant_count`` on each city is always the full count regardless of this cap.
+DIRECTORY_SAMPLE_PER_CITY = 12
+
+#: The web app's (Vite SPA) own client-side routes the sitemap points at — not this
+#: API's paths.
+WEB_ROUTE_HOME = "/"
+WEB_ROUTE_RESTAURANT_TEMPLATE = "/r/{restaurant_id}"
+
+#: Vercel sets these on an external rewrite — how the web app proxies /v1/* to this
+#: API — used to recover the web app's own origin for absolute sitemap URLs when
+#: ``settings.public_web_origin`` is unset. See
+#: app.api.public_seo.resolve_public_web_origin. Lowercase here only for readability —
+#: Starlette's header lookup (``request.headers.get(...)``) is case-insensitive.
+FORWARDED_HOST_HEADER = "x-forwarded-host"
+FORWARDED_PROTO_HEADER = "x-forwarded-proto"
+DEFAULT_FORWARDED_PROTO = "https"
+
+#: The sitemap response varies its ``<loc>`` origin on the (now suffix-checked)
+#: ``X-Forwarded-Host`` header, so a shared cache must key on it too.
+VARY_HEADER = "Vary"
+VARY_FORWARDED_HOST = "X-Forwarded-Host"
+
+#: ``X-Forwarded-Host`` is trusted only when it ends with one of these suffixes — an
+#: unauthenticated caller can set this header to anything, and a spoofed host would
+#: otherwise poison the sitemap's shared cache (``SITEMAP_CACHE_CONTROL`` is
+#: ``public``). The web app's Vercel deployments are the only proxy that legitimately
+#: forwards to this API; a custom production domain must be set explicitly via
+#: ``KASHROOT_PUBLIC_WEB_ORIGIN`` (``settings.public_web_origin``) rather than trusted
+#: from a header. See app.api.public_seo.resolve_public_web_origin.
+TRUSTED_FORWARDED_HOST_SUFFIXES = (".vercel.app",)

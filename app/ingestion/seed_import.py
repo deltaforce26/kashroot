@@ -2,8 +2,10 @@
 
 What this pipeline does and does *not* establish (see data/README.md):
 
-* It establishes **status + certifier** only. Those six source documents are official
-  published lists — source-hierarchy level 1 (PRD §13).
+* It establishes **status + certifier** only. Those source documents are official
+  published lists — source-hierarchy level 1 (PRD §13) — except
+  ``misadot_mehadrin_restaurants_csv``, a consolidated multi-certifier directory (see
+  its entry in ``SOURCE_DOCUMENT_SEED``).
 * It establishes **no certificate attributes** (glatt, pas yisrael…) and **no expiry
   dates**, because the sources contain none. Certificates are therefore written with
   ``attributes = {}`` (every attribute *unknown*) and ``valid_until = NULL``. A profile
@@ -15,6 +17,10 @@ What this pipeline does and does *not* establish (see data/README.md):
 
 The pipeline is idempotent: restaurants upsert on ``dedupe_key``, certificates on
 ``import_key``. Re-running after a corpus rebuild produces updates, not duplicates.
+
+``--prune`` (off by default) additionally hard-deletes seed-origin restaurants and
+certificates this run's CSV no longer names — see ``app.ingestion.seed_prune`` for the
+exact rule that decides what "seed-origin" means and what it refuses to touch.
 """
 
 from __future__ import annotations
@@ -39,6 +45,7 @@ from app.ingestion.normalize import (
     slugify_city,
     split_branch_addresses,
 )
+from app.ingestion.seed_prune import PruneStats, prune_seed_data
 from app.models import (
     AuditAction,
     AuditLog,
@@ -87,6 +94,125 @@ CERTIFIER_SEED: dict[str, dict[str, Any]] = {
         "name_he": 'בד"ץ שארית ישראל - הרב לנדא',
         "name_en": "Badatz Rav Landa (Bnei Brak)",
         "type": CertifierType.BADATZ,
+    },
+    # Added with the Tishrei 5787 corpus refresh (``misadot_mehadrin_restaurants_csv``,
+    # a multi-certifier directory). Rabbanut entries below are local religious councils
+    # named after the slug's own jurisdiction, not necessarily the city of any one row
+    # that cites them (a council can cover more than one town) — PRD §16. Hebrew/English
+    # names for every entry in this block are **derived from the slug and general place
+    # names, not published by any certifier list in this repo**, since no source names
+    # them directly; flagged for the human review this batch's cover message lists.
+    "rabbanut_jerusalem": {
+        "name_he": "הרבנות המקומית ירושלים",
+        "name_en": "Local Rabbinate — Jerusalem",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_petah_tikva": {
+        "name_he": "הרבנות המקומית פתח תקווה",
+        "name_en": "Local Rabbinate — Petah Tikva",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_ashdod": {
+        "name_he": "הרבנות המקומית אשדוד",
+        "name_en": "Local Rabbinate — Ashdod",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_ramat_gan": {
+        "name_he": "הרבנות המקומית רמת גן",
+        "name_en": "Local Rabbinate — Ramat Gan",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_gedera": {
+        "name_he": "הרבנות המקומית גדרה",
+        "name_en": "Local Rabbinate — Gedera",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_kiryat_ata": {
+        "name_he": "הרבנות המקומית קרית אתא",
+        "name_en": "Local Rabbinate — Kiryat Ata",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_afula": {
+        "name_he": "הרבנות המקומית עפולה",
+        "name_en": "Local Rabbinate — Afula",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_hatzor_haglilit": {
+        "name_he": "הרבנות המקומית חצור הגלילית",
+        "name_en": "Local Rabbinate — Hatzor HaGlilit",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_zichron_yaakov": {
+        "name_he": "הרבנות המקומית זכרון יעקב",
+        "name_en": "Local Rabbinate — Zichron Yaakov",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_sderot": {
+        "name_he": "הרבנות המקומית שדרות",
+        "name_en": "Local Rabbinate — Sderot",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_beer_yaakov": {
+        "name_he": "הרבנות המקומית באר יעקב",
+        "name_en": "Local Rabbinate — Be'er Ya'akov",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_chevel_yavne": {
+        "name_he": "הרבנות המקומית - מועצה אזורית חבל יבנה",
+        "name_en": "Local Rabbinate — Chevel Yavne Regional Council",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_maale_adumim": {
+        "name_he": "הרבנות המקומית מעלה אדומים",
+        "name_en": "Local Rabbinate — Ma'ale Adumim",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "badatz_hadar_hakashrut_barda": {
+        "name_he": 'בד"ץ הדר הכשרות - הרב ברדה',
+        "name_en": "Badatz Hadar HaKashrut (Barda)",
+        "type": CertifierType.BADATZ,
+    },
+    "chatam_sofer_petah_tikva": {
+        "name_he": 'חת"ם סופר - פתח תקווה',
+        "name_en": "Chatam Sofer (Petah Tikva)",
+        "type": CertifierType.PRIVATE,
+    },
+    "rav_refael_manat": {
+        "name_he": "הרב רפאל מנת",
+        "name_en": "Rav Refael Manat",
+        "type": CertifierType.PRIVATE,
+    },
+    "rav_machpud": {
+        "name_he": "הרב מחפוד",
+        "name_en": "Rav Machpud",
+        "type": CertifierType.PRIVATE,
+    },
+    # "Beit Yosef" is a recognized Sephardic kashrut standard in Israel, sometimes
+    # administered by a local rabbinate and sometimes by a private body depending on
+    # locality — the corpus row alone does not say which, so this is modeled as its own
+    # certifier rather than guessed onto either. Flagged for review.
+    "beit_yosef": {
+        "name_he": "בית יוסף",
+        "name_en": "Beit Yosef",
+        "type": CertifierType.PRIVATE,
+    },
+    # The source label "קהילות" (misadot_mehadrin) was identified as Badatz Kehilot
+    # (Bnei Brak, est. 2009) by the product owner on 2026-09-25, corroborated by the
+    # certifier's public restaurant listings on kosher-kosher.co.il and easy.co.il.
+    "badatz_kehilot": {
+        "name_he": 'בד"ץ קהילות',
+        "name_en": "Badatz Kehilot",
+        "type": CertifierType.BADATZ,
+    },
+    # Distinct from ``landa_bnei_brak`` on purpose: these 4 rows carry a Landa-like label
+    # the source itself could not confirm is the same badatz. Modeled as its own
+    # certifier rather than merged, so an unverified badge never silently inherits
+    # ``landa_bnei_brak``'s standing; every row under it already carries
+    # ``needs_review=TRUE`` / ``UNKNOWN_PENDING_VERIFICATION``. Flagged for review.
+    "rav_landa_variant_unverified": {
+        "name_he": "לנדא - וריאנט לא מאומת",
+        "name_en": "Landa — unverified variant",
+        "type": CertifierType.PRIVATE,
     },
 }
 
@@ -157,6 +283,56 @@ SOURCE_DOCUMENT_SEED: dict[str, dict[str, Any]] = {
             "label records receipt (2026-08-29), not publication."
         ),
     },
+    # Added with the Tishrei 5787 corpus refresh. Unlike every document above, this is
+    # not one certifier's own published list — it is a consolidated directory covering
+    # ~20 different certifiers (local rabbanuts, private rabbis, badatzim), so it
+    # carries no single ``certifier_slug``; ``_ensure_source_documents`` leaves
+    # ``certifier_id`` NULL for it rather than attributing it to one certifier it was
+    # never published by.
+    #
+    # KNOWN GAP: no raw file for this document exists under ``data/sources/`` — the CSV
+    # cites 145 rows against it but the underlying list itself was never supplied here.
+    # ``test_source_documents_point_at_files_that_exist`` therefore fails until the real
+    # file is added; this is a genuine missing-evidence gap; needs a project decision, not
+    # a guess at contents.
+    "misadot_mehadrin_restaurants_csv": {
+        "title": "Misadot Mehadrin — consolidated restaurants list",
+        "kind": SourceDocumentKind.MANUAL,
+        "certifier_slug": None,
+        "file": "misadot_mehadrin_restaurants.csv",
+        "date_label": "Tishrei 5787 (Sep 2026)",
+        "notes": (
+            "Multi-certifier directory (~20 certifiers: local rabbanuts, private "
+            "rabbis, badatzim) rather than one certifier's own list. No publication "
+            "date on the source — the label records receipt, not publication. Raw "
+            "file not present under data/sources/ — see the module docstring note "
+            "above this entry."
+        ),
+    },
+    # Added with the Beit Yosef Ashdod web-directory refresh (2026-09-25). Unlike every
+    # PDF/poster/CSV list above, this is the certifier's own public *online* directory —
+    # scraped, not received as a file — and covers Ashdod only, not beit_yosef's full
+    # territory.
+    #
+    # KNOWN GAP: no raw snapshot of the page was captured, so nothing is checked in under
+    # ``data/sources/`` — the CSV cites 47 rows against it but there is no evidence file
+    # behind them, the same gap as ``misadot_mehadrin_restaurants_csv`` above.
+    # ``test_source_documents_point_at_files_that_exist`` fails on this entry until a
+    # snapshot is added; this is a genuine missing-evidence gap, not a guess to paper over.
+    "badatz_beit_yosef_web_directory": {
+        "title": "Badatz Beit Yosef — web directory (Ashdod)",
+        "kind": SourceDocumentKind.WEB,
+        "certifier_slug": "beit_yosef",
+        "file": "badatz_beit_yosef_web_directory.html",
+        "date_label": "Accessed 2026-09-25",
+        "notes": (
+            "Rows scraped from the certifier's own public online directory, Ashdod "
+            "only. The label is an access date, not a publication date — the "
+            "directory itself carries no publication date. No raw snapshot is "
+            "checked in under data/sources/ — see the module docstring note above "
+            "this entry, a KNOWN GAP in the same sense as misadot_mehadrin."
+        ),
+    },
 }
 
 #: Hebrew-calendar list labels → the **earliest** Gregorian date the label can mean.
@@ -168,6 +344,9 @@ SOURCE_DATE_EARLIEST: dict[str, dt.date] = {
     "Elul 5786 (Aug-Sep 2026)": dt.date(2026, 8, 14),
     "Summer 5786 (2026)": dt.date(2026, 6, 1),
     "5786 (2026)": dt.date(2025, 9, 23),  # 1 Tishrei 5786
+    "Tishrei 5787 (Sep 2026)": dt.date(2026, 9, 12),  # 1 Tishrei 5787
+    # An access date is exact, not a Hebrew-calendar range — earliest == that date.
+    "Accessed 2026-09-25": dt.date(2026, 9, 25),
 }
 
 RECORD_STATE_MAP: dict[str, RecordState] = {
@@ -196,6 +375,8 @@ class SeedImportStats:
     pending_certificates: int = 0
     #: field name → count of rows whose value changed (the diff-review summary)
     changed_fields: dict[str, int] = field(default_factory=dict)
+    #: Set only when ``--prune`` ran.
+    prune: PruneStats | None = None
 
     def note_change(self, entity: str, field_name: str) -> None:
         key = f"{entity}.{field_name}"
@@ -277,7 +458,8 @@ def _ensure_source_documents(
             stats.source_documents_created += 1
         doc.title = spec["title"]
         doc.kind = spec["kind"]
-        doc.certifier_id = certifiers[spec["certifier_slug"]].id
+        certifier_slug = spec.get("certifier_slug")
+        doc.certifier_id = certifiers[certifier_slug].id if certifier_slug else None
         doc.uri = str(SOURCES_DIR / spec["file"])
         doc.notes = spec.get("notes")
         if label:
@@ -331,12 +513,19 @@ def import_seed(
     *,
     dry_run: bool = False,
     actor: str = "cli",
+    prune: bool = False,
 ) -> SeedImportStats:
     """Import the seed corpus. Returns the diff summary.
 
     ``dry_run=True`` performs every read and write against the session, reports the
     diff, then rolls the data back — the diff-review step of a versioned pipeline. The
     ``IngestionRun`` row itself is kept either way, so reviews leave a trail.
+
+    ``prune=True`` additionally hard-deletes seed-origin restaurants and certificates
+    this run's CSV no longer names, after the upsert pass — see
+    ``app.ingestion.seed_prune`` for exactly which rows that is safe to touch. It
+    respects ``dry_run`` the same way every other write here does: rolled back, never
+    committed, on a plain dry run.
     """
     csv_path = Path(csv_path)
     if not csv_path.exists():
@@ -357,7 +546,7 @@ def import_seed(
 
     stats = SeedImportStats()
     try:
-        _run_import(session, csv_path, run_id, stats)
+        _run_import(session, csv_path, run_id, stats, actor=actor, prune=prune)
     except Exception as exc:
         session.rollback()
         _finish_run(session, run_id, IngestionRunState.FAILED, stats, error=str(exc))
@@ -389,7 +578,13 @@ def _finish_run(
 
 
 def _run_import(
-    session: Session, csv_path: Path, run_id: Any, stats: SeedImportStats
+    session: Session,
+    csv_path: Path,
+    run_id: Any,
+    stats: SeedImportStats,
+    *,
+    actor: str,
+    prune: bool,
 ) -> None:
     rows = list(read_rows(csv_path))
     stats.rows_read = len(rows)
@@ -403,10 +598,28 @@ def _run_import(
         for c in session.scalars(select(Certificate).where(Certificate.import_key.is_not(None)))
     }
 
+    #: Every dedupe/import key this run's CSV produced — the basis for ``--prune``.
+    csv_dedupe_keys: set[str] = set()
+    csv_import_keys: set[str] = set()
+
     for row in rows:
-        _import_row(session, row, certifiers, documents, restaurants, certificates, run_id, stats)
+        _import_row(
+            session,
+            row,
+            certifiers,
+            documents,
+            restaurants,
+            certificates,
+            run_id,
+            stats,
+            csv_dedupe_keys,
+            csv_import_keys,
+        )
 
     session.flush()
+
+    if prune:
+        stats.prune = prune_seed_data(session, csv_dedupe_keys, csv_import_keys, actor, run_id)
 
 
 def _primary_document(
@@ -444,6 +657,8 @@ def _import_row(
     certificates: dict[str, Certificate],
     run_id: Any,
     stats: SeedImportStats,
+    csv_dedupe_keys: set[str],
+    csv_import_keys: set[str],
 ) -> None:
     certifier_slugs = _row_certifier_slugs(row)
     source_slugs = _row_source_slugs(row)
@@ -464,6 +679,7 @@ def _import_row(
 
     for address in addresses:
         dedupe_key = restaurant_dedupe_key(name_he, city_he, address)
+        csv_dedupe_keys.add(dedupe_key)
         values: dict[str, Any] = {
             "name_he": name_he,
             "address_he": address,
@@ -527,6 +743,7 @@ def _import_row(
                 certificates,
                 run_id,
                 stats,
+                csv_import_keys,
             )
 
 
@@ -541,8 +758,10 @@ def _import_certificate(
     certificates: dict[str, Certificate],
     run_id: Any,
     stats: SeedImportStats,
+    csv_import_keys: set[str],
 ) -> None:
     import_key = f"seed:{restaurant.dedupe_key}:{certifier.slug}"
+    csv_import_keys.add(import_key)
     list_date = document.source_date if document else None
     verified_at = (
         dt.datetime.combine(list_date, dt.time.min, tzinfo=dt.UTC) if list_date else None

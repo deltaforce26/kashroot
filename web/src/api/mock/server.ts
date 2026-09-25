@@ -32,6 +32,8 @@ import {
   type CertifierListItem,
   type CertificationLevel,
   type Confidence,
+  type DirectoryOut,
+  type DirectoryRestaurantOut,
   type FlagCreatedOut,
   type FlagRequest,
   type FitComponentOut,
@@ -44,6 +46,7 @@ import {
   type ReasonCode,
   type ReasonOut,
   type RestaurantDetailResponseOut,
+  type RestaurantPublicOut,
   type SearchRequest,
   type SearchResponseOut,
   type SearchResultItemOut,
@@ -536,6 +539,118 @@ export function mockRestaurant(
       return toEvidence(cert, evaluation, now, photo);
     }),
   });
+}
+
+/**
+ * GET /v1/restaurants/{id}, replayed (app/api/public_seo.py): the restaurant block
+ * and every certificate's stored facts, with no profile and therefore no
+ * evaluation — `evaluateRestaurant` is deliberately not called on this path. A
+ * missing id is a 404, as on the API.
+ */
+export function mockRestaurantPublic(id: string, now = new Date()): Promise<RestaurantPublicOut> {
+  const restaurant = RESTAURANTS.find((candidate) => candidate.id === id);
+  if (!restaurant) return delayReject(new ApiError(404, "not_found"));
+
+  return delay({
+    restaurant_id: restaurant.id,
+    name_he: restaurant.name_he,
+    name_en: restaurant.name_en,
+    address_he: restaurant.address_he,
+    city_he: restaurant.city_he,
+    phone: restaurant.phone,
+    website: null,
+    diet_type: restaurant.diet_type,
+    price_level: restaurant.price_level,
+    amenities: restaurant.amenities as Record<string, boolean>,
+    geo: { lat: restaurant.lat, lon: restaurant.lon },
+    certificates: restaurant.certificates.map((cert) => {
+      const { id: certifierId, name_he, name_en } = chipById(cert.certifier_id);
+      return {
+        certifier: { id: certifierId, name_he, name_en },
+        status: cert.state,
+        valid_until: cert.valid_until,
+        attributes: cert.attributes as Record<string, boolean>,
+      };
+    }),
+    updated_at: now.toISOString(),
+  });
+}
+
+/**
+ * Mirrors `DIRECTORY_SAMPLE_PER_CITY` (app/api/consts.py): how many of a city's rows
+ * the landing page is handed. The city's `restaurant_count` is the full count.
+ */
+export const DIRECTORY_SAMPLE_PER_CITY = 12;
+
+const byHebrewName = (a: string, b: string): number => a.localeCompare(b, "he");
+
+function toDirectoryRow(restaurant: FixtureRestaurant): DirectoryRestaurantOut {
+  // Identity only, deduplicated by certifier and sorted by name — the same rule the
+  // API applies. A certificate's state is deliberately not read here.
+  const certifiers = restaurantChips(restaurant).sort((a, b) => byHebrewName(a.name_he, b.name_he));
+  return {
+    restaurant_id: restaurant.id,
+    name_he: restaurant.name_he,
+    name_en: restaurant.name_en,
+    address_he: restaurant.address_he,
+    certifier_names_he: certifiers.map((certifier) => certifier.name_he),
+    certifier_names_en: certifiers.map((certifier) => certifier.name_en),
+  };
+}
+
+/**
+ * A city group's English label, as `_city_en_for_group` (app/api/public_seo.py)
+ * picks it: the most common non-null `city_en` among the group's restaurants, ties
+ * broken alphabetically, `null` when none has one. Grouping stays keyed by
+ * `city_he`; this only names the group. Exported so the rule is tested directly.
+ */
+export function directoryCityEn(group: ReadonlyArray<{ city_en: string | null }>): string | null {
+  const counts = new Map<string, number>();
+  for (const restaurant of group) {
+    if (restaurant.city_en !== null) {
+      counts.set(restaurant.city_en, (counts.get(restaurant.city_en) ?? 0) + 1);
+    }
+  }
+  let best: string | null = null;
+  for (const [cityEn, count] of counts) {
+    const bestCount = best === null ? -1 : (counts.get(best) ?? 0);
+    if (count > bestCount || (count === bestCount && best !== null && cityEn < best)) {
+      best = cityEn;
+    }
+  }
+  return best;
+}
+
+/**
+ * GET /v1/directory, replayed (app/api/public_seo.py): every fixture grouped by
+ * `city_he`, cities from largest to smallest (ties alphabetical), each city's rows
+ * alphabetical by name and capped at the sample size. `evaluateRestaurant` is not
+ * called on this path — there is no profile, so there is nothing to evaluate — and
+ * every ordering is alphabetical because the app never ranks.
+ */
+export function mockDirectory(): Promise<DirectoryOut> {
+  const byCity = new Map<string, FixtureRestaurant[]>();
+  for (const restaurant of RESTAURANTS) {
+    const group = byCity.get(restaurant.city_he) ?? [];
+    group.push(restaurant);
+    byCity.set(restaurant.city_he, group);
+  }
+
+  const cities = [...byCity.entries()]
+    .sort(([cityA, groupA], [cityB, groupB]) =>
+      groupB.length - groupA.length || byHebrewName(cityA, cityB),
+    )
+    .map(([city_he, group]) => ({
+      city_he,
+      city_en: directoryCityEn(group),
+      restaurant_count: group.length,
+      restaurants: [...group]
+        .sort((a, b) => byHebrewName(a.name_he, b.name_he))
+        .slice(0, DIRECTORY_SAMPLE_PER_CITY)
+        .map(toDirectoryRow),
+    }));
+
+  return delay({ total_restaurants: RESTAURANTS.length, cities });
 }
 
 /**

@@ -5,8 +5,14 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { mockRestaurant, mockSearch } from "../api/mock/server";
-import { CERTIFIERS } from "../api/mock/fixtures";
+import {
+  DIRECTORY_SAMPLE_PER_CITY,
+  directoryCityEn,
+  mockDirectory,
+  mockRestaurant,
+  mockSearch,
+} from "../api/mock/server";
+import { CERTIFIERS, RESTAURANTS } from "../api/mock/fixtures";
 import type { ProfileRequest } from "../api/types";
 
 const ALL_CERTIFIERS: ProfileRequest = {
@@ -177,5 +183,73 @@ describe("search response", () => {
     const verdicts = new Set(response.items.map((item) => item.kashrut.verdict));
     expect(verdicts.has("unknown")).toBe(true);
     expect(verdicts.has("no_match")).toBe(true);
+  });
+});
+
+/**
+ * The landing page's directory, replayed to the contract of `GET /v1/directory`:
+ * grouped by city, ordered by size, sampled alphabetically, and with no verdict or
+ * certificate state anywhere in it — there is no profile on this path.
+ */
+describe("directory response", () => {
+  it("groups every fixture by city, largest city first, and counts the whole city", async () => {
+    const response = await mockDirectory();
+    expect(response.total_restaurants).toBe(RESTAURANTS.length);
+    expect(response.cities.map((city) => city.city_he)).toEqual(["ירושלים", "בני ברק", "טבריה"]);
+    expect(response.cities.map((city) => city.restaurant_count)).toEqual([8, 2, 1]);
+    for (const city of response.cities) {
+      expect(city.restaurants.length).toBeLessThanOrEqual(DIRECTORY_SAMPLE_PER_CITY);
+      expect(city.restaurants.length).toBe(Math.min(city.restaurant_count, DIRECTORY_SAMPLE_PER_CITY));
+    }
+  });
+
+  it("labels each city with its records' `city_en`, grouped by `city_he` alone", async () => {
+    const response = await mockDirectory();
+    expect(response.cities.map((city) => city.city_en)).toEqual(["Jerusalem", "Bnei Brak", "Tiberias"]);
+    for (const city of response.cities) {
+      const group = RESTAURANTS.filter((restaurant) => restaurant.city_he === city.city_he);
+      expect(city.city_en).toBe(directoryCityEn(group));
+    }
+  });
+
+  it("picks a city's `city_en` as the API does: majority, ties alphabetical, null if none", () => {
+    const named = (...names: (string | null)[]) => names.map((city_en) => ({ city_en }));
+    // The majority wins, wherever the nulls fall.
+    expect(directoryCityEn(named("Jerusalem", null, "Yerushalayim", "Jerusalem"))).toBe("Jerusalem");
+    expect(directoryCityEn(named("Yerushalayim", "Yerushalayim", "Jerusalem"))).toBe("Yerushalayim");
+    // A tie is broken alphabetically, not by first appearance.
+    expect(directoryCityEn(named("Yerushalayim", "Jerusalem"))).toBe("Jerusalem");
+    expect(directoryCityEn(named("Jerusalem", "Yerushalayim"))).toBe("Jerusalem");
+    // Nulls are not values: they never win a tie and never become the label.
+    expect(directoryCityEn(named(null, null, "Haifa"))).toBe("Haifa");
+    expect(directoryCityEn(named(null, null))).toBeNull();
+    expect(directoryCityEn([])).toBeNull();
+  });
+
+  it("orders a city's rows and each row's certifiers alphabetically — never by anything else", async () => {
+    const response = await mockDirectory();
+    for (const city of response.cities) {
+      const names = city.restaurants.map((row) => row.name_he);
+      expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, "he")));
+      for (const row of city.restaurants) {
+        expect(row.certifier_names_he).toEqual(
+          [...row.certifier_names_he].sort((a, b) => a.localeCompare(b, "he")),
+        );
+        expect(row.certifier_names_en).toHaveLength(row.certifier_names_he.length);
+      }
+    }
+  });
+
+  it("deduplicates a restaurant's certifiers, and carries no verdict or certificate state", async () => {
+    const response = await mockDirectory();
+    const rows = response.cities.flatMap((city) => city.restaurants);
+    // Two certificates from the same certifier on the record: one name on the row.
+    const hapisga = rows.find((row) => row.restaurant_id === "r-hapisga");
+    expect(hapisga?.certifier_names_he).toEqual(["בד״ץ מהדרין — הרב רובין"]);
+    // No certificate at all: an empty list, not an invented certifier.
+    expect(rows.find((row) => row.restaurant_id === "r-sushi-bvg")?.certifier_names_he).toEqual([]);
+
+    const text = JSON.stringify(response);
+    expect(text).not.toMatch(/kashrut|verdict|"match"|no_match|unknown|status|state|attributes|valid_until/);
   });
 });
