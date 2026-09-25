@@ -1,6 +1,6 @@
 # Go-to-market strategy — Kashroot
 
-**Version:** 1.0 · **Date:** 25 Sep 2026 · **Companion to:** `kosher-app-prd.md` (product), `seo-runbook.md`, `deploy-runbook.md`
+**Version:** 1.1 · **Date:** 25 Sep 2026 · **Companion to:** `kosher-app-prd.md` (product), `seo-runbook.md`, `deploy-runbook.md`
 
 > **In one line:** launch narrow and trusted, not wide and thin. Beachhead = badatz-eating
 > households in Jerusalem, reached through the certifiers and restaurants that are already
@@ -31,10 +31,10 @@ Three consequences that shape everything below:
    Family and the badatz-eating Hungry Now user today. It cannot serve the secular
    "anything with a teuda" persona until Rabbanut data lands, because the "Local Rabbanut"
    preset returns almost nothing (measured: 2 matches / 98 no-match in Jerusalem, `POC_PLAN.md`).
-2. **The PRD's five launch cities do not match the data.** Tel Aviv and Beer Sheva have
-   zero rows. The cities the data supports, in order, are Jerusalem, Ashdod, Bnei Brak,
-   Beit Shemesh. This document plans around the data and flags the city list as a decision
-   (§11).
+2. **The launch-city list now follows the data.** PRD v1.0 named Tel Aviv, Jerusalem,
+   Bnei Brak, Haifa and Beer Sheva; Tel Aviv and Beer Sheva have zero rows. PRD v1.1
+   (25 Sep 2026) revised the order to Jerusalem → Bnei Brak, Beit Shemesh → Ashdod, with
+   Tel Aviv, Haifa and Beer Sheva gated on Rabbanut data. This document plans on v1.1.
 3. **No app store gate.** The web PWA means the launch channel is a link, and every
    restaurant page is a shareable, indexable landing page. That is a distribution
    advantage; use it before spending on a native app.
@@ -306,10 +306,9 @@ Keep it small and ops-heavy; this is a data company wearing an app.
 
 ## 11. Decisions needed
 
-1. **Launch city list.** The PRD names Tel Aviv, Jerusalem, Bnei Brak, Haifa, Beer Sheva.
-   The data supports Jerusalem → Bnei Brak / Beit Shemesh → Ashdod. Recommendation: adopt
-   the data-driven order for Phase 2 and keep the PRD five as the Phase 3 target. This
-   touches `CLAUDE.md` and needs explicit sign-off.
+1. **Launch city list.** ~~Decision needed~~ **Resolved 25 Sep 2026:** PRD v1.1 and
+   `CLAUDE.md` now name Jerusalem → Bnei Brak, Beit Shemesh → Ashdod as the launch order,
+   with Tel Aviv, Haifa and Beer Sheva in the Rabbanut-data phase.
 2. **Rabbinic advisory board** (PRD open question 2). Recommendation: yes, before Phase 2,
    because the press question in §5.4 needs a named answer.
 3. **Certifier partnership timing** (PRD open question 1). Recommendation: launch on public

@@ -1,7 +1,9 @@
 # PRD — "Kashroot" (working name)
 ### The kosher dining app that answers: *"Can I eat here according to MY standards?"*
 
-**Version:** 1.0 draft · **Date:** Aug 2026 · **Decisions locked:** Israel-first · Hybrid match (binary kashrut gate + soft-preference score) · MVP = Discovery + Saved Lists
+**Version:** 1.1 · **Date:** Sep 2026 (v1.0 Aug 2026) · **Decisions locked:** Israel-first · Hybrid match (binary kashrut gate + soft-preference score) · MVP = Discovery + Saved Lists · Launch cities in the order the corpus supports: Jerusalem → Bnei Brak, Beit Shemesh → Ashdod
+
+> **Revision 1.1 (25 Sep 2026) — launch cities.** v1.0 named Tel Aviv, Jerusalem, Bnei Brak, Haifa and Beer Sheva. The seed corpus (492 records, `data/README.md`) has 160 Jerusalem rows, 57 Ashdod, 39 Bnei Brak, 28 Beit Shemesh, 10 Haifa and **zero** Tel Aviv or Beer Sheva rows, and is badatz-sourced (Rubin, Eda Haredit, Beit Yosef, Landa, Machpud) with effectively no Rabbanut data. Tel Aviv, Haifa and Beer Sheva are Rabbanut-dominated and cannot clear the 80% coverage gate until Rabbanut data lands. The MVP therefore launches city by city in the order Jerusalem → Bnei Brak, Beit Shemesh → Ashdod; Tel Aviv, Haifa and Beer Sheva move to the 6–12 month phase, gated on Rabbanut data. Rationale and rollout in `go-to-market-strategy.md`.
 
 ---
 
@@ -36,7 +38,7 @@ MVP: Israel only. Discovery (nearby + city search), personalized kashrut matchin
 
 | Category | Metric | MVP target (Israel, 6 mo post-launch) |
 |---|---|---|
-| **Data (north-star inputs)** | Certified restaurants covered | ≥ 85% of actively certified restaurants in Tel Aviv, Jerusalem, Bnei Brak, Haifa, Beer Sheva |
+| **Data (north-star inputs)** | Certified restaurants covered | ≥ 85% of actively certified restaurants in each launched city (Jerusalem, Bnei Brak, Beit Shemesh, Ashdod); Tel Aviv, Haifa, Beer Sheva tracked but gated on Rabbanut data |
 | | % records with certificate-level attributes | ≥ 70% |
 | | Median data freshness (last verified) | ≤ 30 days |
 | | Wrong-status incidents (restaurant shown as Match while cert lapsed) | < 0.1% of records / month, each with post-mortem |
@@ -53,7 +55,7 @@ North-star: **weekly confident dining decisions**. Data metrics are leading indi
 ## 4. User Personas
 
 ### 4.1 Local Daily User — "Hungry Now" (primary MVP)
-Yossi, 34, Tel Aviv, eats Rabbanut Mehadrin + specific badatzim. Opens app at lunch. Needs: open-now, walking distance, matches profile, decide in 30s. Success = never reads a certificate photo himself.
+Yossi, 34, Jerusalem, eats Rabbanut Mehadrin + specific badatzim. Opens app at lunch. Needs: open-now, walking distance, matches profile, decide in 30s. Success = never reads a certificate photo himself.
 
 ### 4.2 Machmir Family — "High-trust household" (primary MVP)
 The Katz family, Jerusalem, eat only Eda Haredit / Beit Yosef / Rubin, require Pas Yisrael + Chalav Yisrael + Glatt. Needs: absolute trust, evidence photos, family seating, parking, large groups. One wrong match = uninstall + community backlash. This persona sets the trust bar.
@@ -168,7 +170,7 @@ Bottom tabs (mobile-first, RTL-first): **Home · Search · Saved · Profile**. M
 
 | Phase | Features |
 |---|---|
-| **MVP (0–6 mo)** | Profile, match engine, discovery, restaurant pages w/ evidence, saved lists, flagging, owner claim, moderation console, HE/EN, 5 major cities' data |
+| **MVP (0–6 mo)** | Profile, match engine, discovery, restaurant pages w/ evidence, saved lists, flagging, owner claim, moderation console, HE/EN, launch-city data (Jerusalem → Bnei Brak, Beit Shemesh → Ashdod, each gated at ≥80% coverage) |
 | **Fast-follow (6–9 mo)** | Pesach mode, coverage → all Israel, photos/menus enrichment, simple AI search, home-screen widgets |
 | **v2 (9–15 mo)** | Trip planning, community layer (photos, "still open" confirmations, trusted local lists), tourist presets, notifications expansion |
 | **v3 (15–24 mo)** | US launch (city-by-city), categories expansion (bakeries, supermarkets, hotels), API/enterprise |
@@ -204,7 +206,7 @@ Bottom tabs (mobile-first, RTL-first): **Home · Search · Saved · Profile**. M
 - Confidence score (internal, surfaced as freshness UI): source authority × recency × corroboration count.
 
 ### Moderation ops (this is a team, budget it)
-- MVP ops: ~2 FTE moderators + certificate-runner network (paid gig per verified photo) for the 5 launch cities. Estimated initial corpus: ~3,000–4,000 certified restaurants in launch cities; steady-state re-verification load driven by ~annual cert renewals + expiry queue.
+- MVP ops: ~2 FTE moderators + certificate-runner network (paid gig per verified photo) for the four launch cities (Jerusalem → Bnei Brak, Beit Shemesh → Ashdod). Corpus as of Sep 2026: 492 records; the per-city denominator (actively certified restaurants) is to be established per city before its gate check (the v1.0 estimate of ~3,000–4,000 covered the original five cities including Tel Aviv); steady-state re-verification load driven by ~annual cert renewals + expiry queue.
 - SLA: flags < 48h, expiring certs surfaced 14 days early, owner uploads < 72h.
 
 ### Restaurant owners
@@ -300,7 +302,7 @@ Honest tradeoff: MVP revenue ≈ 0. This phase is funded to build the data moat;
 | Risk | Severity | Mitigation |
 |---|---|---|
 | **Wrong MATCH on lapsed cert** (someone eats treif trusting us) | Existential | Fail-safe degradation to Unknown, expiry auto-queues, audit log, incident post-mortems, insurance/legal disclaimer drafted with counsel |
-| Data acquisition slower/costlier than planned | High | Start 5 cities not all Israel; certificate-runner gig network; owner self-serve; OCR leverage |
+| Data acquisition slower/costlier than planned | High | Start with the badatz-dense cities the corpus already covers (Jerusalem → Bnei Brak, Beit Shemesh → Ashdod), not all Israel; certificate-runner gig network; owner self-serve; OCR leverage |
 | Certifier relations (agencies object to inclusion/scraping) | High | Proactive partnerships — offer free digital presence + change-push channel; Rabbanut data is public |
 | Perceived halachic positioning ("app decides what's Mehadrin") | High | Whitelist-only model, no agency rankings, rabbinic advisory board for taxonomy naming, careful copy |
 | Cold start (thin data → Unknown everywhere → churn) | High | Don't launch a city below 80% coverage; "Any certification" preset works from day one |
@@ -344,8 +346,8 @@ FastAPI + PostgreSQL/PostGIS (+ pgvector later for NL search embeddings), Redis 
 
 ## 23. Roadmap
 
-**0–6 mo (MVP):** data pipeline + moderation console first (weeks 1–8, before app polish), 5-city corpus to ≥80% coverage, app beta in one city (Jerusalem — hardest audience = best test), public launch Israel, HE/EN.
-**6–12 mo:** **certifier portal v1** (pilot with 1–2 friendly badatzim / local councils — B2B pitch: free digital management of your certified businesses, push renewals/revocations), all-Israel coverage, Pesach mode, AI search, community freshness layer, restaurant self-serve v2, consumer Premium beta, tourist presets (English marketing to inbound tourism).
+**0–6 mo (MVP):** data pipeline + moderation console first (weeks 1–8, before app polish), launch-city corpus (Jerusalem → Bnei Brak, Beit Shemesh → Ashdod) to ≥80% coverage, app beta in Jerusalem (hardest audience = best test), public launch city by city as each clears the gate, HE/EN.
+**6–12 mo:** **certifier portal v1** (pilot with 1–2 friendly badatzim / local councils — B2B pitch: free digital management of your certified businesses, push renewals/revocations), Rabbanut data → Tel Aviv, Haifa, Beer Sheva, then all-Israel coverage, Pesach mode, AI search, community freshness layer, restaurant self-serve v2, consumer Premium beta, tourist presets (English marketing to inbound tourism).
 **12–24 mo:** Trip planning, US launch (NYC → NJ → LA/Miami; new certifier taxonomy: OU/OK/Star-K/CRC/Kof-K + local vaads — the per-certificate model transfers cleanly), categories expansion (bakeries, supermarkets, hotels), dataset API/enterprise, "Jewish travel layer" (synagogues, mikvahs) as a distinct tab so the dining core stays uncluttered.
 
 ---

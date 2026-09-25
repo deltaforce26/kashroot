@@ -3,7 +3,7 @@
 **Read `docs/kosher-app-prd.md` for full product context before making product decisions.**
 
 ## What this is
-An app that answers "Can I eat here according to MY standards?" — user defines a kashrut profile once (certifier whitelist + required attributes), every restaurant is shown as MATCH / NO_MATCH / UNKNOWN with evidence. Israel-first, MVP = discovery + saved lists in 5 cities (Tel Aviv, Jerusalem, Bnei Brak, Haifa, Beer Sheva). This is a **data-integrity product wearing an app** — the moat is the verified per-certificate database.
+An app that answers "Can I eat here according to MY standards?" — user defines a kashrut profile once (certifier whitelist + required attributes), every restaurant is shown as MATCH / NO_MATCH / UNKNOWN with evidence. Israel-first, MVP = discovery + saved lists, launched city by city in the order the corpus supports: Jerusalem → Bnei Brak, Beit Shemesh → Ashdod (PRD v1.1, Sep 2026; Tel Aviv, Haifa, Beer Sheva follow once Rabbanut data lands). This is a **data-integrity product wearing an app** — the moat is the verified per-certificate database.
 
 ## Locked decisions — do not revisit without explicit instruction
 - **Architecture:** Modular monolith. FastAPI + PostgreSQL/PostGIS, SQLAlchemy 2.0 + Alembic, Redis, S3-compatible media storage. Client: React Native (Expo). Admin console + owner portal: React web.
@@ -15,7 +15,7 @@ An app that answers "Can I eat here according to MY standards?" — user defines
 - Hebrew (RTL) + English at launch. Israel hours logic: Shabbat, chagim, erev chag, Chol Hamoed.
 - Paid placement never influences match results or organic ranking.
 
-## Current status (Aug 2026)
+## Current status (Sep 2026)
 - PRD complete (`docs/`). Go-to-market strategy: `docs/go-to-market-strategy.md`.
 - **Backend scaffolded:** `app/` (FastAPI modular monolith) with PRD §16 models, Alembic
   initial migration `0001_initial_schema`, and `kashroot seed-import` (dry-run by
@@ -26,8 +26,8 @@ An app that answers "Can I eat here according to MY standards?" — user defines
 
 ## Build order (from PRD roadmap)
 1. Data pipeline + moderation console FIRST (weeks 1–8), before app polish.
-2. 5-city corpus to ≥80% coverage.
-3. App beta in Jerusalem, then public launch Israel.
+2. Launch-city corpus (Jerusalem → Bnei Brak, Beit Shemesh → Ashdod) to ≥80% coverage, one city at a time.
+3. App beta in Jerusalem, then public launch city by city as each clears the gate; Tel Aviv, Haifa, Beer Sheva after Rabbanut data.
 
 ## Conventions
 **Read `STANDARDS.md` — mandatory Python coding standards (file size, consts.py, docstrings, unittest, ruff). Applies to Python only.**
