@@ -1356,6 +1356,133 @@ a {
   }
 }
 
+/* ── Landing ───────────────────────────────────────────────────────────── */
+
+/*
+ * The screen before the app (views/Landing.tsx): no tab bar, so the scroll column
+ * ends on its own footer. One column throughout, logical properties only, and the
+ * same glass panels as everywhere else — this is the app's front door, not a
+ * marketing site with a look of its own.
+ */
+.landing__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+/* The launch screen's lockup, at rest: the same faces and tracking, no animation. */
+.landing__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.landing__brandHe {
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.landing__brandLatin {
+  font-weight: 600;
+  font-size: 9.5px;
+  line-height: 1;
+  letter-spacing: 0.22em;
+  color: var(--sub);
+  padding-top: 3px;
+}
+
+.landing__title {
+  font: 700 30px/1.2 Assistant, sans-serif;
+  margin: 0;
+}
+
+.landing__body {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--sub);
+  margin: 0;
+}
+
+.landing__hero .cta {
+  margin-top: 6px;
+}
+
+.landing__browse {
+  align-self: center;
+  font-size: 13px;
+  color: var(--sub);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.landing__cities {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.landing__sectionTitle {
+  font: 700 16px Assistant, sans-serif;
+  margin: 8px 0 0;
+}
+
+.landing__cityHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.landing__cityName {
+  font: 700 18px Assistant, sans-serif;
+  margin: 0;
+}
+
+.landing__count {
+  font-size: 12.5px;
+  color: var(--sub);
+  flex: none;
+}
+
+.landing__rows {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.landing__row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 0;
+  border-top: 1px solid var(--hair);
+}
+
+.landing__rowName {
+  font-weight: 700;
+  font-size: 14.5px;
+}
+
+.landing__rowSub {
+  font-size: 12.5px;
+  color: var(--sub);
+}
+
+.landing__foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0 16px;
+}
+
 /* ── Tab bar ───────────────────────────────────────────────────────────── */
 
 /*

@@ -46,12 +46,17 @@ import { useI18n } from "../i18n/I18nProvider";
 import { toPayload } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
 import { useSaveToggle } from "../saved/useSaveToggle";
+import { siteHead } from "../seo/siteHead";
+import { useDocumentHead } from "../seo/useDocumentHead";
 
 /** A radius needs a centre; with nothing pinned the chip would measure from nowhere. */
 const WITHOUT_ORIGIN: readonly FilterId[] = ["radius"];
 
 export function Home() {
   const { t } = useI18n();
+  // The same head the landing page declares: one address, one canonical, one
+  // `WebSite` object — see seo/siteHead.ts.
+  useDocumentHead(siteHead(t));
   const navigate = useNavigate();
   const { profile } = useProfile();
   const { toggle, isSaved } = useSaveToggle();

@@ -456,6 +456,62 @@ const he = {
     dairy_pareve: "חלבי/פרווה",
   },
 
+  // What search engines and share cards read (src/seo/). Facts only: a description
+  // names the place, the city and the certifiers on record, never whether it
+  // matches anyone — a crawler has no profile to match against.
+  seo: {
+    brandTitle: "Kashroot — כשרות לפי הסטנדרט שלך",
+    siteDescription:
+      "מסעדות כשרות שנבדקות מול הסטנדרט שלכם: מגדירים פעם אחת אילו גופי כשרות אתם מקבלים ומה חייב להופיע בתעודה — וכל מסעדה מוצגת עם התשובה והראיות מאחוריה.",
+    onboardingTitle: "הגדרת פרופיל כשרות",
+    restaurantDescription: (name: string, city: string | null, certifiers: string | null) =>
+      [name, city, certifiers ? `כשרות: ${certifiers}` : "לא רשומה אצלנו תעודת כשרות"]
+        .filter(Boolean)
+        .join(" · ") + " · עובדות התעודה כפי שפורסמו, ובדיקה מול פרופיל הכשרות שלכם ב־Kashroot.",
+  },
+
+  // The profile-free restaurant page (views/RestaurantPublic.tsx): the facts on
+  // record and an invitation to set a profile. It states what the certificate says
+  // and is careful never to say what that means for the reader.
+  publicRestaurant: {
+    ctaTitle: "מתאים לסטנדרט שלכם?",
+    ctaBody:
+      "הגדירו פעם אחת את פרופיל הכשרות שלכם — אילו גופי כשרות אתם מקבלים ומה חייב להופיע בתעודה — ותראו כאן אם המקום הזה עונה עליו, עם הראיות.",
+    cta: "הגדרת פרופיל כשרות ובדיקת המקום הזה",
+    factsLead:
+      "עובדות התעודה כפי שפורסמו — לא פסק הלכה. אם זה מתאים לכם תלוי בפרופיל שלכם.",
+    status: "מצב התעודה",
+    states: { active: "בתוקף", expired: "פג תוקף", revoked: "בוטלה", pending: "ממתינה לאימות" },
+    listed: "מצוין בתעודה",
+    yes: "כן",
+    no: "לא",
+    nothingListed: "התעודה לא מפרטת דרישות מיוחדות.",
+    website: "אתר",
+    updatedAt: (date: string) => `הרשומה עודכנה ${date}`,
+  },
+
+  // The front door for a visitor with no profile (views/Landing.tsx) — and for every
+  // crawler. It says what the app does and lists what is in the records, city by
+  // city. It names no verdict, because there is no profile here to produce one, and
+  // it names no certifier as an example, because an example reads as an endorsement.
+  landing: {
+    tagline: "כשרות לפי הסטנדרט שלך",
+    body:
+      "אתם קובעים פעם אחת על אילו גופי כשרות אתם סומכים ומה חייב להופיע בתעודה. מאותו רגע כל מסעדה מוצגת מול הסטנדרט שלכם — מתאימה, לא מתאימה, או שאין עדיין ראיה מספקת — ולצד כל תשובה עובדות התעודה שמאחוריה. האפליקציה לא מחליטה מה כשר: אתם מחליטים, והיא מציגה את הראיות.",
+    cta: "הגדרת פרופיל כשרות",
+    browse: "או לעיין במסעדות שלמטה",
+    citiesTitle: "מסעדות לפי עיר",
+    restaurantCount: (n: number) => (n === 1 ? "מסעדה אחת" : `${n} מסעדות`),
+    // The English UI's fallback names for the launch cities, keyed by the records'
+    // own `city_he`, used only when the directory carries no `city_en`. Empty in
+    // Hebrew: the heading is always `city_he` there.
+    cityNames: {} as Record<string, string>,
+    noCertificate: "לא רשומה תעודת כשרות",
+    loading: "טוענים את רשימת המסעדות…",
+    footer:
+      "העובדות כפי שנרשמו בכל תעודה. הגדירו פרופיל כדי לראות אם מקום מתאים לסטנדרט שלכם.",
+  },
+
   photoPlaceholder: "צילום מנה",
   mockBanner: "נתוני הדגמה — ה־API הציבורי עדיין לא מחובר.",
   units: { km: "ק״מ", m: "מ׳", closesAt: (time: string) => `עד ${time}` },
@@ -874,6 +930,60 @@ const en: Strings = {
     fish: "Fish",
     mixed: "Mixed",
     dairy_pareve: "Dairy/Pareve",
+  },
+
+  seo: {
+    brandTitle: "Kashroot — kashrut by your own standard",
+    siteDescription:
+      "Kosher restaurants checked against your own kashrut standard: set once which certifiers you accept and what must appear on the certificate, and every restaurant is shown with the answer and the evidence behind it.",
+    onboardingTitle: "Set up your kashrut profile",
+    restaurantDescription: (name: string, city: string | null, certifiers: string | null) =>
+      [name, city, certifiers ? `Kashrut: ${certifiers}` : "No kashrut certificate on record"]
+        .filter(Boolean)
+        .join(" · ") +
+      " · Certificate facts as published, checked against your own kashrut profile on Kashroot.",
+  },
+
+  publicRestaurant: {
+    ctaTitle: "Does it meet your standard?",
+    ctaBody:
+      "Set your kashrut profile once — which certifiers you accept and what must appear on the certificate — and see here whether this place meets it, with the evidence.",
+    cta: "Set your kashrut profile and check this place",
+    factsLead:
+      "The certificate facts as published — not a halachic ruling. Whether it suits you depends on your profile.",
+    status: "Certificate status",
+    states: { active: "Valid", expired: "Expired", revoked: "Revoked", pending: "Awaiting verification" },
+    listed: "Stated on the certificate",
+    yes: "Yes",
+    no: "No",
+    nothingListed: "The certificate lists no specific requirements.",
+    website: "Website",
+    updatedAt: (date: string) => `Record updated ${date}`,
+  },
+
+  landing: {
+    tagline: "Kashrut by your own standard",
+    body:
+      "You decide once which certifiers you rely on and what must appear on the certificate. From then on every restaurant is shown against your standard — a match, not a match, or not yet enough evidence to say — with the certificate facts behind each answer. The app never decides what is kosher: you decide, and it shows the evidence.",
+    cta: "Set up your kashrut profile",
+    browse: "or browse the restaurants below",
+    citiesTitle: "Restaurants by city",
+    restaurantCount: (n: number) => (n === 1 ? "1 restaurant" : `${n} restaurants`),
+    // A fallback for the five launch cities only, used when the directory carries no
+    // `city_en` for a city. Keyed by the corpus's exact `city_he` spellings. The
+    // corpus currently has no Tel Aviv or Beer Sheva rows, so those two entries are
+    // pure fallbacks — spelled as the corpus is expected to spell them.
+    cityNames: {
+      "ירושלים": "Jerusalem",
+      "בני ברק": "Bnei Brak",
+      "חיפה": "Haifa",
+      "תל אביב-יפו": "Tel Aviv-Yafo",
+      "באר שבע": "Beer Sheva",
+    },
+    noCertificate: "No kashrut certificate on record",
+    loading: "Loading the restaurant list…",
+    footer:
+      "Facts as recorded on each certificate. Set your profile to see whether a place matches your standard.",
   },
 
   photoPlaceholder: "dish photo",

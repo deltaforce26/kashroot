@@ -50,6 +50,29 @@ describe("service worker runtime caching", () => {
     }
   });
 
+  /**
+   * The profile-free facts endpoint is a GET with no verdict in it, but a
+   * certificate's stored state and expiry are kashrut facts and a revocation must
+   * show the moment it is published — so it is excluded from the GET cache by name.
+   */
+  it("never caches the public restaurant facts, the one GET that carries certificate state", () => {
+    const rule = ruleFor("/v1/restaurants/9d4f3a7c-0000-4000-8000-000000000001", "GET");
+    expect(rule?.handler).toBe("NetworkOnly");
+    // …while the certifier list, which carries none, is still served from cache.
+    expect(ruleFor("/v1/certifiers", "GET")?.handler).toBe("NetworkFirst");
+  });
+
+  /**
+   * The landing page's directory is the other cacheable GET: restaurant names,
+   * addresses and certifier names, with no certificate state in it. It falls under
+   * the generic GET rule rather than a rule of its own — asserted so that stays a
+   * decision, and so a future path-scoped exclusion cannot catch it by accident.
+   */
+  it("serves the landing directory from the short-lived GET cache, like the certifier list", () => {
+    expect(ruleFor("/v1/directory", "GET")?.handler).toBe("NetworkFirst");
+    expect(ruleFor("/v1/directory", "GET")).toBe(ruleFor("/v1/certifiers", "GET"));
+  });
+
   it("declares the POST rule explicitly rather than relying on Workbox's GET default", () => {
     const post = API_RUNTIME_CACHING.find((rule) => rule.method === "POST");
     expect(post, "POST must be routed explicitly, not left to a default").toBeDefined();

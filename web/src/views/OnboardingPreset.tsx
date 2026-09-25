@@ -17,11 +17,17 @@ import { useProfile } from "../profile/ProfileProvider";
 import { PICKER_PRESETS, PRESET_ORDER, profileFromPreset, type PresetId } from "../profile/profile";
 import { CheckIcon } from "../components/icons";
 import { ErrorState, LoadingList } from "../components/states";
+import { useDocumentHead } from "../seo/useDocumentHead";
 import { useState } from "react";
 
 export function OnboardingPreset() {
   const { t } = useI18n();
   const navigate = useNavigate();
+  // Reached from the landing page's call to action, or from a gated route a shared
+  // link hit. Either way it is an app flow, not content: the head carries the
+  // product one-liner but asks not to be indexed. The front page a crawler reads
+  // is the landing itself (views/Landing.tsx).
+  useDocumentHead({ title: t.seo.onboardingTitle, description: t.seo.siteDescription, noindex: true });
   // A shared restaurant link that hit the gate; `/` for everyone else.
   const returnTo = useReturnTo();
   const { profile, setProfile, certifiers, certifiersLoading, certifiersFailed, reloadCertifiers } =

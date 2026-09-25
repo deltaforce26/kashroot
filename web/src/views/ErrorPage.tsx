@@ -14,9 +14,13 @@
 
 import { useI18n } from "../i18n/I18nProvider";
 import { AlertIcon } from "../components/icons";
+import { useDocumentHead } from "../seo/useDocumentHead";
 
 export function ErrorPage({ error, onRetry }: { error?: Error | null; onRetry?: () => void }) {
   const { t } = useI18n();
+  // A crashed render must not be indexed as the page it replaced. The hook reads
+  // i18n only — the one provider this screen is allowed to depend on.
+  useDocumentHead({ title: t.errorPage.title, description: t.seo.siteDescription, noindex: true });
 
   // A full document load rather than a client-side navigation: the state that
   // produced the crash is in memory, and only a reload is guaranteed to drop it.

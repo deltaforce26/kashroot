@@ -18,9 +18,13 @@ import { TabBar } from "../components/TabBar";
 import { useI18n } from "../i18n/I18nProvider";
 import { isProfileUsable } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
+import { useDocumentHead } from "../seo/useDocumentHead";
 
 export function NotFound() {
   const { t } = useI18n();
+  // A soft 404 — the server still answers 200 for every path — so the page says
+  // `noindex` itself, which is the signal Google accepts in place of the status.
+  useDocumentHead({ title: t.notFoundPage.title, description: t.seo.siteDescription, noindex: true });
   const location = useLocation();
   const navigate = useNavigate();
   const { profile } = useProfile();

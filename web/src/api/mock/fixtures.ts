@@ -57,7 +57,8 @@ export interface FixtureRestaurant {
   name_he: string;
   name_en: string;
   city_he: string;
-  city_en: string;
+  /** Nullable as on `Restaurant.city_en`; every fixture happens to have one. */
+  city_en: string | null;
   /** `Restaurant.city_slug`, kept for parity with the wire model; never filtered on. */
   city_slug: string;
   address_he: string;
