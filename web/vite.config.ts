@@ -79,7 +79,7 @@ export default defineConfig({
         // would be handed the app shell instead of the file; the API prefixes are
         // listed for the same reason. Crawlers run no service worker, so this is
         // for people — and for anyone checking the sitemap from an installed PWA.
-        navigateFallbackDenylist: [/^\/sitemap\.xml$/, /^\/robots\.txt$/, /^\/v1\//, /^\/api\//],
+        navigateFallbackDenylist: [/^\/sitemap\.xml$/, /^\/robots\.txt$/, /^\/v1\//, /^\/api\//, /^\/_vercel\//],
         // The API is never precached, and the verdict-bearing endpoints are never
         // cached at all. What *is* cached: `GET /v1/certifiers` — names and ids for
         // the whitelist picker, no kashrut status in it.
