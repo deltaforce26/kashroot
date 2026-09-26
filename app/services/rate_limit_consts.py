@@ -22,6 +22,13 @@ DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_DAY = 20
 DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_HOUR = 5
 DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_DAY = 20
 
+#: Defaults for ``KASHROOT_PLACES_PHOTO_RATE_LIMIT_PER_HOUR`` / ``_PER_DAY`` (see
+#: app.core.config.Settings and .env.example). Guards
+#: GET /v1/restaurants/{id}/photos/{index} (own "places_photo" scope) — generous,
+#: since a normal detail-page view issues one request per gallery photo.
+DEFAULT_PLACES_PHOTO_RATE_LIMIT_PER_HOUR = 120
+DEFAULT_PLACES_PHOTO_RATE_LIMIT_PER_DAY = 1000
+
 #: Identifies a request whose ``request.client`` is ``None`` (e.g. some test
 #: clients/ASGI transports). All such requests share one bucket rather than bypassing
 #: the limiter entirely.
