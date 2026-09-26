@@ -16,6 +16,7 @@ from app.ingestion.seed_import import (
     SOURCE_DATE_EARLIEST,
     SOURCE_DOCUMENT_SEED,
     SOURCES_DIR,
+    SeedImportStats,
     _parse_diet,
     _parse_record_state,
     _row_certifier_slugs,
@@ -42,9 +43,15 @@ def test_every_certifier_id_is_known(rows):
         assert _row_certifier_slugs(row)  # raises SeedImportError on unknown ids
 
 
-def test_every_source_document_is_known(rows):
+def test_known_source_document_slugs_are_registered(rows):
+    """``_row_source_slugs`` drops unregistered slugs (product decision 2026-09-26; see
+    data/README.md) rather than raising, so a row citing only unregistered sources now
+    returns an empty list — this only checks that whatever it does return is real.
+    """
+    stats = SeedImportStats()
     for row in rows:
-        assert _row_source_slugs(row)
+        for slug in _row_source_slugs(row, stats):
+            assert slug in SOURCE_DOCUMENT_SEED
 
 
 def test_every_diet_and_record_state_maps(rows):
@@ -75,8 +82,15 @@ def test_row_dates_agree_with_the_documents_they_cite(rows):
     supports. Pinning them together keeps the corpus readable as provenance and keeps a
     rebuild honest about which list last established each record.
     """
+    stats = SeedImportStats()
     for row in rows:
-        cited = [SOURCE_DOCUMENT_SEED[slug]["date_label"] for slug in _row_source_slugs(row)]
+        source_slugs = _row_source_slugs(row, stats)
+        if not source_slugs:
+            # All of this row's cited sources are unregistered (product decision
+            # 2026-09-26) — there is no known document left to date it against.
+            continue
+
+        cited = [SOURCE_DOCUMENT_SEED[slug]["date_label"] for slug in source_slugs]
         freshest = max(cited, key=lambda label: SOURCE_DATE_EARLIEST[label])
         assert (row.get("source_date") or "").strip() == freshest, (
             f"{row['restaurant_name_he']} claims {row['source_date']!r} "

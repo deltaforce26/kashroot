@@ -1,20 +1,38 @@
 # Seed Data
 
 ## `seed/kashroot_seed_corpus.csv`
-492 records across 9 source documents (previously 457 records / 8 documents after the
-Tishrei 5787 refresh; 375 records / 7 documents before that; 142 Landa records had been
-dropped by the Elul 5786 refresh — see that section). The corpus now includes rows added
-directly from the supplied Tishrei 5787 CSV rather than exclusively through
-`scripts/build_seed.py`, so the script is currently **not guaranteed to reproduce this
-file** — see the Tishrei 5787 section before re-running it. Encoding: UTF-8 with BOM.
+583 records (previously 492 records / 9 documents — see the 2026-09-26 section below for
+what changed; 457 records / 8 documents after the Tishrei 5787 refresh; 375 records / 7
+documents before that; 142 Landa records had been dropped by the Elul 5786 refresh — see
+that section). The corpus now includes rows added directly from supplied CSVs rather than
+exclusively through `scripts/build_seed.py`, so the script is currently **not guaranteed
+to reproduce this file** — see the Tishrei 5787 section before re-running it. Encoding:
+UTF-8 with BOM.
 
-**2026-09-25 reconciliation:** the totals above reflect two changes made directly to the
-CSV after the Tishrei 5787 refresh: the Beit Yosef Ashdod web-directory refresh (+47 rows,
-1 rename, 12 rows removed — see that section below) and the קהילות → `badatz_kehilot`
+**2026-09-26 refresh:** adds two trailing columns, `source_url` and `opening_hours_he`
+(see Columns below) — the importer (`app/ingestion/seed_import.py`) currently ignores
+both via `csv.DictReader`, so neither reaches the database yet. It also cites six
+source-document slugs that are deliberately **not** registered in `SOURCE_DOCUMENT_SEED`
+(product decision 2026-09-26): `burgersbar_branches_page` (29 rows), `burgersbar_branch_page`
+(1), `glatiul_machpud_list_2024` (3), `jdn_behashgacha_web` (1), `kosharot_web` (1), and
+`user_input` (1). The importer drops these slugs rather than raising — see
+`_row_source_slugs` in `app/ingestion/seed_import.py` — so the 34 rows that cite only
+these six carry **no source-document provenance** in the DB (no `source_document_id`, no
+`verified_at`); every dry-run reports the drop under `source_documents_ignored` /
+`ignored_source_slugs`. Three certifiers were also added to `CERTIFIER_SEED`:
+`badatz_behidur_hakashrut` (replaces the `badatz_unnamed` placeholder on the Burgers Bar
+Netanya row), `rabbanut_efrat`, and `rabbanut_beer_sheva` — see the code comments beside
+each for sourcing.
+
+**2026-09-25 reconciliation:** the totals above reflect three changes made directly to
+the CSV after the Tishrei 5787 refresh: the Beit Yosef Ashdod web-directory refresh (+47
+rows, 1 rename, 12 rows removed — see that section below), the קהילות → `badatz_kehilot`
 reattribution (4 rows moved from `UNKNOWN_PENDING_VERIFICATION`/`needs_review=TRUE` to
-`LIST_VERIFIED`/`needs_review=FALSE` — see the Tishrei 5787 section below). Net effect on
-row count: 457 + 47 − 12 = 492; the reattribution changes state/review flags, not row
-count.
+`LIST_VERIFIED`/`needs_review=FALSE`), and the הרב לנדא/הרב לנדאו → `landa_bnei_brak`
+reattribution (4 rows moved the same way; `CERTIFIER_SEED`'s
+`rav_landa_variant_unverified` placeholder was removed — see the Tishrei 5787 section
+below for both reattributions). Net effect on row count: 457 + 47 − 12 = 492; both
+reattributions change state/review/certifier flags, not row count.
 
 ### Columns
 | Column | Meaning |
@@ -24,12 +42,14 @@ count.
 | `phone` | Normalized (digits, leading 0, or `*` short codes) |
 | `business_type_he` | As published (מסעדה, קייטרינג, מאפייה, חנות מזון…) |
 | `diet_type` | meat / dairy / pareve / fish / mixed / dairy_pareve — **inferred** from business type, blank if indeterminable |
-| `certifier_ids` | `;`-separated. 23 known slugs as of the Tishrei 5787 refresh — see `CERTIFIER_SEED` in `app/ingestion/seed_import.py` for the full, current list |
+| `certifier_ids` | `;`-separated. 25 known slugs as of the 2026-09-26 refresh — see `CERTIFIER_SEED` in `app/ingestion/seed_import.py` for the full, current list |
 | `corroboration_count` | # of distinct source documents listing this business (36 have 2, 6 have 3) |
-| `source_documents` / `source_date` | Provenance; dates are Hebrew-calendar list dates. Freshest document first — the importer dates the certificate from it. Each document's own date lives in `SOURCE_DOCUMENT_SEED`, never inferred from whichever row cites it first |
-| `record_state` | `LIST_VERIFIED` (clean row from official list, 435 rows) or `UNKNOWN_PENDING_VERIFICATION` (57 rows) |
-| `needs_review` | TRUE where poster layout (or, for the Tishrei 5787 rows, an unresolved certifier attribution) made city/phone/address/certifier assignment ambiguous (59 rows) |
+| `source_documents` / `source_date` | Provenance; dates are Hebrew-calendar list dates. Freshest document first — the importer dates the certificate from it. Each document's own date lives in `SOURCE_DOCUMENT_SEED`, never inferred from whichever row cites it first. Six slugs cited here are deliberately unregistered and dropped on import — see the 2026-09-26 section below |
+| `record_state` | `LIST_VERIFIED` (clean row from official list, 439 rows) or `UNKNOWN_PENDING_VERIFICATION` (53 rows) |
+| `needs_review` | TRUE where poster layout (or, for the Tishrei 5787 rows, an unresolved certifier attribution) made city/phone/address/certifier assignment ambiguous (55 rows) |
 | `dedupe_hash_sha256` | Present in the Tishrei 5787 corpus; not read by the importer (dedupe keys are derived at import time by `restaurant_dedupe_key`, not from this column) |
+| `source_url` | Added in the 2026-09-26 refresh; not read by the importer |
+| `opening_hours_he` | Added in the 2026-09-26 refresh; not read by the importer |
 
 ### Sources (`sources/`)
 | File | Certifier | Quality |
@@ -141,12 +161,23 @@ type some of them are. Flagged for human review, particularly:
   and the 4 rows were reattributed to it with `record_state=LIST_VERIFIED` and
   `needs_review=FALSE` — the same treatment as every other named certifier from this
   source. This certifier is no longer counted among the 20 unverified guesses below.
-- `rav_landa_variant_unverified` — 4 rows carrying a Landa-like label the source could
-  not confirm is `landa_bnei_brak`. Deliberately modeled as a separate, unmerged
-  certifier so an unverified badge never inherits Landa's standing.
-- Both above, plus every Tishrei 5787 row whose certifier is genuinely uncertain,
-  already carry `record_state=UNKNOWN_PENDING_VERIFICATION` and `needs_review=TRUE` in
-  the corpus — the fail-safe rule is doing its job on these rows already.
+- `landa_bnei_brak` (formerly the placeholder `rav_landa_variant_unverified`) —
+  **resolved 2026-09-25.** The 4 rows carrying a bare "הרב לנדא"/"הרב לנדאו" label,
+  which this source alone could not confirm as `landa_bnei_brak`, were identified by the
+  product owner as that existing certifier (Badatz Rav Landa) — the hechsher operates
+  nationwide, so a row's location outside Bnei Brak is not evidence against it. The
+  `rav_landa_variant_unverified` placeholder has been removed from `CERTIFIER_SEED`; the
+  4 rows (מסובין/Beit Shemesh, בסרייה/Bnei Brak, סול/Tiberias, החברים - סניף
+  2/Jerusalem) were reattributed to `landa_bnei_brak` with `record_state=LIST_VERIFIED`
+  and `needs_review=FALSE` — the same treatment as `badatz_kehilot` above. One of the
+  4, מסובין (Beit Shemesh), is a probable near-duplicate of an existing Landa row (same
+  name, city and phone; address formatted differently, so `dedupe_hash_sha256` does not
+  match) — not auto-merged, per the corpus's exact-hash-only merge rule; flagged here
+  for human review. This certifier is no longer counted among the unverified guesses
+  below.
+- Every other Tishrei 5787 row whose certifier is genuinely uncertain already carries
+  `record_state=UNKNOWN_PENDING_VERIFICATION` and `needs_review=TRUE` in the corpus —
+  the fail-safe rule is doing its job on these rows already.
 
 **Known gap — missing raw evidence file.** No file for `misadot_mehadrin_restaurants_csv`
 exists under `data/sources/` — the 145 citing rows have no corresponding source document
@@ -193,5 +224,6 @@ review.
 - Records with `needs_review=TRUE` must be manually verified before serving.
 - No geocoding yet — `geo point` population via Google Places is the next pipeline step.
 - **Missing raw source file**: `data/sources/misadot_mehadrin_restaurants.csv` does not exist — see the Tishrei 5787 section above.
-- **19 certifier names/types are unverified guesses** derived from slug + general knowledge, not from any published source in this repo — see the Tishrei 5787 section above for the full list and reasoning. (One of the original 20, `badatz_kehilot` — formerly the `kehilot_unidentified` placeholder — was resolved on 2026-09-25; see that section.)
+- **18 certifier names/types are unverified guesses** derived from slug + general knowledge, not from any published source in this repo — see the Tishrei 5787 section above for the full list and reasoning. (Two of the original 20 have since been resolved: `badatz_kehilot` — formerly the `kehilot_unidentified` placeholder — on 2026-09-25, and the `landa_bnei_brak` reattribution of the former `rav_landa_variant_unverified` rows, also 2026-09-25; see that section.)
 - **Missing raw source file**: `data/sources/badatz_beit_yosef_web_directory.html` does not exist — see the Beit Yosef Ashdod web-directory refresh section above.
+- **34 rows carry no source-document provenance in the DB** — their only cited sources are six deliberately-unregistered slugs (product decision 2026-09-26) — see the 2026-09-26 section above.
