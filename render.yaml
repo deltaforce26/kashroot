@@ -70,6 +70,14 @@ services:
       - key: KASHROOT_GOOGLE_MAPS_API_KEY
         sync: false
 
+      # Server-side Places API (New) key for GET /v1/restaurants/{id}/places and its
+      # photo redirect. Optional: falls back to KASHROOT_GOOGLE_MAPS_API_KEY above
+      # when unset, so one key with both Geocoding and Places API (New) enabled
+      # covers both — set this separately only if the keys must differ. Unset ->
+      # the endpoint degrades (photos=[], hours=null), never an error.
+      - key: KASHROOT_GOOGLE_PLACES_API_KEY
+        sync: false
+
       # The web app's public origin, used for every URL in GET /v1/sitemap.xml.
       # Not a secret. Must match VITE_SITE_ORIGIN in web/.env.production. If the
       # service already existed before this line, add it in the dashboard too —
