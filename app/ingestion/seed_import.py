@@ -477,7 +477,9 @@ def _row_certifier_slugs(row: dict[str, str]) -> list[str]:
             f"unknown certifier id(s) {unknown} — add them to CERTIFIER_SEED before importing"
         )
     if not slugs:
-        raise SeedImportError("row has no certifier_ids; a record without a certifier is not a record")
+        raise SeedImportError(
+            "row has no certifier_ids; a record without a certifier is not a record"
+        )
     return slugs
 
 
@@ -763,9 +765,7 @@ def _import_certificate(
     import_key = f"seed:{restaurant.dedupe_key}:{certifier.slug}"
     csv_import_keys.add(import_key)
     list_date = document.source_date if document else None
-    verified_at = (
-        dt.datetime.combine(list_date, dt.time.min, tzinfo=dt.UTC) if list_date else None
-    )
+    verified_at = dt.datetime.combine(list_date, dt.time.min, tzinfo=dt.UTC) if list_date else None
 
     values: dict[str, Any] = {
         "restaurant_id": restaurant.id,

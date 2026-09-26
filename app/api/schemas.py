@@ -298,7 +298,9 @@ class ReviewPhotoRequest(BaseModel):
 
     @model_validator(mode="after")
     def _certificate_facts_require_accept(self) -> ReviewPhotoRequest:
-        if self.decision == "reject" and (self.attributes is not None or self.valid_until is not None):
+        if self.decision == "reject" and (
+            self.attributes is not None or self.valid_until is not None
+        ):
             raise ValueError(
                 "attributes/valid_until can only accompany an 'accept' decision — "
                 "a rejected photo never writes anything onto the certificate (fail-safe)"

@@ -103,9 +103,7 @@ class TestDistanceDecay:
 
 
 class TestOpenNow:
-    @pytest.mark.parametrize(
-        ("is_open", "expected"), [(True, 1.0), (False, 0.0), (None, 0.5)]
-    )
+    @pytest.mark.parametrize(("is_open", "expected"), [(True, 1.0), (False, 0.0), (None, 0.5)])
     def test_open_now_component(self, is_open, expected):
         result = compute_fit_score(FitCandidate(is_open_now=is_open), FitPreferences())
         assert component(result, "open_now") == expected
@@ -146,9 +144,7 @@ class TestAmenityFit:
         assert component(result, "amenities") == 0.0
 
     def test_no_wanted_amenities_is_neutral(self):
-        result = compute_fit_score(
-            FitCandidate(amenities={"parking": True}), FitPreferences()
-        )
+        result = compute_fit_score(FitCandidate(amenities={"parking": True}), FitPreferences())
         assert component(result, "amenities") == 0.5
 
 

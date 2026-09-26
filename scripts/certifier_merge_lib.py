@@ -187,9 +187,7 @@ def merge_certificates(
             select(Certificate).where(Certificate.certifier_id == target.id)
         )
     }
-    moving = session.scalars(
-        select(Certificate).where(Certificate.certifier_id == source.id)
-    ).all()
+    moving = session.scalars(select(Certificate).where(Certificate.certifier_id == source.id)).all()
 
     for certificate in moving:
         name = certificate.restaurant.name_he

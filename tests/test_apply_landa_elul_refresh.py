@@ -207,9 +207,7 @@ def test_refuses_when_an_import_already_forked_the_record(session, tmp_path):
         apply_refresh(session, _corpus(tmp_path, (NEW_NAME, CITY, ADDRESS)), dry_run=True)
 
     assert "already forked" in str(excinfo.value)
-    assert session.scalar(
-        select(Restaurant).where(Restaurant.name_he == OLD_NAME)
-    ) is not None
+    assert session.scalar(select(Restaurant).where(Restaurant.name_he == OLD_NAME)) is not None
 
 
 @needs_a_rename_entry
@@ -231,9 +229,7 @@ def test_deletion_keeps_a_before_snapshot_in_the_audit_log(session, tmp_path):
 
     apply_refresh(session, _corpus(tmp_path, (NEW_NAME, CITY, ADDRESS)), dry_run=False)
 
-    deletes = session.scalars(
-        select(AuditLog).where(AuditLog.action == AuditAction.DELETE)
-    ).all()
+    deletes = session.scalars(select(AuditLog).where(AuditLog.action == AuditAction.DELETE)).all()
     assert {e.entity_type for e in deletes} == {"restaurant", "certificate"}
     assert all(e.changes["before"]["restaurant"] == "מסעדה שנעלמה" for e in deletes)
     assert all(e.changes["after"] is None for e in deletes)
@@ -251,14 +247,10 @@ def test_a_record_on_the_list_survives(session, tmp_path):
 
 
 @needs_a_rename_entry
-def test_another_certifiers_restaurant_survives_losing_its_landa_certificate(
-    session, tmp_path
-):
+def test_another_certifiers_restaurant_survives_losing_its_landa_certificate(session, tmp_path):
     """This pass has no mandate to remove a record another certifier still attests to."""
     restaurant = _seed(session, "מסעדה שנעלמה")
-    other = Certifier(
-        slug="badatz_mehadrin_rubin", name_he="רובין", type=CertifierType.BADATZ
-    )
+    other = Certifier(slug="badatz_mehadrin_rubin", name_he="רובין", type=CertifierType.BADATZ)
     session.add(other)
     session.flush()
     session.add(
@@ -328,7 +320,7 @@ def test_refuses_an_empty_corpus_rather_than_deleting_everything(session, tmp_pa
 
 @pytest.mark.xfail(
     reason=(
-        "3 Landa records (קברנה, רויאל, שביט - לכבוד שבת ויו\"ט) are in the corpus but "
+        '3 Landa records (קברנה, רויאל, שביט - לכבוד שבת ויו"ט) are in the corpus but '
         "absent from landa_restaurants_elul_5786.csv, so this sees 44, not 41. Same "
         "deferred issue as test_seed_import.py::test_the_refresh_is_the_whole_of_its_"
         "certifier — see docs/data-review-todo.md."

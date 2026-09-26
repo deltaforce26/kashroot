@@ -27,9 +27,7 @@ from app.models import (
     SourceDocument,
 )
 
-pytestmark = pytest.mark.skipif(
-    not DEFAULT_CSV_PATH.exists(), reason="seed corpus not present"
-)
+pytestmark = pytest.mark.skipif(not DEFAULT_CSV_PATH.exists(), reason="seed corpus not present")
 
 
 def count(session, model) -> int:
@@ -49,7 +47,9 @@ def test_import_creates_certifiers_and_source_documents(session, imported):
     # 5786 Landa restaurants refresh, then 8 with that same Tishrei 5787 refresh.
     assert count(session, Certifier) == len(CERTIFIER_SEED)
     assert count(session, SourceDocument) == len(SOURCE_DOCUMENT_SEED)
-    doc = session.scalar(select(SourceDocument).where(SourceDocument.slug == "rubin_restaurants_pdf"))
+    doc = session.scalar(
+        select(SourceDocument).where(SourceDocument.slug == "rubin_restaurants_pdf")
+    )
     assert doc.source_date_label == "5786 (2026)"
     # Conservative: the earliest date the Hebrew-year label can mean.
     assert doc.source_date == dt.date(2025, 9, 23)
@@ -90,9 +90,7 @@ def test_refreshed_rows_are_dated_by_their_freshest_source(session, imported):
     refresh. Dating it from the older document would leave the refresh with no effect on
     the freshness maths that is the whole reason to ingest a newer list.
     """
-    restaurant = session.scalar(
-        select(Restaurant).where(Restaurant.name_he == "שניצלשף")
-    )
+    restaurant = session.scalar(select(Restaurant).where(Restaurant.name_he == "שניצלשף"))
     certificate = restaurant.certificates[0]
 
     assert certificate.valid_from == dt.date(2026, 8, 14)
@@ -101,7 +99,7 @@ def test_refreshed_rows_are_dated_by_their_freshest_source(session, imported):
 
 @pytest.mark.xfail(
     reason=(
-        "3 Landa records (קברנה, רויאל, שביט - לכבוד שבת ויו\"ט) are in the corpus but "
+        '3 Landa records (קברנה, רויאל, שביט - לכבוד שבת ויו"ט) are in the corpus but '
         "absent from landa_restaurants_elul_5786.csv, so this sees 44, not 41. Deferred "
         "by explicit product decision pending research — see docs/data-review-todo.md."
     ),
@@ -120,9 +118,7 @@ def test_the_refresh_is_the_whole_of_its_certifier(session, imported):
     ).all()
 
     assert len(certificates) == 41
-    assert session.scalar(
-        select(Restaurant).where(Restaurant.name_he == "מאמה מיה בטיילת")
-    ) is None
+    assert session.scalar(select(Restaurant).where(Restaurant.name_he == "מאמה מיה בטיילת")) is None
 
 
 def test_import_creates_one_restaurant_per_branch(session, imported):
@@ -136,9 +132,7 @@ def test_import_creates_one_restaurant_per_branch(session, imported):
     assert count(session, Restaurant) == expected
     assert imported.restaurants_created == expected
 
-    branched = session.scalars(
-        select(Restaurant).where(Restaurant.branch_label.is_not(None))
-    ).all()
+    branched = session.scalars(select(Restaurant).where(Restaurant.branch_label.is_not(None))).all()
     assert branched
     assert all(r.branch_label == r.address_he for r in branched)
 
@@ -267,9 +261,7 @@ def test_apply_run_is_recorded_with_stats(session, imported):
 
 
 def test_every_created_certificate_is_audited(session, imported):
-    audited = session.scalars(
-        select(AuditLog).where(AuditLog.entity_type == "certificate")
-    ).all()
+    audited = session.scalars(select(AuditLog).where(AuditLog.entity_type == "certificate")).all()
     assert len(audited) == count(session, Certificate)
     assert all(entry.evidence.get("source_document") for entry in audited)
     assert all(entry.ingestion_run_id is not None for entry in audited)

@@ -96,9 +96,7 @@ def split_branch_addresses(address: str | None) -> list[str | None]:
     return list(parts) if len(parts) > 1 else [text]
 
 
-def restaurant_dedupe_key(
-    name_he: str | None, city_he: str | None, address_he: str | None
-) -> str:
+def restaurant_dedupe_key(name_he: str | None, city_he: str | None, address_he: str | None) -> str:
     """Natural key for a restaurant record. Pipelines upsert on this."""
     return "|".join(
         (

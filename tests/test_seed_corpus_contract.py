@@ -23,9 +23,7 @@ from app.ingestion.seed_import import (
     read_rows,
 )
 
-pytestmark = pytest.mark.skipif(
-    not DEFAULT_CSV_PATH.exists(), reason="seed corpus not present"
-)
+pytestmark = pytest.mark.skipif(not DEFAULT_CSV_PATH.exists(), reason="seed corpus not present")
 
 
 @pytest.fixture(scope="module")
