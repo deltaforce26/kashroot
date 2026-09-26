@@ -46,6 +46,8 @@ from app.services.places_consts import (
     PLACES_FIELD_MASK,
     PLACES_LANGUAGE_CODE,
     PLACES_PHOTO_MEDIA_URL,
+    PLACES_TEXT_SEARCH_FIELD_MASK,
+    PLACES_TEXT_SEARCH_URL,
     REQUEST_HEADER_API_KEY,
     REQUEST_HEADER_FIELD_MASK,
 )
@@ -71,6 +73,9 @@ class PlacesClient(Protocol):
         ...
 
     def photo_uri(self, photo_name: str, max_width_px: int) -> str:  # pragma: no cover - protocol
+        ...
+
+    def search_text(self, body: dict[str, Any]) -> dict[str, Any]:  # pragma: no cover - protocol
         ...
 
 
@@ -170,6 +175,37 @@ class GooglePlacesClient:
             raise PlacesError(f"Google Places API photo media had no photoUri for {photo_name!r}")
 
         return photo_uri
+
+    def search_text(self, body: dict[str, Any]) -> dict[str, Any]:
+        """
+        Call Places (New) Text Search, field-masked to id/name/location/status.
+
+        Used only by ``app.ingestion.places_resolve`` to find a restaurant's
+        *business* place id — never from a request-serving path.
+
+        Parameters:
+            body (dict[str, Any]): The request JSON (``textQuery``, ``languageCode``,
+                ``regionCode``, ``locationBias``, ``maxResultCount``).
+
+        Return:
+            dict[str, Any]: The raw Text Search JSON (``places``: a list).
+        """
+        headers = {
+            REQUEST_HEADER_API_KEY: self._api_key,
+            REQUEST_HEADER_FIELD_MASK: PLACES_TEXT_SEARCH_FIELD_MASK,
+        }
+        try:
+            response = self._client.post(PLACES_TEXT_SEARCH_URL, json=body, headers=headers)
+        except httpx.RequestError as exc:
+            raise PlacesError(
+                f"network error ({type(exc).__name__}) calling Places Text Search"
+            ) from None
+        if response.is_error:
+            raise PlacesError(
+                f"Google Places API returned HTTP {response.status_code} for Text Search"
+            )
+
+        return response.json()
 
 
 class PlacesService:

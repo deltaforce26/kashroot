@@ -30,7 +30,7 @@ The Supabase project is populated and current. Confirm before deploying:
 .venv\Scripts\python.exe -m app.cli db-check
 ```
 
-Expect `alembic revision 0008_enable_row_level_security`, `postgis 3.3.7` and
+Expect `alembic revision 0009_business_place_id`, `postgis 3.3.7` and
 `row-level security ... all protected`. An unprotected table fails the check: on
 Supabase it is readable and writable by anyone with the project URL (see
 `docs/supabase-runbook.md`).
@@ -44,6 +44,23 @@ $env:KASHROOT_DATABASE_URL="postgresql+psycopg://postgres.<ref>:<pw>@aws-1-eu-we
 ```
 
 DDL needs one stable session, which the transaction pooler cannot give it.
+
+### Business place ids for Places enrichment
+
+Run `kashroot places-resolve --apply` once after each `kashroot geocode --apply` run.
+`geocode` fills `google_place_id` from the legacy Geocoding API's
+`"{address}, {city}"` query, which resolves the *street address's* place id, not the
+business's — so `PlacesService.enrichment` (photos/hours) came back empty for almost
+every restaurant. `places-resolve` fills the separate `google_business_place_id`
+column via one Places (New) Text Search call per unresolved restaurant (name +
+address + city, biased to its geocoded point, accepted only within 150m of it), and
+`/v1/restaurants/{id}/places` prefers that column, falling back to `google_place_id`
+only when no business id was resolved.
+
+This is a one-off cost, not a per-request one: each restaurant is searched once
+(`--force` to re-run) and Text Search is billed per call, same tier as Geocoding. The
+key needs **Places API (New)** enabled — the same key `geocode` and the enrichment
+endpoints already use (`KASHROOT_GOOGLE_PLACES_API_KEY` / `KASHROOT_GOOGLE_MAPS_API_KEY`).
 
 ---
 

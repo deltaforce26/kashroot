@@ -14,6 +14,14 @@ PLACES_DETAILS_URL = "https://places.googleapis.com/v1/places/{place_id}"
 #: returned by Place Details (already shaped ``places/{place_id}/photos/{photo_id}``).
 PLACES_PHOTO_MEDIA_URL = "https://places.googleapis.com/v1/{photo_name}/media"
 
+#: Places (New) Text Search — used by app.ingestion.places_resolve to find a
+#: restaurant's *business* place id (google_place_id, from the legacy Geocoding
+#: API, is a street-address place id and carries no photos/hours).
+PLACES_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
+
+#: Only what the resolver needs to match and score a candidate.
+PLACES_TEXT_SEARCH_FIELD_MASK = "places.id,places.displayName,places.location,places.businessStatus"
+
 #: Only what the enrichment endpoint uses — never a broader mask (cost + PRD scope:
 #: Google Places is never called from search lists, only a single restaurant's page).
 PLACES_FIELD_MASK = "photos,regularOpeningHours,currentOpeningHours"

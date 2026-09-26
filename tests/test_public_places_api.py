@@ -138,6 +138,36 @@ def test_places_full_shape(client, session, fake_places_service) -> None:
     assert fake_places_service.enrichment_calls == [(restaurant.id, "place123")]
 
 
+def test_places_prefers_business_place_id_over_address_place_id(
+    client, session, fake_places_service
+) -> None:
+    restaurant = make_restaurant(
+        session,
+        google_place_id="address-place-id",
+        google_business_place_id="business-place-id",
+    )
+    session.commit()
+
+    response = client.get(f"/v1/restaurants/{restaurant.id}/places")
+
+    assert response.status_code == 200
+    assert fake_places_service.enrichment_calls == [(restaurant.id, "business-place-id")]
+
+
+def test_places_falls_back_to_address_place_id_when_no_business_id(
+    client, session, fake_places_service
+) -> None:
+    restaurant = make_restaurant(
+        session, google_place_id="address-place-id", google_business_place_id=None
+    )
+    session.commit()
+
+    response = client.get(f"/v1/restaurants/{restaurant.id}/places")
+
+    assert response.status_code == 200
+    assert fake_places_service.enrichment_calls == [(restaurant.id, "address-place-id")]
+
+
 def test_places_sets_cache_control_header(client, session) -> None:
     restaurant = make_restaurant(session, google_place_id=None)
     session.commit()

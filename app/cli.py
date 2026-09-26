@@ -6,6 +6,8 @@ kashroot seed-import --dry-run --prune   # diff review incl. planned deletions
 kashroot seed-import --apply --prune     # apply, and HARD-DELETE stale seed rows
 kashroot geocode                   # dry run: free, no API calls
 kashroot geocode --apply           # geocode + write, cache-first
+kashroot places-resolve            # dry run: prints candidates, writes nothing
+kashroot places-resolve --apply    # resolve business place ids + write
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ from typing import Annotated
 import typer
 
 from app.ingestion.geocode import GeocodeError, GoogleGeocoder, geocode_restaurants
+from app.ingestion.places_resolve import PlacesResolveError, resolve_places
 from app.ingestion.seed_import import DEFAULT_CSV_PATH, SeedImportError, import_seed
 
 app = typer.Typer(help="Kashroot backend admin commands.", no_args_is_help=True)
@@ -179,6 +182,91 @@ def geocode(
         typer.echo("  review reasons:")
         for reason, n in sorted(stats.review_reasons.items(), key=lambda kv: -kv[1]):
             typer.echo(f"    {reason:<26} {n}")
+    if dry_run:
+        typer.secho("\n  nothing written — re-run with --apply to commit", fg=typer.colors.YELLOW)
+
+
+@app.command("places-resolve")
+def places_resolve(
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run/--apply", help="Report candidates and roll back (default)."),
+    ] = True,
+    actor: Annotated[
+        str, typer.Option("--actor", help="Who is running this, for the audit log.")
+    ] = "cli",
+    limit: Annotated[
+        int | None,
+        typer.Option("--limit", help="Resolve at most N restaurants (incremental runs)."),
+    ] = None,
+    city: Annotated[
+        str | None,
+        typer.Option("--city", help="Only this city_slug (e.g. bnei-brak)."),
+    ] = None,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force", help="Re-resolve restaurants that already have a business place id."
+        ),
+    ] = False,
+) -> None:
+    """Resolve each restaurant's *business* Places (New) place id via Text Search.
+
+    Fills ``google_business_place_id`` (distinct from ``google_place_id``, the legacy
+    Geocoding API's street-address place id) so PlacesService.enrichment can find
+    photos/hours for the business itself. Run after ``geocode`` — only restaurants
+    with a geocoded point are candidates. Defaults to --dry-run, which still calls the
+    (one-off, low-volume) Text Search API but writes nothing; pass --apply to write.
+    """
+    from app.core.config import settings
+    from app.db.session import session_scope
+    from app.services.places import GooglePlacesClient
+
+    if not settings.places_api_key:
+        typer.secho(
+            "no Google Places API key — set KASHROOT_GOOGLE_PLACES_API_KEY "
+            "(or KASHROOT_GOOGLE_MAPS_API_KEY)",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    searcher = GooglePlacesClient(settings.places_api_key)
+
+    try:
+        with session_scope() as session:
+            stats = resolve_places(
+                session,
+                searcher,
+                dry_run=dry_run,
+                actor=actor,
+                limit=limit,
+                city=city,
+                force=force,
+                delay_ms=settings.geocode_delay_ms,
+            )
+    except PlacesResolveError as exc:
+        typer.secho(f"places-resolve failed: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+
+    mode = "DRY RUN (rolled back)" if dry_run else "APPLIED"
+    typer.secho(f"\nplaces-resolve — {mode}", fg=typer.colors.CYAN, bold=True)
+    typer.echo(f"  candidates                 {stats.candidates}")
+    typer.echo(f"  already resolved           {stats.already_resolved}")
+    typer.echo(f"  excluded (no geo)          {stats.excluded_no_geo}")
+    typer.echo(f"  API calls made             {stats.api_calls}")
+    typer.echo(f"  accepted                   {stats.accepted}")
+    typer.echo(f"  rejected                   {stats.rejected}")
+    typer.echo(f"  skipped (changed mid-run)  {stats.skipped_concurrent}")
+    if stats.reasons:
+        typer.echo("  decision reasons:")
+        for reason, n in sorted(stats.reasons.items(), key=lambda kv: -kv[1]):
+            typer.echo(f"    {reason:<20} {n}")
+    if dry_run and stats.rows:
+        typer.echo("\n  restaurant -> candidate / distance / decision:")
+        for row in stats.rows:
+            distance = f"{row.distance_m:.0f}m" if row.distance_m is not None else "-"
+            candidate = row.candidate_name or "-"
+            typer.echo(f"    {row.name_he:<30} {candidate:<30} {distance:>8}  {row.decision}")
     if dry_run:
         typer.secho("\n  nothing written — re-run with --apply to commit", fg=typer.colors.YELLOW)
 

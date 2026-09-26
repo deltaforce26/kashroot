@@ -716,7 +716,7 @@ def test_shared_query_between_branches_costs_one_api_call(session):
 # --------------------------------------------------------------------------------------
 
 
-def test_migration_chain_heads_at_0008():
+def test_migration_chain_heads_at_0009():
     from pathlib import Path
 
     from alembic.config import Config
@@ -724,7 +724,11 @@ def test_migration_chain_heads_at_0008():
 
     root = Path(__file__).resolve().parents[1]
     script = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert script.get_heads() == ["0008_enable_row_level_security"]
+    assert script.get_heads() == ["0009_business_place_id"]
+    assert (
+        script.get_revision("0009_business_place_id").down_revision
+        == "0008_enable_row_level_security"
+    )
     assert (
         script.get_revision("0008_enable_row_level_security").down_revision
         == "0007_drop_certifier_council_city"
