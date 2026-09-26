@@ -65,6 +65,7 @@ Render prompts for every var marked `sync: false`. None of them are in git.
 | `KASHROOT_SUPABASE_SERVICE_KEY` | The **secret** key (`sb_secret_…`), never the publishable one |
 | `KASHROOT_ADMIN_API_TOKENS` | `{}` — the admin console is not deployed, so nothing should authenticate |
 | `KASHROOT_GOOGLE_MAPS_API_KEY` | Server-side Geocoding key. Not the browser key |
+| `KASHROOT_GOOGLE_PLACES_API_KEY` | Server-restricted key with **Places API (New)** enabled, for the restaurant-detail photos/hours endpoint. Optional — falls back to `KASHROOT_GOOGLE_MAPS_API_KEY` when unset, so one server key with both APIs enabled covers both. Not the browser key; unset means the endpoint degrades (no photos/hours) rather than failing |
 | `KASHROOT_PUBLIC_WEB_ORIGIN` | `https://kashroot.app` — set in `render.yaml`; add it by hand if the service predates that line. Used in `/sitemap.xml` URLs (see `docs/seo-runbook.md`) |
 
 > **The database URL here differs from your local `.env`.** Local uses the *session*
@@ -74,6 +75,10 @@ Render prompts for every var marked `sync: false`. None of them are in git.
 
 > `KASHROOT_ADMIN_API_TOKENS` set to `{}` makes every admin endpoint 401. That is the
 > correct posture for a public deployment with no real moderator accounts.
+
+> Places photos/hours are cached in Redis (or in-process if Redis is unreachable)
+> for 10 minutes and never written to the database — restarting the service or
+> letting an entry expire just costs one more Google call, nothing is lost.
 
 ### Free tier
 

@@ -40,6 +40,8 @@ from app.services.rate_limit_consts import (
     DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_HOUR,
     DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_DAY,
     DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_HOUR,
+    DEFAULT_PLACES_PHOTO_RATE_LIMIT_PER_DAY,
+    DEFAULT_PLACES_PHOTO_RATE_LIMIT_PER_HOUR,
     LOG_RATE_LIMIT_REDIS_ERROR,
     LOG_RATE_LIMIT_REDIS_UNAVAILABLE,
     RATE_LIMIT_KEY_PREFIX,
@@ -387,14 +389,36 @@ def rate_limiter(
     return _check_rate_limit
 
 
+def places_photo_rate_limit_rules() -> list[RateLimitRule]:
+    """
+    Build the current rate-limit rules for the Places photo-redirect endpoint.
+
+    Read from ``settings`` on every call (not cached) so tests can lower the limits
+    via ``monkeypatch.setattr(settings, ...)`` per test.
+
+    Parameters:
+        None
+
+    Return:
+        list[RateLimitRule]: The per-hour and per-day rules to enforce, in that order.
+    """
+    return [
+        RateLimitRule(settings.places_photo_rate_limit_per_hour, RATE_LIMIT_WINDOW_HOUR_SECONDS),
+        RateLimitRule(settings.places_photo_rate_limit_per_day, RATE_LIMIT_WINDOW_DAY_SECONDS),
+    ]
+
+
 require_photo_upload_rate_limit = rate_limiter("photo_upload", photo_upload_rate_limit_rules)
 require_flag_report_rate_limit = rate_limiter("flag_report", flag_report_rate_limit_rules)
+require_places_photo_rate_limit = rate_limiter("places_photo", places_photo_rate_limit_rules)
 
 __all__ = [
     "DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_DAY",
     "DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_HOUR",
     "DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_DAY",
     "DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_HOUR",
+    "DEFAULT_PLACES_PHOTO_RATE_LIMIT_PER_DAY",
+    "DEFAULT_PLACES_PHOTO_RATE_LIMIT_PER_HOUR",
     "HybridRateLimitBackend",
     "InMemoryRateLimitBackend",
     "RateLimitBackend",
@@ -404,7 +428,9 @@ __all__ = [
     "get_client_identifier",
     "get_rate_limit_backend",
     "photo_upload_rate_limit_rules",
+    "places_photo_rate_limit_rules",
     "rate_limiter",
     "require_flag_report_rate_limit",
     "require_photo_upload_rate_limit",
+    "require_places_photo_rate_limit",
 ]
