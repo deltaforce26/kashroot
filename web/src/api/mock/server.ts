@@ -42,6 +42,9 @@ import {
   type GeoPoint,
   type KashrutVerdictOut,
   type PhotoUploadOut,
+  type PlaceHoursDayOut,
+  type PlaceHoursOut,
+  type PlacesEnrichmentOut,
   type ProfileRequest,
   type ReasonCode,
   type ReasonOut,
@@ -58,6 +61,7 @@ import {
   RESTAURANTS,
   type FixtureCertificate,
   type FixturePhoto,
+  type FixturePlaceHoursDay,
   type FixtureRestaurant,
 } from "./fixtures";
 
@@ -573,6 +577,114 @@ export function mockRestaurantPublic(id: string, now = new Date()): Promise<Rest
       };
     }),
     updated_at: now.toISOString(),
+  });
+}
+
+/* ── Google Places enrichment (app/api/public_places.py) ─────────────────
+ *
+ * Photos and hours only, replayed against the fixture's own `places` block. A
+ * restaurant with no `places` — most of them — answers exactly as the live API
+ * does for a restaurant with no Google place id: `place_id_known: false`, no
+ * photos, no hours. Nothing here is kashrut evidence and nothing here is persisted.
+ */
+
+function toMinutes(hhmm: string): number {
+  const [hours, minutes] = hhmm.split(":").map(Number);
+  return (hours ?? 0) * 60 + (minutes ?? 0);
+}
+
+/**
+ * `open_now` / `closes_at` / `opens_at` at `now`, over Sunday-first day rows. A
+ * range whose close is not after its open (`18:00`–`02:00`) is read as crossing
+ * midnight into the next day, exactly as `app/services/places_hours.py` does.
+ */
+export function placesOpenState(
+  days: FixturePlaceHoursDay[],
+  now: Date,
+): { openNow: boolean | null; closesAt: string | null; opensAt: string | null } {
+  const todayIndex = now.getDay();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const byDay = new Map(days.map((day) => [day.day, day]));
+  const today = byDay.get(todayIndex);
+  const yesterday = byDay.get((todayIndex + 6) % 7);
+
+  if (today?.always_open) return { openNow: true, closesAt: null, opensAt: null };
+
+  if (yesterday && !yesterday.closed) {
+    for (const range of yesterday.ranges) {
+      const closeMin = toMinutes(range.close);
+      if (closeMin <= toMinutes(range.open) && nowMin < closeMin) {
+        return { openNow: true, closesAt: range.close, opensAt: null };
+      }
+    }
+  }
+
+  if (today && !today.closed) {
+    for (const range of today.ranges) {
+      const openMin = toMinutes(range.open);
+      const closeMin = toMinutes(range.close);
+      const crossesMidnight = closeMin <= openMin;
+      if (nowMin >= openMin && (crossesMidnight || nowMin < closeMin)) {
+        return { openNow: true, closesAt: range.close, opensAt: null };
+      }
+    }
+  }
+
+  for (let offset = 0; offset < 8; offset++) {
+    const day = byDay.get((todayIndex + offset) % 7);
+    if (!day) continue;
+    if (day.always_open) return { openNow: false, closesAt: null, opensAt: "00:00" };
+    if (day.closed) continue;
+    const range = day.ranges.find((candidate) => offset > 0 || toMinutes(candidate.open) > nowMin);
+    if (range) return { openNow: false, closesAt: null, opensAt: range.open };
+  }
+  return { openNow: false, closesAt: null, opensAt: null };
+}
+
+function toPlaceHoursDayOut(day: FixturePlaceHoursDay): PlaceHoursDayOut {
+  return { day: day.day, ranges: day.ranges, closed: day.closed, always_open: day.always_open };
+}
+
+function placeHoursOf(days: FixturePlaceHoursDay[], now: Date): PlaceHoursOut {
+  const state = placesOpenState(days, now);
+  return {
+    open_now: state.openNow,
+    closes_at: state.closesAt,
+    opens_at: state.opensAt,
+    today: now.getDay(),
+    days: [...days].sort((a, b) => a.day - b.day).map(toPlaceHoursDayOut),
+    // Google's own localized one-liners are not reproduced here — the app builds
+    // its hours rows from `days`, never from this array.
+    weekday_descriptions: [],
+  };
+}
+
+/**
+ * `GET /v1/restaurants/{id}/places`, replayed. A restaurant with no `places` block
+ * answers the same degraded shape the live API returns when it holds no Google
+ * place id, or when the Google call itself failed — the client has one fallback
+ * path for both.
+ */
+export function mockRestaurantPlaces(id: string, now = new Date()): Promise<PlacesEnrichmentOut> {
+  const restaurant = RESTAURANTS.find((candidate) => candidate.id === id);
+  if (!restaurant) return delayReject(new ApiError(404, "not_found"));
+
+  const places = restaurant.places;
+  if (!places || !places.place_id_known) {
+    return delay({ place_id_known: false, provider: "google" as const, photos: [], hours: null });
+  }
+
+  return delay({
+    place_id_known: true,
+    provider: "google" as const,
+    photos: places.photos.map((photo, index) => ({
+      index,
+      width_px: 800,
+      height_px: 600,
+      url: `/mock/places/${(index % 3) + 1}.svg`,
+      attributions: photo.attributions,
+    })),
+    hours: places.days ? placeHoursOf(places.days, now) : null,
   });
 }
 

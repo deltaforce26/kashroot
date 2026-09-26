@@ -11,6 +11,7 @@ import type { GeoPoint, ProfileRequest, SearchRequest } from "../api/types";
 import type {
   DetailView,
   DirectoryView,
+  PlacesView,
   PublicRestaurantView,
   ResultView,
   SearchView,
@@ -115,6 +116,23 @@ export function useRestaurantPublic(id: string | undefined): QueryState<PublicRe
     (signal) =>
       id
         ? kashrootApi.getRestaurantPublic(id, signal)
+        : Promise.reject(new Error("missing restaurant id")),
+    [id],
+  );
+}
+
+/**
+ * Google Places enrichment for a restaurant: photos and hours, fetched
+ * independently of `useRestaurant`/`useRestaurantPublic` so a failure or a slow
+ * answer here never delays or blanks the kashrut verdict. Callers render the
+ * placeholder/no-gallery/no-hours fallback on `error` or `!data`, never a loading
+ * state that blocks the rest of the page.
+ */
+export function useRestaurantPlaces(id: string | undefined): QueryState<PlacesView> {
+  return useQuery<PlacesView>(
+    (signal) =>
+      id
+        ? kashrootApi.getRestaurantPlaces(id, signal)
         : Promise.reject(new Error("missing restaurant id")),
     [id],
   );

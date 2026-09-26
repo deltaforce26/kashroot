@@ -1,15 +1,17 @@
 /**
- * Restaurant — tinted hero, glass verdict panel (design 3d). The money screen.
+ * Restaurant — full-bleed Google-photo hero, glass verdict panel. The money screen.
  *
- * Order of the page is the order of the argument: the name of the place, then why
- * it matches you, both above the hero, then the hero verdict, then the certificate
- * that produced it with its provenance, then everything soft. The fit score sits
- * near the bottom, deliberately far from the verdict pill and under its own
- * explanatory label.
+ * Order of the page is the order of the argument: the hero carries the name, the
+ * meta line, an open/closed badge and the verdict pill together, then straight
+ * into why it matches you, then the certificate that produced it with its
+ * provenance, then the Google gallery and hours (never kashrut evidence), then the
+ * plain facts, then the fit score — deliberately far from the verdict pill and
+ * under its own explanatory label.
  *
- * The design's Shabbat/erev-chag hours block is not rendered: Israel hours logic is
- * out of POC scope and the detail response carries no hours, so inventing rows here
- * would be the one fabricated thing on the screen that matters most.
+ * Photos and hours come from a second, independent request
+ * (`useRestaurantPlaces`): a failure or a slow answer there degrades the hero to
+ * its tinted placeholder and drops the gallery/hours sections, and never blocks or
+ * delays the verdict above.
  */
 
 import { Flag } from "lucide-react";
@@ -20,17 +22,19 @@ import { decidingCertificate } from "../api/viewmodel";
 import { CertificatePhotoSlot } from "../components/CertificatePhotoSlot";
 import { EvidencePanel } from "../components/EvidencePanel";
 import { FitScoreBar } from "../components/FitScoreBar";
-import { tintClass } from "../components/RestaurantCard";
 import { SaveToListHost } from "../components/SaveToListSheet";
 import { ReportSheet } from "../components/ReportSheet";
+import { DetailActionBar } from "../components/restaurant/DetailActionBar";
+import { DetailsList } from "../components/restaurant/DetailsList";
+import { OpeningHours } from "../components/restaurant/OpeningHours";
+import { PlacesGallery } from "../components/restaurant/PlacesGallery";
+import { RestaurantHero } from "../components/restaurant/RestaurantHero";
 import { VerdictPill } from "../components/VerdictPill";
-import { BookmarkIcon, ChevronIcon, PhoneIcon, ShareIcon } from "../components/icons";
 import { ErrorState, LoadingList, NotFoundState, OfflineBanner } from "../components/states";
 import { useGoBack } from "../hooks/useReturnTo";
-import { googleMapsUrl, wazeUrl } from "../location/directions";
-import { useOrigin } from "../location/useOrigin";
-import { isNetworkError, useRestaurant } from "../hooks/useApi";
+import { isNetworkError, useRestaurant, useRestaurantPlaces } from "../hooks/useApi";
 import { formatDate, formatDistance, pickName, useI18n } from "../i18n/I18nProvider";
+import { useOrigin } from "../location/useOrigin";
 import { toPayload } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
 import { useSaveToggle } from "../saved/useSaveToggle";
@@ -94,6 +98,9 @@ export function Restaurant() {
   const payload = useMemo(() => toPayload(profile), [profile]);
   // Same centre the list used, so the distance shown here is the same number.
   const { data, loading, error, reload } = useRestaurant(id, payload, origin ?? undefined);
+  // A second, independent request: photos and hours never block or blank the
+  // verdict above. `placesError`/`!places` both fall back to the same placeholder.
+  const { data: places, error: placesError } = useRestaurantPlaces(id);
 
   // The same head the profile-free page declares for this address: facts about the
   // place, and nothing about what the verdict below says — a crawler has no profile,
@@ -164,6 +171,13 @@ export function Restaurant() {
     .join(" · ");
 
   const saved = isSaved(data.id);
+  // A rejected request and a restaurant with no known Google place id fall back to
+  // exactly the same placeholder — the page never has to tell the two apart.
+  const resolvedPlaces = placesError ? null : places;
+  const hasPlaces = Boolean(resolvedPlaces?.placeIdKnown);
+  const heroPhoto = hasPlaces ? resolvedPlaces?.photos[0] ?? null : null;
+  const hours = hasPlaces ? (resolvedPlaces?.hours ?? null) : null;
+  const galleryPhotos = hasPlaces ? resolvedPlaces?.photos ?? [] : [];
 
   /**
    * Web Share where the browser has it (the native sheet is what a phone user
@@ -191,58 +205,26 @@ export function Restaurant() {
 
   return (
     <div className="shell">
-      <header className="shell__header" style={{ justifyContent: "space-between" }}>
-        <button
-          type="button"
-          className="circle glass"
-          aria-label={t.states.back}
-          onClick={goBack}
-        >
-          <ChevronIcon />
-        </button>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            type="button"
-            className="circle glass"
-            aria-label={t.restaurant.share}
-            onClick={handleShare}
-          >
-            <ShareIcon />
-          </button>
-          <button
-            type="button"
-            className="circle glass"
-            aria-label={saved ? t.restaurant.saved : t.restaurant.save}
-            aria-pressed={saved}
-            onClick={() => toggle(data)}
-          >
-            <BookmarkIcon size={17} filled={saved} />
-          </button>
-        </div>
-      </header>
+      <div className="shell__scroll">
+        <RestaurantHero
+          name={name}
+          meta={meta}
+          dietType={data.dietType}
+          photo={heroPhoto}
+          hours={hours}
+          verdict={data.kashrut.verdict}
+          onBack={goBack}
+          onShare={handleShare}
+          save={{ saved, onToggle: () => toggle(data) }}
+        />
 
-      <div className="shell__scroll" style={{ paddingTop: 12 }}>
         {copied && (
           <p role="status" className="hint" style={{ margin: 0 }}>
             {t.restaurant.linkCopied}
           </p>
         )}
 
-        <div>
-          <h1 style={{ font: "700 28px Assistant, sans-serif", margin: 0 }}>{name}</h1>
-          <div style={{ fontSize: 13, color: "var(--sub)", marginTop: 2 }}>{meta}</div>
-        </div>
-
         <EvidencePanel match={data.kashrut} deciding={deciding} />
-
-        <div className={`hero ${tintClass(data.dietType)}`}>
-          <span className="hero__photo stripe" aria-hidden="true">
-            {t.photoPlaceholder}
-          </span>
-          <span className="hero__verdict">
-            <VerdictPill verdict={data.kashrut.verdict} size="lg" long />
-          </span>
-        </div>
 
         {deciding ? (
           <CertificateCard
@@ -259,6 +241,24 @@ export function Restaurant() {
             </p>
           </section>
         )}
+
+        <PlacesGallery name={name} photos={galleryPhotos} />
+        {hours && <OpeningHours hours={hours} />}
+        <DetailsList
+          addressHe={data.addressHe}
+          cityHe={data.cityHe}
+          phone={data.phone}
+          website={data.website}
+        />
+
+        {/* Layer 2 lives here: below the facts, labelled, and never next to the pill.
+            `fit-row` is the same structural container the cards use. */}
+        <section className="panel glass fit-row" aria-label={t.fit.label}>
+          <FitScoreBar fit={data.fit} />
+          <p style={{ fontSize: 11.5, color: "var(--sub)", margin: "8px 0 0", lineHeight: 1.5 }}>
+            {t.fit.explain}
+          </p>
+        </section>
 
         {others.length > 0 && (
           <details className="panel glass">
@@ -283,45 +283,23 @@ export function Restaurant() {
           </details>
         )}
 
-        {/* Layer 2 lives here: below the facts, labelled, and never next to the pill.
-            `fit-row` is the same structural container the cards use. */}
-        <section className="panel glass fit-row" aria-label={t.fit.label}>
-          <FitScoreBar fit={data.fit} />
-          <p style={{ fontSize: 11.5, color: "var(--sub)", margin: "8px 0 0", lineHeight: 1.5 }}>
-            {t.fit.explain}
-          </p>
-        </section>
-
-        <div className="actions">
-          <a
-            className="cta"
-            href={data.geo ? wazeUrl(data.geo) : "#"}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {t.restaurant.navigateWaze}
-          </a>
-          <a
-            className="cta cta--ghost"
-            href={data.geo ? googleMapsUrl(data.geo) : "#"}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {t.restaurant.navigateGoogle}
-          </a>
-          {data.phone && (
-            <a className="action-circle glass" href={`tel:${data.phone}`} aria-label={t.restaurant.call}>
-              <PhoneIcon />
-            </a>
-          )}
-        </div>
-
         {!reportBesidePhoto && (
           <button type="button" className="report-link" onClick={openReport}>
             <Flag size={12} aria-hidden="true" />
             <span>{t.restaurant.report.open}</span>
           </button>
         )}
+
+        {/* Google's Places terms require attribution wherever its content is shown
+            off a Google map; one small line here covers the hero photo, the
+            gallery and the hours together. */}
+        {(galleryPhotos.length > 0 || hours) && (
+          <p className="hint" style={{ margin: 0 }}>
+            {t.restaurant.googleAttribution}
+          </p>
+        )}
+
+        <DetailActionBar geo={data.geo} phone={data.phone} />
       </div>
 
       {reporting && (
