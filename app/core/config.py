@@ -133,6 +133,35 @@ class Settings(BaseSettings):
     # that from the request's own base URL (app.api.public_seo.resolve_public_web_origin).
     public_web_origin: str | None = None
 
+    # ── Sheet-sync (docs/sheet-sync-runbook.md): private Google Sheet -> WhatsApp
+    # approve/deny -> seed-import --apply --prune, run twice daily from GitHub Actions.
+    #
+    # Google service account JSON key (Sheets API values.get, read-only). The sheet
+    # must be shared with the service account's email as a Viewer.
+    google_service_account_json: str | None = None
+    sheet_id: str | None = None
+    sheet_tab: str = "Sheet1"
+
+    # Public origin of this API service (Render), used to build the WhatsApp confirm
+    # link. Not a secret — e.g. "https://kashroot-api.onrender.com".
+    public_api_origin: str | None = None
+
+    # Fine-grained GitHub PAT, Actions: read & write on this repo only — used by the
+    # confirm-page approval to trigger `sheet-sync-apply.yml` via workflow_dispatch.
+    github_dispatch_token: str | None = None
+    github_repo: str = "deltaforce26/kashroot"
+    sheet_sync_workflow_file: str = "sheet-sync-apply.yml"
+
+    # Twilio WhatsApp (plain REST, no SDK). KASHROOT_TWILIO_CONTENT_SID is optional:
+    # when set, sends via an approved Content Template (required for
+    # business-initiated messages outside Twilio's 24h customer-service window);
+    # otherwise sends a freeform Body.
+    twilio_account_sid: str | None = None
+    twilio_auth_token: str | None = None
+    twilio_whatsapp_from: str | None = None
+    twilio_content_sid: str | None = None
+    whatsapp_to: str | None = None
+
     @field_validator("storage_backend", mode="before")
     @classmethod
     def _parse_storage_backend(cls, value: Any) -> Any:

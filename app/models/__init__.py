@@ -27,12 +27,14 @@ from app.models.enums import (
     PhotoKind,
     RecordState,
     RestaurantStatus,
+    SheetSyncProposalStatus,
     SourceDocumentKind,
     UserRole,
 )
 from app.models.geocode import GeocodeCache
 from app.models.moderation import AuditLog, Flag, IngestionRun, OwnerClaim
 from app.models.restaurant import OpeningHours, Restaurant, RestaurantPhoto
+from app.models.sheet_sync import SheetSyncProposal
 from app.models.user import (
     ProfileCertifierWhitelist,
     SavedList,
@@ -78,6 +80,8 @@ __all__ = [
     "RestaurantStatus",
     "SavedList",
     "SavedListItem",
+    "SheetSyncProposal",
+    "SheetSyncProposalStatus",
     "SourceDocument",
     "SourceDocumentKind",
     "User",

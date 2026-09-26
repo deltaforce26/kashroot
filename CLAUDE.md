@@ -23,6 +23,10 @@ An app that answers "Can I eat here according to MY standards?" — user defines
 - **Seed data corpus exists:** `data/seed/kashroot_seed_corpus.csv` — 492 records from 9 certifier source documents (see `data/README.md` for schema, sources, and known gaps). Built by `scripts/build_seed.py`.
 - Seed data has certifier + status only — **no certificate-level attributes, no expiry dates**. Records are `LIST_VERIFIED` at best; treat as source-hierarchy level 1 (official published lists).
 - Launch gate: don't launch a city below 80% coverage.
+- **Sheet-sync added:** the corpus can now be edited in a private Google Sheet;
+  twice-daily GitHub Actions cron dry-runs the import and WhatsApps an approve/deny
+  link (`app.ingestion.sheet_sync`, `app.api.sync`, `kashroot sheet-sync ...`) — see
+  `docs/sheet-sync-runbook.md`.
 
 ## Build order (from PRD roadmap)
 1. Data pipeline + moderation console FIRST (weeks 1–8), before app polish.

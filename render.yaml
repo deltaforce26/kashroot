@@ -76,3 +76,29 @@ services:
       # a Blueprint sync only applies new values to services it creates or updates.
       - key: KASHROOT_PUBLIC_WEB_ORIGIN
         value: https://kashroot.app
+
+      # Sheet-sync (docs/sheet-sync-runbook.md). This service's own public origin —
+      # not a secret, but set it explicitly rather than relying on Render's default
+      # *.onrender.com hostname changing under you.
+      - key: KASHROOT_PUBLIC_API_ORIGIN
+        sync: false
+      - key: KASHROOT_GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: KASHROOT_SHEET_ID
+        sync: false
+      - key: KASHROOT_SHEET_TAB
+        value: Sheet1
+      - key: KASHROOT_GITHUB_DISPATCH_TOKEN
+        sync: false
+      - key: KASHROOT_GITHUB_REPO
+        value: deltaforce26/kashroot
+      - key: KASHROOT_TWILIO_ACCOUNT_SID
+        sync: false
+      - key: KASHROOT_TWILIO_AUTH_TOKEN
+        sync: false
+      - key: KASHROOT_TWILIO_WHATSAPP_FROM
+        sync: false
+      - key: KASHROOT_TWILIO_CONTENT_SID
+        sync: false
+      - key: KASHROOT_WHATSAPP_TO
+        sync: false

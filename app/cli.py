@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import uuid
 from pathlib import Path
 from typing import Annotated
 
@@ -19,6 +20,12 @@ from app.ingestion.geocode import GeocodeError, GoogleGeocoder, geocode_restaura
 from app.ingestion.seed_import import DEFAULT_CSV_PATH, SeedImportError, import_seed
 
 app = typer.Typer(help="Kashroot backend admin commands.", no_args_is_help=True)
+sheet_sync_app = typer.Typer(
+    help="Google Sheet -> WhatsApp approve/deny -> seed-import sync (see "
+    "docs/sheet-sync-runbook.md).",
+    no_args_is_help=True,
+)
+app.add_typer(sheet_sync_app, name="sheet-sync")
 
 
 @app.command("seed-import")
@@ -320,6 +327,146 @@ def storage_check(
     if not present:
         typer.secho("  exists() returned False after put", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
+
+
+@sheet_sync_app.command("fetch")
+def sheet_sync_fetch(
+    csv_path: Annotated[
+        Path, typer.Option("--csv", help="Where to write the fetched sheet.")
+    ] = DEFAULT_CSV_PATH,
+) -> None:
+    """Fetch the private Google Sheet and write it to the seed-corpus CSV path.
+
+    Reads `KASHROOT_GOOGLE_SERVICE_ACCOUNT_JSON`, `KASHROOT_SHEET_ID` and
+    `KASHROOT_SHEET_TAB`. Makes no database call and writes nothing else.
+    """
+    from app.core.config import settings
+    from app.ingestion.sheet_sync import fetch_and_write_sheet
+    from app.services.google_sheets import GoogleSheetsError
+
+    if not settings.google_service_account_json or not settings.sheet_id:
+        typer.secho(
+            "KASHROOT_GOOGLE_SERVICE_ACCOUNT_JSON and KASHROOT_SHEET_ID are required",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        fetch_and_write_sheet(
+            settings.google_service_account_json, settings.sheet_id, settings.sheet_tab, csv_path
+        )
+    except GoogleSheetsError as exc:
+        typer.secho(f"sheet fetch failed: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.secho(f"wrote {csv_path}", fg=typer.colors.GREEN)
+
+
+@sheet_sync_app.command("propose")
+def sheet_sync_propose(
+    csv_path: Annotated[Path, typer.Option("--csv")] = DEFAULT_CSV_PATH,
+) -> None:
+    """Diff the fetched sheet against the last proposal; store + WhatsApp a new one
+    when it changed and the diff is non-empty. Exits quietly when the sheet is
+    unchanged since the last proposal of any status.
+    """
+    from app.core.config import settings
+    from app.db.session import session_scope
+    from app.ingestion.sheet_sync import SheetSyncError, propose
+    from app.services.twilio_whatsapp import get_whatsapp_sender
+
+    if not settings.public_api_origin:
+        typer.secho(
+            "KASHROOT_PUBLIC_API_ORIGIN is required to build the confirm link",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        with session_scope() as session:
+            proposal = propose(
+                session,
+                csv_path=csv_path,
+                public_api_origin=settings.public_api_origin,
+                whatsapp_sender=get_whatsapp_sender(),
+            )
+    except SheetSyncError as exc:
+        typer.secho(f"propose failed: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+
+    if proposal is None:
+        typer.echo("sheet unchanged since the last proposal — nothing to do")
+
+        return
+
+    typer.secho(f"proposal {proposal.id} — {proposal.status.value}", fg=typer.colors.CYAN)
+    typer.echo(proposal.summary_text)
+
+
+@sheet_sync_app.command("write-snapshot")
+def sheet_sync_write_snapshot(
+    proposal_id: Annotated[uuid.UUID, typer.Option("--proposal", help="Approved proposal id.")],
+    csv_path: Annotated[Path, typer.Option("--csv")] = DEFAULT_CSV_PATH,
+) -> None:
+    """Write an approved proposal's stored CSV snapshot to disk, without importing
+    it — a separate step so contract tests can run against the exact file about to
+    be imported. Never re-fetches the sheet.
+    """
+    from app.db.session import session_scope
+    from app.ingestion.sheet_sync import SheetSyncError, write_proposal_snapshot
+
+    try:
+        with session_scope() as session:
+            write_proposal_snapshot(session, proposal_id, csv_path)
+    except SheetSyncError as exc:
+        typer.secho(f"write-snapshot failed: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.secho(f"wrote {csv_path} from proposal {proposal_id}", fg=typer.colors.GREEN)
+
+
+@sheet_sync_app.command("apply")
+def sheet_sync_apply(
+    proposal_id: Annotated[uuid.UUID, typer.Option("--proposal", help="Approved proposal id.")],
+    csv_path: Annotated[Path, typer.Option("--csv")] = DEFAULT_CSV_PATH,
+) -> None:
+    """Import an approved proposal's already-written snapshot for real
+    (`--prune`, matching the database to the sheet exactly), mark it applied or
+    failed, and WhatsApp the result. Run `write-snapshot` first.
+    """
+    from app.db.session import session_scope
+    from app.ingestion.sheet_sync import SheetSyncError, apply_proposal
+    from app.models import SheetSyncProposalStatus
+    from app.services.twilio_whatsapp import get_whatsapp_sender
+
+    try:
+        with session_scope() as session:
+            proposal = apply_proposal(
+                session, proposal_id, csv_path=csv_path, whatsapp_sender=get_whatsapp_sender()
+            )
+    except SheetSyncError as exc:
+        typer.secho(f"apply failed: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.secho(f"proposal {proposal_id} — {proposal.status.value}", fg=typer.colors.CYAN)
+    typer.echo(proposal.result_text or "")
+    if proposal.status is SheetSyncProposalStatus.FAILED:
+        raise typer.Exit(code=1)
+
+
+@sheet_sync_app.command("notify-failure")
+def sheet_sync_notify_failure(
+    message: Annotated[str, typer.Option("--message", help="Text to WhatsApp.")],
+) -> None:
+    """Send a plain WhatsApp message — used by the workflow's `if: failure()` steps
+    when fetch/propose/apply itself errored before it could notify normally.
+    """
+    from app.services.twilio_whatsapp import get_whatsapp_sender
+
+    get_whatsapp_sender().send(summary=message, link=None)
+    typer.secho("notified", fg=typer.colors.GREEN)
 
 
 if __name__ == "__main__":  # pragma: no cover

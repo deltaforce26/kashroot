@@ -1,0 +1,61 @@
+name: sheet-sync
+
+# Twice daily: fetch the private Google Sheet, dry-run the import, and WhatsApp a
+# summary with an approve/deny link. Nothing here writes to the database for real —
+# see sheet-sync-apply.yml, triggered separately once a human taps Approve.
+#
+# Cron is UTC. 50 5 * * * / 50 16 * * * targets ~08:50 / ~19:50 Israel Daylight Time
+# (UTC+3, in effect roughly late March-late October). During Israel Standard Time
+# (UTC+2, late October-late March) these same UTC times land at ~07:50 / ~18:50
+# local instead — an hour earlier, not a schedule failure. Adjust here if that drift
+# ever matters more than the twice-a-day cadence.
+on:
+  schedule:
+    - cron: "50 5 * * *"
+    - cron: "50 16 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: sheet-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sheet-sync:
+    runs-on: ubuntu-latest
+    env:
+      KASHROOT_DATABASE_URL: ${{ secrets.KASHROOT_DATABASE_URL }}
+      KASHROOT_GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.KASHROOT_GOOGLE_SERVICE_ACCOUNT_JSON }}
+      KASHROOT_SHEET_ID: ${{ secrets.KASHROOT_SHEET_ID }}
+      KASHROOT_SHEET_TAB: ${{ secrets.KASHROOT_SHEET_TAB }}
+      KASHROOT_PUBLIC_API_ORIGIN: ${{ secrets.KASHROOT_PUBLIC_API_ORIGIN }}
+      KASHROOT_TWILIO_ACCOUNT_SID: ${{ secrets.KASHROOT_TWILIO_ACCOUNT_SID }}
+      KASHROOT_TWILIO_AUTH_TOKEN: ${{ secrets.KASHROOT_TWILIO_AUTH_TOKEN }}
+      KASHROOT_TWILIO_WHATSAPP_FROM: ${{ secrets.KASHROOT_TWILIO_WHATSAPP_FROM }}
+      KASHROOT_TWILIO_CONTENT_SID: ${{ secrets.KASHROOT_TWILIO_CONTENT_SID }}
+      KASHROOT_WHATSAPP_TO: ${{ secrets.KASHROOT_WHATSAPP_TO }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install ".[dev]"
+
+      - name: Fetch the sheet
+        run: kashroot sheet-sync fetch
+
+      - name: Contract tests on the fetched CSV
+        run: pytest tests/test_seed_corpus_contract.py
+
+      - name: Propose (dry-run + WhatsApp if changed)
+        run: kashroot sheet-sync propose
+
+      - name: Notify on failure
+        if: failure()
+        run: kashroot sheet-sync notify-failure --message "sheet-sync workflow failed — check GitHub Actions logs for run ${{ github.run_id }}."

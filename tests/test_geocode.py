@@ -724,7 +724,11 @@ def test_migration_chain_heads_at_0008():
 
     root = Path(__file__).resolve().parents[1]
     script = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert script.get_heads() == ["0008_enable_row_level_security"]
+    assert script.get_heads() == ["0009_sheet_sync_proposal"]
+    assert (
+        script.get_revision("0009_sheet_sync_proposal").down_revision
+        == "0008_enable_row_level_security"
+    )
     assert (
         script.get_revision("0008_enable_row_level_security").down_revision
         == "0007_drop_certifier_council_city"

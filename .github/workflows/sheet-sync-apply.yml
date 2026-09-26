@@ -1,0 +1,54 @@
+name: sheet-sync-apply
+
+# Triggered by the confirm page (app.api.sync.proposals) the moment a person taps
+# Approve on a sheet-sync WhatsApp link. Writes the proposal's stored CSV snapshot
+# (never a re-fetch of the sheet) and imports it for real, with --prune, so the
+# database ends up matching the sheet exactly.
+on:
+  workflow_dispatch:
+    inputs:
+      proposal_id:
+        description: "SheetSyncProposal id to apply (must be status=approved)"
+        required: true
+        type: string
+
+concurrency:
+  group: sheet-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    env:
+      KASHROOT_DATABASE_URL: ${{ secrets.KASHROOT_DATABASE_URL }}
+      KASHROOT_TWILIO_ACCOUNT_SID: ${{ secrets.KASHROOT_TWILIO_ACCOUNT_SID }}
+      KASHROOT_TWILIO_AUTH_TOKEN: ${{ secrets.KASHROOT_TWILIO_AUTH_TOKEN }}
+      KASHROOT_TWILIO_WHATSAPP_FROM: ${{ secrets.KASHROOT_TWILIO_WHATSAPP_FROM }}
+      KASHROOT_TWILIO_CONTENT_SID: ${{ secrets.KASHROOT_TWILIO_CONTENT_SID }}
+      KASHROOT_WHATSAPP_TO: ${{ secrets.KASHROOT_WHATSAPP_TO }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install ".[dev]"
+
+      - name: Write the approved snapshot to disk
+        run: kashroot sheet-sync write-snapshot --proposal "${{ inputs.proposal_id }}"
+
+      - name: Contract tests on the snapshot about to be imported
+        run: pytest tests/test_seed_corpus_contract.py
+
+      - name: Import for real (--prune)
+        run: kashroot sheet-sync apply --proposal "${{ inputs.proposal_id }}"
+
+      - name: Notify on failure
+        if: failure()
+        run: kashroot sheet-sync notify-failure --message "sheet-sync-apply FAILED for proposal ${{ inputs.proposal_id }} — check GitHub Actions logs for run ${{ github.run_id }}."

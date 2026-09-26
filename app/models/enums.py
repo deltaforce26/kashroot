@@ -216,6 +216,24 @@ class AuditAction(StrEnum):
     STATE_CHANGE = "state_change"
 
 
+class SheetSyncProposalStatus(StrEnum):
+    """Lifecycle of one ``kashroot sheet-sync propose`` snapshot (see
+    ``app.ingestion.sheet_sync``). Exactly one terminal state ends each proposal:
+    ``approved``/``denied`` are decisions still awaiting ``apply``; ``applied``/
+    ``failed`` are outcomes of that apply; ``superseded`` and ``expired`` mean the
+    decision link is no longer live.
+    """
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    DENIED = "denied"
+    APPLIED = "applied"
+    FAILED = "failed"
+    SUPERSEDED = "superseded"
+    EXPIRED = "expired"
+    NO_CHANGES = "no_changes"
+
+
 #: Every PG enum type name created by migrations, in creation order (0001 creates all
 #: but the last; evidence_photo_status is added by 0004). Keep in sync with
 #: ``alembic/versions/``.
@@ -238,4 +256,5 @@ ENUM_TYPES: dict[str, type[StrEnum]] = {
     "ingestion_run_state": IngestionRunState,
     "audit_action": AuditAction,
     "evidence_photo_status": EvidencePhotoStatus,
+    "sheet_sync_proposal_status": SheetSyncProposalStatus,
 }

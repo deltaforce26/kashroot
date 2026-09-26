@@ -17,6 +17,7 @@ from app.api.admin import router as admin_router
 from app.api.public import router as public_router
 from app.api.public_photos import router as public_photos_router
 from app.api.public_seo import router as public_seo_router
+from app.api.sync import router as sync_router
 from app.core.config import settings
 from app.db.session import get_session
 
@@ -59,6 +60,7 @@ def create_app() -> FastAPI:
     application.include_router(public_router)
     application.include_router(public_photos_router)
     application.include_router(public_seo_router)
+    application.include_router(sync_router)
 
     return application
 
