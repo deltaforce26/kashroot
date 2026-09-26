@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -80,7 +80,7 @@ def get_restaurant_places(
 @router.get("/restaurants/{restaurant_id}/photos/{index}")
 def get_restaurant_photo(
     restaurant_id: uuid.UUID,
-    index: int,
+    index: int = Path(ge=0),
     w: int = Query(DEFAULT_PHOTO_WIDTH_PX, ge=MIN_PHOTO_WIDTH_PX, le=MAX_PHOTO_WIDTH_PX),
     session: Session = Depends(get_session),
     places_service: PlacesService = Depends(get_places_service),

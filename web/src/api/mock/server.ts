@@ -598,12 +598,34 @@ function toMinutes(hhmm: string): number {
  * range whose close is not after its open (`18:00`–`02:00`) is read as crossing
  * midnight into the next day, exactly as `app/services/places_hours.py` does.
  */
+const ISRAEL_TZ = "Asia/Jerusalem";
+const ISRAEL_CLOCK = new Intl.DateTimeFormat("en-US", {
+  timeZone: ISRAEL_TZ,
+  weekday: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+const WEEKDAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+/**
+ * `now` read on the Israel civil clock, Sunday-first — the backend normalises
+ * every caller to Israel time, so the mock must not read the runtime's own zone.
+ */
+export function israelClock(now: Date): { dayIndex: number; minuteOfDay: number } {
+  const parts = ISRAEL_CLOCK.formatToParts(now);
+  const part = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return {
+    dayIndex: WEEKDAY_INDEX[part("weekday")] ?? 0,
+    minuteOfDay: Number(part("hour")) * 60 + Number(part("minute")),
+  };
+}
+
 export function placesOpenState(
   days: FixturePlaceHoursDay[],
   now: Date,
 ): { openNow: boolean | null; closesAt: string | null; opensAt: string | null } {
-  const todayIndex = now.getDay();
-  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const { dayIndex: todayIndex, minuteOfDay: nowMin } = israelClock(now);
   const byDay = new Map(days.map((day) => [day.day, day]));
   const today = byDay.get(todayIndex);
   const yesterday = byDay.get((todayIndex + 6) % 7);
@@ -651,7 +673,7 @@ function placeHoursOf(days: FixturePlaceHoursDay[], now: Date): PlaceHoursOut {
     open_now: state.openNow,
     closes_at: state.closesAt,
     opens_at: state.opensAt,
-    today: now.getDay(),
+    today: israelClock(now).dayIndex,
     days: [...days].sort((a, b) => a.day - b.day).map(toPlaceHoursDayOut),
     // Google's own localized one-liners are not reproduced here — the app builds
     // its hours rows from `days`, never from this array.

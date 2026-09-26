@@ -264,7 +264,7 @@ describe("directory response", () => {
  */
 describe("places enrichment", () => {
   it("is open around the clock for a 24/7 fixture, on any day at any hour", async () => {
-    const response = await mockRestaurantPlaces("r-nougatine", new Date("2026-08-17T03:00:00Z"));
+    const response = await mockRestaurantPlaces("r-nougatine", new Date("2026-08-17T03:00:00+03:00"));
     expect(response.place_id_known).toBe(true);
     expect(response.provider).toBe("google");
     expect(response.photos).toHaveLength(2);
@@ -275,48 +275,48 @@ describe("places enrichment", () => {
 
   it("crosses midnight on Thursday only, closing every other night at 23:30", async () => {
     // Thursday 20:00 — inside the 18:00–02:00 range that crosses into Friday.
-    const thursdayEvening = await mockRestaurantPlaces("r-hapisga", new Date("2026-08-20T20:00:00Z"));
+    const thursdayEvening = await mockRestaurantPlaces("r-hapisga", new Date("2026-08-20T20:00:00+03:00"));
     expect(thursdayEvening.hours?.today).toBe(4);
     expect(thursdayEvening.hours?.open_now).toBe(true);
     expect(thursdayEvening.hours?.closes_at).toBe("02:00");
 
     // Friday 01:00 — still open, on Thursday's carried-over range.
-    const fridaySmallHours = await mockRestaurantPlaces("r-hapisga", new Date("2026-08-21T01:00:00Z"));
+    const fridaySmallHours = await mockRestaurantPlaces("r-hapisga", new Date("2026-08-21T01:00:00+03:00"));
     expect(fridaySmallHours.hours?.open_now).toBe(true);
     expect(fridaySmallHours.hours?.closes_at).toBe("02:00");
 
     // Monday 20:00 — an ordinary night, closing at 23:30, not crossing midnight.
-    const mondayEvening = await mockRestaurantPlaces("r-hapisga", new Date("2026-08-17T20:00:00Z"));
+    const mondayEvening = await mockRestaurantPlaces("r-hapisga", new Date("2026-08-17T20:00:00+03:00"));
     expect(mondayEvening.hours?.open_now).toBe(true);
     expect(mondayEvening.hours?.closes_at).toBe("23:30");
 
     // Thursday 10:00 — before opening.
-    const thursdayMorning = await mockRestaurantPlaces("r-hapisga", new Date("2026-08-20T10:00:00Z"));
+    const thursdayMorning = await mockRestaurantPlaces("r-hapisga", new Date("2026-08-20T10:00:00+03:00"));
     expect(thursdayMorning.hours?.open_now).toBe(false);
     expect(thursdayMorning.hours?.opens_at).toBe("18:00");
   });
 
   it("closes for Shabbat entirely and closes early on Friday", async () => {
     // Saturday (day 6) — closed all day, and the next opening is Sunday morning.
-    const saturday = await mockRestaurantPlaces("r-katzefet", new Date("2026-08-22T10:00:00Z"));
+    const saturday = await mockRestaurantPlaces("r-katzefet", new Date("2026-08-22T10:00:00+03:00"));
     expect(saturday.hours?.today).toBe(6);
     expect(saturday.hours?.open_now).toBe(false);
     expect(saturday.hours?.opens_at).toBe("09:00");
     expect(saturday.hours?.days.find((day) => day.day === 6)?.closed).toBe(true);
 
     // Friday (day 5) at 10:00 — open, closing early at 14:30.
-    const fridayMorning = await mockRestaurantPlaces("r-katzefet", new Date("2026-08-21T10:00:00Z"));
+    const fridayMorning = await mockRestaurantPlaces("r-katzefet", new Date("2026-08-21T10:00:00+03:00"));
     expect(fridayMorning.hours?.open_now).toBe(true);
     expect(fridayMorning.hours?.closes_at).toBe("14:30");
 
     // Friday at 20:00 — closed for the week; the next opening skips Saturday
     // entirely and lands on Sunday.
-    const fridayEvening = await mockRestaurantPlaces("r-katzefet", new Date("2026-08-21T20:00:00Z"));
+    const fridayEvening = await mockRestaurantPlaces("r-katzefet", new Date("2026-08-21T20:00:00+03:00"));
     expect(fridayEvening.hours?.open_now).toBe(false);
     expect(fridayEvening.hours?.opens_at).toBe("09:00");
 
     // Sunday (day 0) at 10:00 — an ordinary open day again.
-    const sunday = await mockRestaurantPlaces("r-katzefet", new Date("2026-08-16T10:00:00Z"));
+    const sunday = await mockRestaurantPlaces("r-katzefet", new Date("2026-08-16T10:00:00+03:00"));
     expect(sunday.hours?.today).toBe(0);
     expect(sunday.hours?.open_now).toBe(true);
     expect(sunday.hours?.closes_at).toBe("22:00");
@@ -342,7 +342,7 @@ describe("places enrichment", () => {
 describe("placesOpenState", () => {
   it("reads an explicit always_open day as open with no closing time", () => {
     const days = [{ day: 3, ranges: [], closed: false, always_open: true }];
-    const state = placesOpenState(days, new Date("2026-08-19T05:00:00Z"));
+    const state = placesOpenState(days, new Date("2026-08-19T05:00:00+03:00"));
     expect(state).toEqual({ openNow: true, closesAt: null, opensAt: null });
   });
 
@@ -353,7 +353,7 @@ describe("placesOpenState", () => {
       { day: 2, ranges: [{ open: "09:00", close: "17:00" }], closed: false, always_open: false },
     ];
     // Sunday (day 0) after close: Monday is closed, so the next opening is Tuesday.
-    const state = placesOpenState(days, new Date("2026-08-16T20:00:00Z"));
+    const state = placesOpenState(days, new Date("2026-08-16T20:00:00+03:00"));
     expect(state).toEqual({ openNow: false, closesAt: null, opensAt: "09:00" });
   });
 });
