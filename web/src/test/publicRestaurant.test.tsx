@@ -76,7 +76,9 @@ describe("the public restaurant page", () => {
     renderApp("/r/r-nougatine");
 
     expect(await screen.findByRole("heading", { level: 1, name: "נוגטין" })).toBeInTheDocument();
-    expect(screen.getByText(/עוזיאל 28, בית וגן, ירושלים/)).toBeInTheDocument();
+    // The address appears twice by design: compact in the hero's meta line, and
+    // again in the "Details" section below.
+    expect(screen.getAllByText(/עוזיאל 28, בית וגן, ירושלים/).length).toBeGreaterThan(0);
     expect(screen.queryByText(he.onboarding.presetTitle)).toBeNull();
 
     const card = screen.getByRole("region", { name: he.restaurant.certificate });

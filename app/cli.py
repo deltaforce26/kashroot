@@ -1,11 +1,11 @@
 """Kashroot admin CLI.
 
-    kashroot seed-import --dry-run     # diff review, writes nothing
-    kashroot seed-import               # apply
-    kashroot seed-import --dry-run --prune   # diff review incl. planned deletions
-    kashroot seed-import --apply --prune     # apply, and HARD-DELETE stale seed rows
-    kashroot geocode                   # dry run: free, no API calls
-    kashroot geocode --apply           # geocode + write, cache-first
+kashroot seed-import --dry-run     # diff review, writes nothing
+kashroot seed-import               # apply
+kashroot seed-import --dry-run --prune   # diff review incl. planned deletions
+kashroot seed-import --apply --prune     # apply, and HARD-DELETE stale seed rows
+kashroot geocode                   # dry run: free, no API calls
+kashroot geocode --apply           # geocode + write, cache-first
 """
 
 from __future__ import annotations
@@ -147,9 +147,7 @@ def geocode(
                 err=True,
             )
             raise typer.Exit(code=1)
-        geocoder = GoogleGeocoder(
-            settings.google_maps_api_key, delay_ms=settings.geocode_delay_ms
-        )
+        geocoder = GoogleGeocoder(settings.google_maps_api_key, delay_ms=settings.geocode_delay_ms)
 
     try:
         with session_scope() as session:

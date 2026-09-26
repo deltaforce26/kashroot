@@ -19,6 +19,7 @@ import {
   API_RUNTIME_CACHING,
   API_URL_PATTERN,
   CACHING_HANDLERS,
+  PUBLIC_RESTAURANT_URL_PATTERN,
   ruleFor,
   type RuntimeCachingRule,
 } from "../pwa/runtimeCaching";
@@ -94,6 +95,24 @@ describe("service worker runtime caching", () => {
       const maxAge = rule.options?.expiration?.maxAgeSeconds ?? Infinity;
       expect(maxAge).toBeLessThanOrEqual(60 * 60 * 6);
     }
+  });
+
+  /**
+   * Google Places enrichment (`GET /v1/restaurants/{id}/places` and
+   * `GET /v1/restaurants/{id}/photos/{index}`) needed no new rule: both paths
+   * already fall under `PUBLIC_RESTAURANT_URL_PATTERN`, which routes every GET
+   * under `/v1/restaurants/` to `NetworkOnly`. Photos are never cached because the
+   * redirect target is a short-lived Google URL, not a stable one worth storing;
+   * hours are never cached for the same reason the profile-free facts are not — a
+   * revocation or an hours change must show the moment it is published.
+   */
+  it("routes the places endpoint and the photo redirect through the same NetworkOnly rule", () => {
+    const placesPath = "/v1/restaurants/9d4f3a7c-0000-4000-8000-000000000001/places";
+    const photoPath = "/v1/restaurants/9d4f3a7c-0000-4000-8000-000000000001/photos/0";
+    expect(PUBLIC_RESTAURANT_URL_PATTERN.test(placesPath)).toBe(true);
+    expect(PUBLIC_RESTAURANT_URL_PATTERN.test(photoPath)).toBe(true);
+    expect(ruleFor(placesPath, "GET")?.handler).toBe("NetworkOnly");
+    expect(ruleFor(photoPath, "GET")?.handler).toBe("NetworkOnly");
   });
 
   /**

@@ -23,11 +23,19 @@ import { useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { PublicCertificateView, PublicRestaurantView } from "../api/viewmodel";
 import { tintClass } from "../components/RestaurantCard";
-import { ChevronIcon, PhoneIcon } from "../components/icons";
+import { DetailActionBar } from "../components/restaurant/DetailActionBar";
+import { DetailsList } from "../components/restaurant/DetailsList";
+import { OpeningHours } from "../components/restaurant/OpeningHours";
+import { PlacesGallery } from "../components/restaurant/PlacesGallery";
+import { RestaurantHero } from "../components/restaurant/RestaurantHero";
 import { ErrorState, LoadingList, NotFoundState, OfflineBanner } from "../components/states";
-import { isNetworkError, isNotFoundError, useRestaurantPublic } from "../hooks/useApi";
+import {
+  isNetworkError,
+  isNotFoundError,
+  useRestaurantPlaces,
+  useRestaurantPublic,
+} from "../hooks/useApi";
 import { formatDate, pickName, useI18n } from "../i18n/I18nProvider";
-import { googleMapsUrl, wazeUrl } from "../location/directions";
 import { restaurantHead, uniqueCertifierNames, type RestaurantFacts } from "../seo/restaurantHead";
 import { useDocumentHead } from "../seo/useDocumentHead";
 
@@ -92,6 +100,10 @@ export function RestaurantPublic() {
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const { data, loading, error, reload } = useRestaurantPublic(id);
+  // A second, independent request: never blocks or blanks this page, which has no
+  // profile and therefore no verdict to protect in the first place — but a slow or
+  // failed Google call must still never hold up the facts below.
+  const { data: places, error: placesError } = useRestaurantPlaces(id);
 
   const facts = useMemo(() => (data ? toFacts(data, lang) : null), [data, lang]);
   useDocumentHead(restaurantHead(facts, id ?? "", lang, t, isNotFoundError(error)));
@@ -138,21 +150,28 @@ export function RestaurantPublic() {
   // Where onboarding returns to, in the same shape `RequireProfile` stashes it.
   const here = `/r/${data.id}`;
 
+  // Same fallback rule as the profiled page: a rejected request and a restaurant
+  // with no known Google place id read as the identical placeholder.
+  const resolvedPlaces = placesError ? null : places;
+  const hasPlaces = Boolean(resolvedPlaces?.placeIdKnown);
+  const heroPhoto = hasPlaces ? resolvedPlaces?.photos[0] ?? null : null;
+  const hours = hasPlaces ? (resolvedPlaces?.hours ?? null) : null;
+  const galleryPhotos = hasPlaces ? resolvedPlaces?.photos ?? [] : [];
+
   return (
     <div className="shell">
-      <header className="shell__header" style={{ justifyContent: "space-between" }}>
-        {/* A landing from search has no history to go back through, so this is a
-            link to the front door rather than a back button. */}
-        <Link className="circle glass" to="/" aria-label={t.notFoundPage.home}>
-          <ChevronIcon />
-        </Link>
-      </header>
-
-      <div className="shell__scroll" style={{ paddingTop: 12 }}>
-        <div>
-          <h1 style={{ font: "700 28px Assistant, sans-serif", margin: 0 }}>{name}</h1>
-          <div style={{ fontSize: 13, color: "var(--sub)", marginTop: 2 }}>{meta}</div>
-        </div>
+      <div className="shell__scroll">
+        {/* A landing from search has no history to go back through, so this leads
+            to the front door rather than popping one. No verdict on this page, so
+            no verdict pill in the hero either — there is no profile to produce one. */}
+        <RestaurantHero
+          name={name}
+          meta={meta}
+          dietType={data.dietType}
+          photo={heroPhoto}
+          hours={hours}
+          onBack={() => navigate("/")}
+        />
 
         {/* The invitation sits where the verdict panel sits for a visitor who has a
             profile: it is the answer this page cannot give, and why. */}
@@ -185,29 +204,19 @@ export function RestaurantPublic() {
           </section>
         )}
 
-        <div className="actions">
-          <a className="cta" href={data.geo ? wazeUrl(data.geo) : "#"} target="_blank" rel="noreferrer">
-            {t.restaurant.navigateWaze}
-          </a>
-          <a
-            className="cta cta--ghost"
-            href={data.geo ? googleMapsUrl(data.geo) : "#"}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {t.restaurant.navigateGoogle}
-          </a>
-          {data.phone && (
-            <a className="action-circle glass" href={`tel:${data.phone}`} aria-label={t.restaurant.call}>
-              <PhoneIcon />
-            </a>
-          )}
-        </div>
+        <PlacesGallery name={name} photos={galleryPhotos} />
+        {hours && <OpeningHours hours={hours} />}
+        <DetailsList
+          addressHe={data.addressHe}
+          cityHe={data.cityHe}
+          phone={data.phone}
+          website={data.website}
+        />
 
-        {data.website && (
-          <a className="cta cta--ghost" href={data.website} target="_blank" rel="noreferrer">
-            {t.publicRestaurant.website}
-          </a>
+        {(galleryPhotos.length > 0 || hours) && (
+          <p className="hint" style={{ margin: 0 }}>
+            {t.restaurant.googleAttribution}
+          </p>
         )}
 
         {updated && (
@@ -215,6 +224,8 @@ export function RestaurantPublic() {
             {t.publicRestaurant.updatedAt(updated)}
           </p>
         )}
+
+        <DetailActionBar geo={data.geo} phone={data.phone} />
       </div>
     </div>
   );

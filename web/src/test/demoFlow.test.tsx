@@ -433,7 +433,7 @@ describe("demo flow", () => {
     await screen.findByLabelText(he.verdict.whyMatch);
 
     expect(container.querySelector(".fit")).not.toBeNull();
-    expectLayersSeparated(container, ".hero");
+    expectLayersSeparated(container, ".detail-hero");
   });
 
   it("flips direction and language from the profile screen without a second tree", async () => {
