@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -37,23 +37,33 @@ PLACES_RESPONSE_CACHE_CONTROL = "private, max-age=300"
 
 def _get_place_id_or_404(session: Session, restaurant_id: uuid.UUID) -> str | None:
     """
-    Look up ``Restaurant.google_place_id``, 404 when the restaurant itself does not
+    Resolve the place id to enrich from, 404 when the restaurant itself does not
     exist.
+
+    Prefers ``Restaurant.google_business_place_id`` (resolved by
+    ``app.ingestion.places_resolve`` from Places Text Search, so it names the
+    business itself) and falls back to ``google_place_id`` (the legacy Geocoding
+    API's street-address place id) only when no business id was resolved — e.g. a
+    restaurant sharing an address with another business (the פינת הגלידה case),
+    where the address id is still better than nothing.
 
     Parameters:
         session (Session): The open session.
         restaurant_id (uuid.UUID): The restaurant's primary key.
 
     Return:
-        str | None: The restaurant's ``google_place_id`` (possibly ``None``).
+        str | None: The place id to enrich from (possibly ``None``).
     """
     row = session.execute(
-        select(Restaurant.google_place_id).where(Restaurant.id == restaurant_id)
+        select(Restaurant.google_business_place_id, Restaurant.google_place_id).where(
+            Restaurant.id == restaurant_id
+        )
     ).one_or_none()
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=ERROR_RESTAURANT_NOT_FOUND)
+    business_place_id, address_place_id = row
 
-    return row[0]
+    return business_place_id or address_place_id
 
 
 @router.get("/restaurants/{restaurant_id}/places", response_model=PlacesEnrichmentOut)
@@ -80,7 +90,7 @@ def get_restaurant_places(
 @router.get("/restaurants/{restaurant_id}/photos/{index}")
 def get_restaurant_photo(
     restaurant_id: uuid.UUID,
-    index: int,
+    index: int = Path(ge=0),
     w: int = Query(DEFAULT_PHOTO_WIDTH_PX, ge=MIN_PHOTO_WIDTH_PX, le=MAX_PHOTO_WIDTH_PX),
     session: Session = Depends(get_session),
     places_service: PlacesService = Depends(get_places_service),

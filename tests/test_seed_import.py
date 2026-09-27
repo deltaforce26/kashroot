@@ -1,6 +1,8 @@
 """End-to-end seed import over the real corpus (SQLite-backed — see conftest)."""
 
 import datetime as dt
+import unittest
+from pathlib import Path
 
 import pytest
 from sqlalchemy import func, select
@@ -27,13 +29,43 @@ from app.models import (
     SourceDocument,
 )
 
-pytestmark = pytest.mark.skipif(
-    not DEFAULT_CSV_PATH.exists(), reason="seed corpus not present"
-)
+pytestmark = pytest.mark.skipif(not DEFAULT_CSV_PATH.exists(), reason="seed corpus not present")
 
 
 def count(session, model) -> int:
     return session.scalar(select(func.count()).select_from(model))
+
+
+def _write_seed_csv(tmp_path: Path, rows: list[str]) -> Path:
+    """
+    Write a minimal seed CSV (the columns the importer actually reads) for a synthetic
+    scenario that would be awkward to reproduce from the real corpus.
+
+    Parameters:
+        tmp_path (Path): A pytest ``tmp_path`` directory to write the file under.
+        rows (list[str]): Pre-built, comma-joined data rows (no header, no trailing
+            newline handling needed).
+
+    Return:
+        Path: The path of the CSV file written.
+    """
+    header = (
+        "restaurant_name_he,address_he,city_he,city_en,phone,business_type_he,"
+        "diet_type,certifier_ids,corroboration_count,source_documents,source_date,"
+        "record_state,needs_review,notes"
+    )
+    csv_path = tmp_path / "synthetic.csv"
+    csv_path.write_text("\n".join([header, *rows, ""]), encoding="utf-8-sig")
+
+    return csv_path
+
+
+def _source_row(name_he: str, phone: str, source_documents: str) -> str:
+    return (
+        f"{name_he},הרצל 1,אשקלון,Ashkelon,{phone},מסעדה בשרית,"
+        f"meat,badatz_eda_haredit,1,{source_documents},Summer 5786 (2026),"
+        "LIST_VERIFIED,FALSE,"
+    )
 
 
 @pytest.fixture
@@ -49,7 +81,9 @@ def test_import_creates_certifiers_and_source_documents(session, imported):
     # 5786 Landa restaurants refresh, then 8 with that same Tishrei 5787 refresh.
     assert count(session, Certifier) == len(CERTIFIER_SEED)
     assert count(session, SourceDocument) == len(SOURCE_DOCUMENT_SEED)
-    doc = session.scalar(select(SourceDocument).where(SourceDocument.slug == "rubin_restaurants_pdf"))
+    doc = session.scalar(
+        select(SourceDocument).where(SourceDocument.slug == "rubin_restaurants_pdf")
+    )
     assert doc.source_date_label == "5786 (2026)"
     # Conservative: the earliest date the Hebrew-year label can mean.
     assert doc.source_date == dt.date(2025, 9, 23)
@@ -90,9 +124,7 @@ def test_refreshed_rows_are_dated_by_their_freshest_source(session, imported):
     refresh. Dating it from the older document would leave the refresh with no effect on
     the freshness maths that is the whole reason to ingest a newer list.
     """
-    restaurant = session.scalar(
-        select(Restaurant).where(Restaurant.name_he == "שניצלשף")
-    )
+    restaurant = session.scalar(select(Restaurant).where(Restaurant.name_he == "שניצלשף"))
     certificate = restaurant.certificates[0]
 
     assert certificate.valid_from == dt.date(2026, 8, 14)
@@ -101,7 +133,7 @@ def test_refreshed_rows_are_dated_by_their_freshest_source(session, imported):
 
 @pytest.mark.xfail(
     reason=(
-        "3 Landa records (קברנה, רויאל, שביט - לכבוד שבת ויו\"ט) are in the corpus but "
+        '3 Landa records (קברנה, רויאל, שביט - לכבוד שבת ויו"ט) are in the corpus but '
         "absent from landa_restaurants_elul_5786.csv, so this sees 44, not 41. Deferred "
         "by explicit product decision pending research — see docs/data-review-todo.md."
     ),
@@ -120,9 +152,7 @@ def test_the_refresh_is_the_whole_of_its_certifier(session, imported):
     ).all()
 
     assert len(certificates) == 41
-    assert session.scalar(
-        select(Restaurant).where(Restaurant.name_he == "מאמה מיה בטיילת")
-    ) is None
+    assert session.scalar(select(Restaurant).where(Restaurant.name_he == "מאמה מיה בטיילת")) is None
 
 
 def test_import_creates_one_restaurant_per_branch(session, imported):
@@ -136,22 +166,31 @@ def test_import_creates_one_restaurant_per_branch(session, imported):
     assert count(session, Restaurant) == expected
     assert imported.restaurants_created == expected
 
-    branched = session.scalars(
-        select(Restaurant).where(Restaurant.branch_label.is_not(None))
-    ).all()
+    branched = session.scalars(select(Restaurant).where(Restaurant.branch_label.is_not(None))).all()
     assert branched
     assert all(r.branch_label == r.address_he for r in branched)
 
 
 def test_certificates_carry_no_attributes_and_no_expiry(session, imported):
-    """The sources establish certifier + status only — anything more would be invented."""
+    """The sources establish certifier + status only — anything more would be invented.
+
+    A certificate's ``source_document_id`` is unset only when every source its row cites
+    is a deliberately-unregistered slug (product decision 2026-09-26, see
+    data/README.md) — those certificates must also carry no ``verified_at``, never a
+    guessed one.
+    """
     certs = session.scalars(select(Certificate)).all()
     assert certs
     assert all(c.attributes == {} for c in certs)
     assert all(c.valid_until is None for c in certs)
     assert all(c.level is CertificationLevel.UNKNOWN for c in certs)
     assert all(c.source is CertificateSource.OFFICIAL_LIST for c in certs)
-    assert all(c.source_document_id is not None for c in certs)
+
+    with_known_source = [c for c in certs if c.source_document_id is not None]
+    without_known_source = [c for c in certs if c.source_document_id is None]
+    assert with_known_source
+    assert without_known_source
+    assert all(c.verified_at is None for c in without_known_source)
 
 
 def test_rows_needing_review_never_produce_active_certificates(session, imported):
@@ -194,8 +233,10 @@ def test_corroborated_rows_keep_every_source_document(session, imported):
 
     corroborated = [r for r in restaurants if r.corroboration_count > 1]
     assert corroborated
-    # Post-merge the corpus lists no restaurant under two certifiers.
-    assert all(len({c.certifier_id for c in r.certificates}) == 1 for r in corroborated)
+    # Corroboration is about documents, not certifiers: a row under two certifiers (the
+    # Tishrei 5787 Burgers Bar rows, badatz + Machpud meat) is legitimate and covered by
+    # test_multi_certifier_rows_get_one_certificate_each below.
+    assert all(r.certificates for r in corroborated)
 
 
 def test_multi_certifier_rows_get_one_certificate_each(session, tmp_path):
@@ -267,9 +308,84 @@ def test_apply_run_is_recorded_with_stats(session, imported):
 
 
 def test_every_created_certificate_is_audited(session, imported):
-    audited = session.scalars(
-        select(AuditLog).where(AuditLog.entity_type == "certificate")
-    ).all()
+    """Audit evidence names the source document, unless the certificate has none — every
+    source its row cited was a deliberately-unregistered slug (product decision
+    2026-09-26) — in which case evidence is honestly empty rather than a guess.
+    """
+    audited = session.scalars(select(AuditLog).where(AuditLog.entity_type == "certificate")).all()
+    certificates_by_id = {c.id: c for c in session.scalars(select(Certificate))}
     assert len(audited) == count(session, Certificate)
-    assert all(entry.evidence.get("source_document") for entry in audited)
     assert all(entry.ingestion_run_id is not None for entry in audited)
+    for entry in audited:
+        certificate = certificates_by_id[entry.entity_id]
+        if certificate.source_document_id is None:
+            assert entry.evidence == {}
+        else:
+            assert entry.evidence.get("source_document")
+
+
+def test_row_with_a_known_and_unknown_source_keeps_the_known_one_as_primary(session, tmp_path):
+    """An unregistered slug (product decision 2026-09-26) is dropped, not fatal — the row
+    still imports on whatever registered evidence it also cites, and the drop is counted.
+    """
+    csv_path = _write_seed_csv(
+        tmp_path,
+        [_source_row("מסעדת מקור", "0500000001", "eda_haredit_south_poster;unregistered_slug_x")],
+    )
+
+    stats = import_seed(session, csv_path, dry_run=False, actor="pytest")
+
+    assert stats.source_documents_ignored == 1
+    assert stats.ignored_source_slugs == {"unregistered_slug_x": 1}
+    known_doc = session.scalar(
+        select(SourceDocument).where(SourceDocument.slug == "eda_haredit_south_poster")
+    )
+    certificate = session.scalar(select(Certificate))
+    assert certificate.source_document_id == known_doc.id
+    assert certificate.verified_at is not None
+
+
+def test_row_with_only_unknown_sources_imports_with_no_primary_document(session, tmp_path):
+    """Zero known sources still imports the restaurant — with no date, per the fail-safe
+    rule, not a crash.
+    """
+    csv_path = _write_seed_csv(
+        tmp_path,
+        [_source_row("מסעדת אלמונית", "0500000002", "unregistered_slug_a;unregistered_slug_b")],
+    )
+
+    stats = import_seed(session, csv_path, dry_run=False, actor="pytest")
+
+    assert stats.source_documents_ignored == 2
+    assert stats.ignored_source_slugs == {
+        "unregistered_slug_a": 1,
+        "unregistered_slug_b": 1,
+    }
+    restaurant = session.scalar(select(Restaurant))
+    assert restaurant is not None
+    certificate = session.scalar(select(Certificate))
+    assert certificate.source_document_id is None
+    assert certificate.verified_at is None
+    assert certificate.valid_from is None
+
+
+def test_unregistered_source_slug_is_logged_once_per_run_not_once_per_row(session, tmp_path):
+    """Two different rows citing the same unregistered slug must produce one warning, not
+    two — the log exists to tell a reviewer *which* provenance was discarded, and it would
+    be useless noise repeated once per row in a corpus of hundreds.
+    """
+    csv_path = _write_seed_csv(
+        tmp_path,
+        [
+            _source_row("מסעדה א", "0500000003", "unregistered_slug_repeat"),
+            _source_row("מסעדה ב", "0500000004", "unregistered_slug_repeat"),
+        ],
+    )
+    case = unittest.TestCase()
+
+    with case.assertLogs("app.ingestion.seed_import", level="WARNING") as logs:
+        stats = import_seed(session, csv_path, dry_run=False, actor="pytest")
+
+    matching = [line for line in logs.output if "unregistered_slug_repeat" in line]
+    assert len(matching) == 1
+    assert stats.ignored_source_slugs == {"unregistered_slug_repeat": 2}

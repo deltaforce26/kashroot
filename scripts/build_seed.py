@@ -1,4 +1,5 @@
 """Kashroot seed corpus builder — normalizes 6 source documents into one CSV."""
+
 import csv
 import re
 import unicodedata
@@ -401,7 +402,21 @@ S4M = """א טעימה|זוננפלד 30|02-5717002
 קוריץ|רלב"ח 5|"""
 for line in S4M.strip().split("\n"):
     n, a, p = line.split("|")
-    R.append([n, a, "ירושלים", p, "מסעדה/אוכל מוכן בשרי-פרווה", "meat", SRC4[0], SRC4[1], SRC4[2], "TRUE", "phone-to-row alignment on poster imperfect; verify phone"])
+    R.append(
+        [
+            n,
+            a,
+            "ירושלים",
+            p,
+            "מסעדה/אוכל מוכן בשרי-פרווה",
+            "meat",
+            SRC4[0],
+            SRC4[1],
+            SRC4[2],
+            "TRUE",
+            "phone-to-row alignment on poster imperfect; verify phone",
+        ]
+    )
 S4D = """אייס סטורי|שמגר 14|02-9972601
 בוש בייגלס|צפניה 61 פינת בר אילן|02-6514123
 בייגל קפה אקספרס|פארן 7 מרכז מסחרי|1700-500-751
@@ -419,9 +434,51 @@ S4D = """אייס סטורי|שמגר 14|02-9972601
 פיצה טראמפ|יעקב מאיר 11|02-5385477"""
 for line in S4D.strip().split("\n"):
     n, a, p = line.split("|")
-    R.append([n, a, "ירושלים", p, "מסעדה/מזון מוכן חלבי", "dairy", SRC4[0], SRC4[1], SRC4[2], "FALSE", ""])
-R.append(["בית מלון בוטיק ביכורים", "הנביאים 27", "ירושלים", "02-6715551", "בתי מלון", "", SRC4[0], SRC4[1], SRC4[2], "FALSE", ""])
-R.append(["המטבח וחדר האוכל במלון עין כרם (בביה\"ח הדסה)", "עין כרם", "ירושלים", "052-7680481", "בתי מלון", "", SRC4[0], SRC4[1], SRC4[2], "FALSE", ""])
+    R.append(
+        [
+            n,
+            a,
+            "ירושלים",
+            p,
+            "מסעדה/מזון מוכן חלבי",
+            "dairy",
+            SRC4[0],
+            SRC4[1],
+            SRC4[2],
+            "FALSE",
+            "",
+        ]
+    )
+R.append(
+    [
+        "בית מלון בוטיק ביכורים",
+        "הנביאים 27",
+        "ירושלים",
+        "02-6715551",
+        "בתי מלון",
+        "",
+        SRC4[0],
+        SRC4[1],
+        SRC4[2],
+        "FALSE",
+        "",
+    ]
+)
+R.append(
+    [
+        'המטבח וחדר האוכל במלון עין כרם (בביה"ח הדסה)',
+        "עין כרם",
+        "ירושלים",
+        "052-7680481",
+        "בתי מלון",
+        "",
+        SRC4[0],
+        SRC4[1],
+        SRC4[2],
+        "FALSE",
+        "",
+    ]
+)
 
 # ---------------- SOURCE 5: Eda Haredit South (image 189218) ----------------
 SRC5 = ("badatz_eda_haredit", "eda_haredit_south_poster", "Summer 5786 (2026)")
@@ -664,8 +721,7 @@ SOURCE_RECENCY = {
 # documents stay on the record.
 # name|city|address -> name on the newer list
 RENAMED = {
-    ("שאבעס ביג - מחלקת אוכל מוכן", "בני ברק", "בן יעקב 26"):
-        "שאבעס ביג - מחלקת אוכל מוכן פתוח",
+    ("שאבעס ביג - מחלקת אוכל מוכן", "בני ברק", "בן יעקב 26"): "שאבעס ביג - מחלקת אוכל מוכן פתוח",
 }
 
 # Sources treated as the complete current record for their certifier: anything that
@@ -688,26 +744,40 @@ ERROR_SHARED_RECORD = (
     "record or exclude it by hand before re-running."
 )
 
+
 # ---------------- Normalization, diet inference, dedup ----------------
 def norm_phone(p):
     p = p.strip()
-    if not p: return ""
+    if not p:
+        return ""
     keep = "".join(ch for ch in p if ch.isdigit() or ch == "*")
-    if keep.startswith("*"): return keep
-    if keep and not keep.startswith(("0","1")): keep = "0" + keep
+    if keep.startswith("*"):
+        return keep
+    if keep and not keep.startswith(("0", "1")):
+        keep = "0" + keep
     return keep
 
+
 def infer_diet(diet, btype):
-    if diet: return diet
+    if diet:
+        return diet
     t = btype
-    if "בשרי" in t and "חלבי" in t: return "mixed"
-    if "בשרי" in t: return "meat"
-    if "חלבי" in t and "פרו" in t: return "dairy_pareve"
-    if "חלבית" in t or "חלבי" in t: return "dairy"
-    if "פרווה" in t or "פרוה" in t: return "pareve"
-    if "דגים" in t: return "fish"
-    if "גליד" in t or "פיצה" in t or "פיצריה" in t: return "dairy"
+    if "בשרי" in t and "חלבי" in t:
+        return "mixed"
+    if "בשרי" in t:
+        return "meat"
+    if "חלבי" in t and "פרו" in t:
+        return "dairy_pareve"
+    if "חלבית" in t or "חלבי" in t:
+        return "dairy"
+    if "פרווה" in t or "פרוה" in t:
+        return "pareve"
+    if "דגים" in t:
+        return "fish"
+    if "גליד" in t or "פיצה" in t or "פיצריה" in t:
+        return "dairy"
     return ""
+
 
 def norm_name(n):
     n = unicodedata.normalize("NFKD", n)
@@ -716,19 +786,68 @@ def norm_name(n):
     # take first 2 tokens as core key to catch "סול - מסעדת..." vs "סול"
     return n
 
-CITY_EN = {"בני ברק":"Bnei Brak","ירושלים":"Jerusalem","בית שמש":"Beit Shemesh","ביתר עילית":"Beitar Illit",
-"טבריה":"Tiberias","צפת":"Safed","חיפה":"Haifa","עפולה":"Afula","נתניה":"Netanya","נתיבות":"Netivot",
-"אשקלון":"Ashkelon","אשדוד":"Ashdod","אופקים":"Ofakim","ערד":"Arad","חולון":"Holon","רחובות":"Rehovot",
-"ראשון לציון":"Rishon LeZion","פתח תקוה":"Petah Tikva","קרית גת":"Kiryat Gat","קרית מלאכי":"Kiryat Malakhi",
-"מירון":"Meron","נוף הגליל":"Nof HaGalil","חריש":"Harish","רכסים":"Rekhasim","קרית אתא":"Kiryat Ata",
-"יוקנעם":"Yokneam","דלתון":"Dalton","לוד":"Lod","אלעד":"Elad","עמנואל":"Emmanuel","רמלה":"Ramla",
-"רמת גן":"Ramat Gan","רעננה":"Ra'anana","שילת":"Shilat","מישור אדומים":"Mishor Adumim","גבעת זאב":"Givat Ze'ev",
-"גבעת שמואל":"Givat Shmuel","חצור הגלילית":"Hatzor HaGlilit","פסגת זאב":"Jerusalem (Pisgat Ze'ev)",
-"כרמי גת":"Karmei Gat","קרית מוצקין":"Kiryat Motzkin","קרית ים":"Kiryat Yam","נשר":"Nesher",
-"מגדל העמק":"Migdal HaEmek","בת ים":"Bat Yam","חדרה":"Hadera","גדרה":"Gedera","הרצליה":"Herzliya",
-"פרדס חנה":"Pardes Hanna","שדרות":"Sderot","אור יהודה":"Or Yehuda","זכרון יעקב":"Zikhron Ya'akov",
-"בית שאן":"Beit She'an","אור הגנוז":"Or HaGanuz","קריות":"Krayot","קרית שמואל":"Kiryat Shmuel",
-"חפץ חיים":"Hafetz Haim","יצהר":"Yitzhar"}
+
+CITY_EN = {
+    "בני ברק": "Bnei Brak",
+    "ירושלים": "Jerusalem",
+    "בית שמש": "Beit Shemesh",
+    "ביתר עילית": "Beitar Illit",
+    "טבריה": "Tiberias",
+    "צפת": "Safed",
+    "חיפה": "Haifa",
+    "עפולה": "Afula",
+    "נתניה": "Netanya",
+    "נתיבות": "Netivot",
+    "אשקלון": "Ashkelon",
+    "אשדוד": "Ashdod",
+    "אופקים": "Ofakim",
+    "ערד": "Arad",
+    "חולון": "Holon",
+    "רחובות": "Rehovot",
+    "ראשון לציון": "Rishon LeZion",
+    "פתח תקוה": "Petah Tikva",
+    "קרית גת": "Kiryat Gat",
+    "קרית מלאכי": "Kiryat Malakhi",
+    "מירון": "Meron",
+    "נוף הגליל": "Nof HaGalil",
+    "חריש": "Harish",
+    "רכסים": "Rekhasim",
+    "קרית אתא": "Kiryat Ata",
+    "יוקנעם": "Yokneam",
+    "דלתון": "Dalton",
+    "לוד": "Lod",
+    "אלעד": "Elad",
+    "עמנואל": "Emmanuel",
+    "רמלה": "Ramla",
+    "רמת גן": "Ramat Gan",
+    "רעננה": "Ra'anana",
+    "שילת": "Shilat",
+    "מישור אדומים": "Mishor Adumim",
+    "גבעת זאב": "Givat Ze'ev",
+    "גבעת שמואל": "Givat Shmuel",
+    "חצור הגלילית": "Hatzor HaGlilit",
+    "פסגת זאב": "Jerusalem (Pisgat Ze'ev)",
+    "כרמי גת": "Karmei Gat",
+    "קרית מוצקין": "Kiryat Motzkin",
+    "קרית ים": "Kiryat Yam",
+    "נשר": "Nesher",
+    "מגדל העמק": "Migdal HaEmek",
+    "בת ים": "Bat Yam",
+    "חדרה": "Hadera",
+    "גדרה": "Gedera",
+    "הרצליה": "Herzliya",
+    "פרדס חנה": "Pardes Hanna",
+    "שדרות": "Sderot",
+    "אור יהודה": "Or Yehuda",
+    "זכרון יעקב": "Zikhron Ya'akov",
+    "בית שאן": "Beit She'an",
+    "אור הגנוז": "Or HaGanuz",
+    "קריות": "Krayot",
+    "קרית שמואל": "Kiryat Shmuel",
+    "חפץ חיים": "Hafetz Haim",
+    "יצהר": "Yitzhar",
+}
+
 
 def record_key(name: str, city: str, addr: str) -> tuple[str, str, str]:
     """
@@ -782,8 +901,19 @@ for rec in R:
         if m["nr"] == "TRUE" and nr == "FALSE":
             m["nr"] = "FALSE"
     else:
-        merged[key] = {"name":name,"addr":addr,"city":city,"phone":phone,"btype":btype,"diet":diet,
-                       "certs":[cert],"srcs":[src],"sdate":sdate,"nr":nr,"note":note}
+        merged[key] = {
+            "name": name,
+            "addr": addr,
+            "city": city,
+            "phone": phone,
+            "btype": btype,
+            "diet": diet,
+            "certs": [cert],
+            "srcs": [src],
+            "sdate": sdate,
+            "nr": nr,
+            "note": note,
+        }
         order.append(key)
 
 for m in merged.values():
@@ -812,24 +942,53 @@ for src_slug, cert_slug in AUTHORITATIVE_SOURCES.items():
         del merged[k]
 
 OUT = "data/seed/kashroot_seed_corpus.csv"
-with open(OUT,"w",newline="",encoding="utf-8-sig") as f:
+with open(OUT, "w", newline="", encoding="utf-8-sig") as f:
     w = csv.writer(f, lineterminator="\n")
-    w.writerow(["restaurant_name_he","address_he","city_he","city_en","phone","business_type_he",
-                "diet_type","certifier_ids","corroboration_count","source_documents","source_date",
-                "record_state","needs_review","notes"])
+    w.writerow(
+        [
+            "restaurant_name_he",
+            "address_he",
+            "city_he",
+            "city_en",
+            "phone",
+            "business_type_he",
+            "diet_type",
+            "certifier_ids",
+            "corroboration_count",
+            "source_documents",
+            "source_date",
+            "record_state",
+            "needs_review",
+            "notes",
+        ]
+    )
     for k in order:
         m = merged[k]
-        w.writerow([m["name"], m["addr"], m["city"], CITY_EN.get(m["city"], m["city"]), m["phone"],
-                    m["btype"], m["diet"], ";".join(m["certs"]), len(m["srcs"]), ";".join(m["srcs"]),
-                    m["sdate"], "UNKNOWN_PENDING_VERIFICATION" if m["nr"]=="TRUE" else "LIST_VERIFIED",
-                    m["nr"], m["note"]])
+        w.writerow(
+            [
+                m["name"],
+                m["addr"],
+                m["city"],
+                CITY_EN.get(m["city"], m["city"]),
+                m["phone"],
+                m["btype"],
+                m["diet"],
+                ";".join(m["certs"]),
+                len(m["srcs"]),
+                ";".join(m["srcs"]),
+                m["sdate"],
+                "UNKNOWN_PENDING_VERIFICATION" if m["nr"] == "TRUE" else "LIST_VERIFIED",
+                m["nr"],
+                m["note"],
+            ]
+        )
 
 import collections
 
 cities = collections.Counter(m["city"] for m in merged.values())
 certs = collections.Counter(c for m in merged.values() for c in m["certs"])
-multi = sum(1 for m in merged.values() if len(m["srcs"])>1)
-nrv = sum(1 for m in merged.values() if m["nr"]=="TRUE")
+multi = sum(1 for m in merged.values() if len(m["srcs"]) > 1)
+nrv = sum(1 for m in merged.values() if m["nr"] == "TRUE")
 print(f"Total raw rows: {len(R)}")
 print(f"Superseded (dropped): {len(superseded)}")
 print(f"Unique records: {len(merged)}")

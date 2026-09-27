@@ -221,7 +221,28 @@ const he = {
         rateLimited: "יותר מדי ניסיונות. נסו שוב מאוחר יותר.",
       },
     },
-    hours: "שעות",
+    hours: {
+      title: "שעות פתיחה",
+      openNow: "פתוח עכשיו",
+      closedNow: "סגור עכשיו",
+      closedDay: "סגור",
+      open24: "פתוח 24 שעות",
+      openUntil: (time: string) => `פתוח עד ${time}`,
+      opensAt: (time: string) => `נפתח ב-${time}`,
+    },
+    gallery: {
+      title: "גלריה",
+      count: (n: number) => (n === 1 ? "תמונה אחת" : `${n} תמונות`),
+      caption: "תמונות מגוגל",
+    },
+    details: {
+      title: "פרטים",
+      address: "כתובת",
+      phone: "טלפון",
+      website: "אתר",
+    },
+    navigate: "ניווט",
+    googleAttribution: "תמונות ושעות הפתיחה: Google",
     noCertificate: "לא קיימת אצלנו תעודה עבור העסק הזה.",
   },
 
@@ -515,6 +536,16 @@ const he = {
   photoPlaceholder: "צילום מנה",
   mockBanner: "נתוני הדגמה — ה־API הציבורי עדיין לא מחובר.",
   units: { km: "ק״מ", m: "מ׳", closesAt: (time: string) => `עד ${time}` },
+  // Sunday-first, matching the app's week and the API's `day: 0 = Sunday`.
+  weekdays: ["יום ראשון", "יום שני", "יום שלישי", "יום רביעי", "יום חמישי", "יום שישי", "שבת"] as [
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+  ],
 };
 
 /** Structural contract for every language table. */
@@ -723,7 +754,28 @@ const en: Strings = {
         rateLimited: "Too many attempts. Please try again later.",
       },
     },
-    hours: "Hours",
+    hours: {
+      title: "Opening hours",
+      openNow: "Open now",
+      closedNow: "Closed now",
+      closedDay: "Closed",
+      open24: "Open 24 hours",
+      openUntil: (time: string) => `Open until ${time}`,
+      opensAt: (time: string) => `Opens at ${time}`,
+    },
+    gallery: {
+      title: "Gallery",
+      count: (n: number) => (n === 1 ? "1 photo" : `${n} photos`),
+      caption: "Photos from Google",
+    },
+    details: {
+      title: "Details",
+      address: "Address",
+      phone: "Phone",
+      website: "Website",
+    },
+    navigate: "Navigate",
+    googleAttribution: "Photos and opening hours: Google",
     noCertificate: "We hold no certificate for this business.",
   },
 
@@ -989,6 +1041,15 @@ const en: Strings = {
   photoPlaceholder: "dish photo",
   mockBanner: "Demo data — the public API is not wired up yet.",
   units: { km: "km", m: "m", closesAt: (time: string) => `until ${time}` },
+  weekdays: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as [
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+  ],
 };
 
 export const STRINGS: Record<Lang, Strings> = { he, en };

@@ -407,3 +407,60 @@ export interface DirectoryOut {
   total_restaurants: number;
   cities: DirectoryCityOut[];
 }
+
+/* ── Google Places enrichment (app/api/schemas_places.py) ────────────────
+ *
+ * Photos and hours only. Never kashrut evidence, never persisted, and never on the
+ * critical path for the verdict — `GET /v1/restaurants/{id}/places` is a second,
+ * independent request the hero and hours sections fill in from once it answers.
+ */
+
+export interface PhotoAttributionOut {
+  display_name: string;
+  uri: string | null;
+}
+
+/** `url` is same-origin, resolved the way every other API path is. */
+export interface PlacePhotoOut {
+  index: number;
+  width_px: number | null;
+  height_px: number | null;
+  url: string;
+  attributions: PhotoAttributionOut[];
+}
+
+export interface HoursRangeOut {
+  open: string;
+  close: string;
+}
+
+/** `day` is 0 = Sunday, matching the app's Sunday-first week. */
+export interface PlaceHoursDayOut {
+  day: number;
+  ranges: HoursRangeOut[];
+  closed: boolean;
+  always_open: boolean;
+}
+
+export interface PlaceHoursOut {
+  open_now: boolean | null;
+  closes_at: string | null;
+  opens_at: string | null;
+  /** 0 = Sunday, indexing into `days`. */
+  today: number;
+  /** Always 7 rows, Sunday-first. */
+  days: PlaceHoursDayOut[];
+  weekday_descriptions: string[];
+}
+
+/**
+ * `hours` is `null` whenever the restaurant carries no Google place id, or when
+ * Google could not be reached — the same degraded shape either way, so the client
+ * never has to tell "unknown" apart from "failed".
+ */
+export interface PlacesEnrichmentOut {
+  place_id_known: boolean;
+  provider: "google";
+  photos: PlacePhotoOut[];
+  hours: PlaceHoursOut | null;
+}

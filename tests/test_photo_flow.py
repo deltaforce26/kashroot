@@ -182,9 +182,7 @@ def test_photo_endpoints_require_auth(client, session, storage) -> None:
         assert response.headers["WWW-Authenticate"] == "Bearer"
 
     # And a bad token is just as dead.
-    response = client.get(
-        "/api/admin/queues/photos", headers={"Authorization": "Bearer nope"}
-    )
+    response = client.get("/api/admin/queues/photos", headers={"Authorization": "Bearer nope"})
     assert response.status_code == 401
     assert storage.objects == {}  # nothing ever reached storage
 
@@ -301,9 +299,7 @@ def test_upload_content_length_header_precheck() -> None:
     assert content_length_exceeds_cap("not-a-number") is False
 
 
-def test_upload_oversize_content_length_rejected_before_body_read(
-    client, session, storage
-) -> None:
+def test_upload_oversize_content_length_rejected_before_body_read(client, session, storage) -> None:
     """A forged/huge Content-Length dies on the header alone: the tiny (valid) body
     would otherwise upload fine, so a 413 proves the pre-read check fired."""
     _, certificate = make_cert_chain(session)
@@ -393,7 +389,10 @@ def test_list_photos_returns_presigned_urls(client, session, storage) -> None:
             f'&disposition=inline; filename="evidence.{extension}"'
         )
 
-    assert client.get(f"/api/admin/certificates/{uuid.uuid4()}/photos", headers=ALICE).status_code == 404
+    assert (
+        client.get(f"/api/admin/certificates/{uuid.uuid4()}/photos", headers=ALICE).status_code
+        == 404
+    )
 
 
 def test_presigned_urls_force_pdf_download(client, session, storage) -> None:
@@ -402,9 +401,7 @@ def test_presigned_urls_force_pdf_download(client, session, storage) -> None:
     _, certificate = make_cert_chain(session)
     upload(client, certificate.id, data=PDF_BYTES, content_type="application/pdf")
 
-    (photo,) = client.get(
-        f"/api/admin/certificates/{certificate.id}/photos", headers=ALICE
-    ).json()
+    (photo,) = client.get(f"/api/admin/certificates/{certificate.id}/photos", headers=ALICE).json()
     assert 'disposition=attachment; filename="evidence.pdf"' in photo["view_url"]
     assert "inline" not in photo["view_url"]
 
@@ -468,7 +465,10 @@ def test_review_accept_writes_facts_and_audits(client, session) -> None:
     (cert_entry,) = audit_rows(session, "certificate", certificate.id)
     assert cert_entry.actor == "bob"
     assert cert_entry.action is AuditAction.UPDATE
-    assert cert_entry.changes["source"] == {"before": "official_list", "after": "moderator_verified"}
+    assert cert_entry.changes["source"] == {
+        "before": "official_list",
+        "after": "moderator_verified",
+    }
     assert cert_entry.changes["attributes"]["before"] == {"glatt": True}
     assert cert_entry.changes["attributes"]["after"] == certificate.attributes
     assert cert_entry.changes["valid_until"]["after"] == str(new_until)
@@ -591,9 +591,7 @@ def test_review_invalid_attribute_key_422(client, session) -> None:
 def test_review_accept_null_clears_attribute_to_unknown(client, session) -> None:
     """Explicit null on accept clears the key back to unknown (doubt → UNKNOWN):
     the photo shows the certificate no longer rules on that attribute."""
-    _, certificate = make_cert_chain(
-        session, attributes={"glatt": True, "chalav_yisrael": True}
-    )
+    _, certificate = make_cert_chain(session, attributes={"glatt": True, "chalav_yisrael": True})
     photo_id = upload(client, certificate.id).json()["id"]
 
     response = client.post(
@@ -647,7 +645,11 @@ def test_review_accept_past_valid_until_400(client, session) -> None:
         response = client.post(
             f"/api/admin/photos/{photo_id}/review",
             headers=ALICE,
-            json={"decision": "accept", "note": "date on certificate", "valid_until": str(bad_date)},
+            json={
+                "decision": "accept",
+                "note": "date on certificate",
+                "valid_until": str(bad_date),
+            },
         )
         assert response.status_code == 400
     assert certificate.valid_until is None
@@ -766,9 +768,7 @@ def test_verify_renewal_with_accepted_photo_key_ok(client, session) -> None:
 def test_photo_queue_lists_pending_only(client, session, storage) -> None:
     _, certificate = make_cert_chain(session)
     pending_first = upload(client, certificate.id).json()
-    pending_second = upload(
-        client, certificate.id, data=PNG_BYTES, content_type="image/png"
-    ).json()
+    pending_second = upload(client, certificate.id, data=PNG_BYTES, content_type="image/png").json()
     reviewed = upload(client, certificate.id, data=PDF_BYTES, content_type="application/pdf").json()
     client.post(
         f"/api/admin/photos/{reviewed['id']}/review",

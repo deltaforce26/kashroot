@@ -15,6 +15,7 @@ import {
   mockDirectory,
   mockReportRestaurant,
   mockRestaurant,
+  mockRestaurantPlaces,
   mockRestaurantPublic,
   mockSearch,
   mockUploadCertificatePhoto,
@@ -26,6 +27,7 @@ import type {
   FlagRequest,
   GeoPoint,
   PhotoUploadOut,
+  PlacesEnrichmentOut,
   ProfileRequest,
   RestaurantDetailResponseOut,
   RestaurantPublicOut,
@@ -36,11 +38,13 @@ import {
   toCertifierView,
   toDetailView,
   toDirectoryView,
+  toPlacesView,
   toPublicView,
   toSearchView,
   type CertifierView,
   type DetailView,
   type DirectoryView,
+  type PlacesView,
   type PublicRestaurantView,
   type SearchView,
 } from "./viewmodel";
@@ -65,6 +69,12 @@ export interface KashrootApi {
    * crawler — or a first-time visitor who has not set a profile — gets at `/r/:id`.
    */
   getRestaurantPublic(id: string, signal?: AbortSignal): Promise<PublicRestaurantView>;
+  /**
+   * Google Places enrichment: photos and hours, never kashrut evidence. A second,
+   * independent request — a rejection here must never block or blank the verdict
+   * that `getRestaurant`/`getRestaurantPublic` already answered.
+   */
+  getRestaurantPlaces(id: string, signal?: AbortSignal): Promise<PlacesView>;
   /**
    * The landing page's directory: every public restaurant grouped by city, with a
    * sample of each city's rows. Names, addresses and certifier names only — no
@@ -112,6 +122,10 @@ const liveApi: KashrootApi = {
     api<RestaurantPublicOut>(`/v1/restaurants/${encodeURIComponent(id)}`, {
       ...(signal ? { signal } : {}),
     }).then(toPublicView),
+  getRestaurantPlaces: (id, signal) =>
+    api<PlacesEnrichmentOut>(`/v1/restaurants/${encodeURIComponent(id)}/places`, {
+      ...(signal ? { signal } : {}),
+    }).then(toPlacesView),
   getDirectory: (signal) =>
     api<DirectoryOut>("/v1/directory", { ...(signal ? { signal } : {}) }).then(toDirectoryView),
   uploadCertificatePhoto: (restaurantId, certificateId, file) => {
@@ -136,6 +150,7 @@ const mockApi: KashrootApi = {
   getRestaurant: (id, profile, center) =>
     mockRestaurant(id, profile, undefined, center).then(toDetailView),
   getRestaurantPublic: (id) => mockRestaurantPublic(id).then(toPublicView),
+  getRestaurantPlaces: (id) => mockRestaurantPlaces(id).then(toPlacesView),
   getDirectory: () => mockDirectory().then(toDirectoryView),
   uploadCertificatePhoto: (restaurantId, certificateId, file) =>
     mockUploadCertificatePhoto(restaurantId, certificateId, file),
@@ -174,6 +189,10 @@ export type {
   DirectoryCityView,
   DirectoryRestaurantView,
   DirectoryView,
+  PlaceHoursRow,
+  PlacePhotoView,
+  PlacesHoursView,
+  PlacesView,
   PublicCertificateView,
   PublicRestaurantView,
   ResultView,

@@ -139,7 +139,7 @@ def rekey_import_key(import_key: str | None, old_key: str, new_key: str) -> str 
     if not import_key.startswith(prefix):
         return import_key
 
-    return f"{IMPORT_KEY_PREFIX}{new_key}:{import_key[len(prefix):]}"
+    return f"{IMPORT_KEY_PREFIX}{new_key}:{import_key[len(prefix) :]}"
 
 
 def surviving_dedupe_keys(csv_path: Path) -> set[str]:
@@ -445,9 +445,7 @@ def main() -> None:
     """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true", help="Commit the reconciliation.")
-    parser.add_argument(
-        "--csv", type=Path, default=DEFAULT_CSV_PATH, help="Refreshed seed corpus."
-    )
+    parser.add_argument("--csv", type=Path, default=DEFAULT_CSV_PATH, help="Refreshed seed corpus.")
     parser.add_argument(
         "--drop-demo-seed",
         action="store_true",

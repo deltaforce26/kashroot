@@ -75,11 +75,38 @@ export interface FixtureRestaurant {
    * Mutated at runtime by the mock upload endpoint, via a copy in `./server`.
    */
   photo?: FixturePhoto;
+  /** Google Places enrichment. Absent = no place id known, same as the live default. */
+  places?: FixturePlaces;
 }
 
 export interface FixturePhoto {
   status: "pending" | "accepted";
   url: string | null;
+}
+
+/** One Google-attributed photo. `mockRestaurantPlaces` fills in `index` and `url`. */
+export interface FixturePlacePhoto {
+  attributions: { display_name: string; uri: string | null }[];
+}
+
+/** `day` is 0 = Sunday. Mirrors `PlaceHoursDayOut`. */
+export interface FixturePlaceHoursDay {
+  day: number;
+  ranges: { open: string; close: string }[];
+  closed: boolean;
+  always_open: boolean;
+}
+
+/**
+ * Google Places enrichment for a fixture restaurant. Absent on most restaurants —
+ * on purpose, so "no place id" is the default and not a special case any fixture
+ * has to opt out of.
+ */
+export interface FixturePlaces {
+  place_id_known: boolean;
+  photos: FixturePlacePhoto[];
+  /** `null` = no hours published, exactly like the wire's `hours: null`. */
+  days: FixturePlaceHoursDay[] | null;
 }
 
 /**
@@ -136,6 +163,21 @@ export const RESTAURANTS: FixtureRestaurant[] = [
     ],
     // An accepted photo: the card shows it, and offers only a report.
     photo: { status: "accepted", url: PLACEHOLDER_CERTIFICATE_PHOTO },
+    // Open around the clock, every day — the simplest hours case, and one with no
+    // dependence on which real-world weekday the test suite happens to run on.
+    places: {
+      place_id_known: true,
+      photos: [
+        { attributions: [{ display_name: "Dana K.", uri: "https://maps.google.com/contrib/1" }] },
+        { attributions: [{ display_name: "Yossi M.", uri: null }] },
+      ],
+      days: Array.from({ length: 7 }, (_, day) => ({
+        day,
+        ranges: [],
+        closed: false,
+        always_open: true,
+      })),
+    },
   },
   {
     id: "r-hapisga",
@@ -184,6 +226,18 @@ export const RESTAURANTS: FixtureRestaurant[] = [
     ],
     // A public upload awaiting review: no upload offered, no photo shown yet.
     photo: { status: "pending", url: null },
+    // Open every evening past midnight except Thursday, which crosses into the
+    // small hours of Friday — the cross-midnight case.
+    places: {
+      place_id_known: true,
+      photos: [{ attributions: [{ display_name: "Ruti B.", uri: "https://maps.google.com/contrib/2" }] }],
+      days: [0, 1, 2, 3, 4, 5, 6].map((day) => ({
+        day,
+        ranges: [{ open: "18:00", close: day === 4 ? "02:00" : "23:30" }],
+        closed: false,
+        always_open: false,
+      })),
+    },
   },
   {
     id: "r-katzefet",
@@ -215,6 +269,21 @@ export const RESTAURANTS: FixtureRestaurant[] = [
         source: "official_list",
       },
     ],
+    // Closed for Shabbat, with an early Friday close — the launch cities' most
+    // common hours shape.
+    places: {
+      place_id_known: true,
+      photos: [],
+      days: [0, 1, 2, 3, 4].map((day) => ({
+        day,
+        ranges: [{ open: "09:00", close: "22:00" }],
+        closed: false,
+        always_open: false,
+      })).concat([
+        { day: 5, ranges: [{ open: "09:00", close: "14:30" }], closed: false, always_open: false },
+        { day: 6, ranges: [], closed: true, always_open: false },
+      ]),
+    },
   },
   {
     id: "r-sushi-bvg",

@@ -23,6 +23,9 @@ import type {
   FitScoreOut,
   GeoPointOut,
   KashrutVerdictOut,
+  PhotoAttributionOut,
+  PlaceHoursDayOut,
+  PlacesEnrichmentOut,
   ProfileRequest,
   PublicCertificateOut,
   PublicCertifierOut,
@@ -259,6 +262,68 @@ export function toDirectoryView(response: DirectoryOut): DirectoryView {
   return {
     totalRestaurants: response.total_restaurants,
     cities: response.cities.map(toDirectoryCityView),
+  };
+}
+
+/**
+ * Google Places enrichment, view-shaped. `hours` stays `null` exactly when the wire
+ * says `null` — a restaurant with no place id and one whose Google call failed are
+ * the same shape here on purpose (`app/services/places.py`'s degraded response),
+ * so the hero and hours section only ever need one fallback path, not two.
+ */
+export interface PlacePhotoView {
+  index: number;
+  url: string;
+  attributions: PhotoAttributionOut[];
+}
+
+export interface PlaceHoursRow {
+  day: number;
+  ranges: { open: string; close: string }[];
+  closed: boolean;
+  alwaysOpen: boolean;
+}
+
+export interface PlacesHoursView {
+  openNow: boolean | null;
+  closesAt: string | null;
+  opensAt: string | null;
+  today: number;
+  days: PlaceHoursRow[];
+}
+
+export interface PlacesView {
+  placeIdKnown: boolean;
+  photos: PlacePhotoView[];
+  hours: PlacesHoursView | null;
+}
+
+function toHoursRow(day: PlaceHoursDayOut): PlaceHoursRow {
+  return {
+    day: day.day,
+    ranges: day.ranges.map((range) => ({ open: range.open, close: range.close })),
+    closed: day.closed,
+    alwaysOpen: day.always_open,
+  };
+}
+
+export function toPlacesView(response: PlacesEnrichmentOut): PlacesView {
+  return {
+    placeIdKnown: response.place_id_known,
+    photos: response.photos.map((photo) => ({
+      index: photo.index,
+      url: photo.url,
+      attributions: photo.attributions,
+    })),
+    hours: response.hours
+      ? {
+          openNow: response.hours.open_now,
+          closesAt: response.hours.closes_at,
+          opensAt: response.hours.opens_at,
+          today: response.hours.today,
+          days: response.hours.days.map(toHoursRow),
+        }
+      : null,
   };
 }
 

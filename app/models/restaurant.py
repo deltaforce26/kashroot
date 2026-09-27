@@ -41,7 +41,9 @@ if TYPE_CHECKING:
 class Restaurant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "restaurant"
     __table_args__ = (
-        CheckConstraint("price_level is null or price_level between 1 and 4", name="price_level_range"),
+        CheckConstraint(
+            "price_level is null or price_level between 1 and 4", name="price_level_range"
+        ),
         Index("ix_restaurant_geo", "geo", postgresql_using="gist"),
         Index(
             "ix_restaurant_name_he_trgm",
@@ -77,9 +79,7 @@ class Restaurant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     diet_type: Mapped[DietType | None] = mapped_column(pg_enum(DietType, "diet_type"))
     price_level: Mapped[int | None] = mapped_column(SmallInteger)
     #: Soft preferences only (Layer 2 / Fit Score). Keys: app.models.enums.AmenityKey.
-    amenities: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, server_default="{}"
-    )
+    amenities: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default="{}")
 
     status: Mapped[RestaurantStatus] = mapped_column(
         pg_enum(RestaurantStatus, "restaurant_status"), nullable=False, server_default="open"
@@ -98,6 +98,12 @@ class Restaurant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     geocoded_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     google_place_id: Mapped[str | None] = mapped_column(String(200), unique=True)
+    #: The *business's* Places (New) place id, distinct from google_place_id (a
+    #: street-address place id from the legacy Geocoding API). Filled by
+    #: app.ingestion.places_resolve; preferred by PlacesService.enrichment, which
+    #: falls back to google_place_id only when this is null.
+    google_business_place_id: Mapped[str | None] = mapped_column(String(200), index=True)
+    business_place_resolved_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
 
     notes: Mapped[str | None] = mapped_column(Text)
 
@@ -121,7 +127,10 @@ class RestaurantPhoto(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "restaurant_photo"
 
     restaurant_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("restaurant.id", ondelete="CASCADE"), nullable=False, index=True
+        PGUUID(as_uuid=True),
+        ForeignKey("restaurant.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     #: Object key in S3-compatible storage; never a public URL in the DB.
     storage_key: Mapped[str] = mapped_column(Text, nullable=False)
