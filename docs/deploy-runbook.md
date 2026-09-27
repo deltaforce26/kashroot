@@ -57,8 +57,11 @@ address + city, biased to its geocoded point, accepted only within 150m of it), 
 `/v1/restaurants/{id}/places` prefers that column, falling back to `google_place_id`
 only when no business id was resolved.
 
-This is a one-off cost, not a per-request one: each restaurant is searched once
-(`--force` to re-run) and Text Search is billed per call, same tier as Geocoding. The
+This is a one-off cost, not a per-request one: each restaurant is searched once —
+accepted or rejected, the row is stamped `business_place_resolved_at` and a plain
+re-run skips it, so re-running only pays for restaurants never tried (newly
+geocoded ones). `--force` re-searches every row and may replace an accepted id.
+Text Search is billed per call, same tier as Geocoding. The
 key needs **Places API (New)** enabled — the same key `geocode` and the enrichment
 endpoints already use (`KASHROOT_GOOGLE_PLACES_API_KEY` / `KASHROOT_GOOGLE_MAPS_API_KEY`).
 

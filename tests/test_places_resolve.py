@@ -6,6 +6,7 @@ matching the pattern in tests/test_seed_prune.py.
 
 from __future__ import annotations
 
+import datetime as dt
 import unittest
 from typing import Any
 
@@ -208,7 +209,11 @@ class TestResolvePlacesPipeline(unittest.TestCase):
         self.assertEqual(searcher.calls, [])
 
     def test_already_resolved_is_skipped_unless_forced(self) -> None:
-        make_restaurant(self.session, google_business_place_id="ChIJexisting")
+        make_restaurant(
+            self.session,
+            google_business_place_id="ChIJexisting",
+            business_place_resolved_at=dt.datetime.now(dt.UTC),
+        )
         searcher = StubSearcher([])
 
         stats = resolve_places(self.session, searcher, dry_run=False)
@@ -216,6 +221,26 @@ class TestResolvePlacesPipeline(unittest.TestCase):
         self.assertEqual(stats.candidates, 0)
         self.assertEqual(stats.already_resolved, 1)
         self.assertEqual(searcher.calls, [])
+
+    def test_rejected_restaurant_is_not_retried_without_force(self) -> None:
+        restaurant = make_restaurant(self.session)
+        far_response = search_text_response(lat=ORIGIN_LAT + 0.01, lng=ORIGIN_LNG)
+        first = StubSearcher([far_response])
+        resolve_places(self.session, first, dry_run=False)
+        refreshed = self.session.get(Restaurant, restaurant.id)
+        self.assertIsNone(refreshed.google_business_place_id)
+        self.assertIsNotNone(refreshed.business_place_resolved_at)
+
+        second = StubSearcher([search_text_response(place_id="ChIJlater")])
+        stats = resolve_places(self.session, second, dry_run=False)
+        self.assertEqual(stats.candidates, 0)
+        self.assertEqual(second.calls, [])
+
+        forced = resolve_places(self.session, second, dry_run=False, force=True)
+        self.assertEqual(forced.accepted, 1)
+        self.assertEqual(
+            self.session.get(Restaurant, restaurant.id).google_business_place_id, "ChIJlater"
+        )
 
     def test_force_re_resolves_already_resolved_restaurant(self) -> None:
         restaurant = make_restaurant(self.session, google_business_place_id="ChIJold")

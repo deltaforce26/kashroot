@@ -372,7 +372,9 @@ def _run_resolve(
 ) -> None:
     query = select(Restaurant).where(Restaurant.geo.is_not(None))
     if not force:
-        query = query.where(Restaurant.google_business_place_id.is_(None))
+        # "Tried" is the timestamp, not the id: a rejection stamps the row too, so a
+        # plain re-run never pays Google again for a restaurant it already decided.
+        query = query.where(Restaurant.business_place_resolved_at.is_(None))
     if city:
         query = query.where(Restaurant.city_slug == city)
     query = query.order_by(Restaurant.city_slug, Restaurant.name_he, Restaurant.dedupe_key)
@@ -382,7 +384,7 @@ def _run_resolve(
     stats.candidates = len(targets)
 
     already_q = select(Restaurant).where(
-        Restaurant.geo.is_not(None), Restaurant.google_business_place_id.is_not(None)
+        Restaurant.geo.is_not(None), Restaurant.business_place_resolved_at.is_not(None)
     )
     if city:
         already_q = already_q.where(Restaurant.city_slug == city)
@@ -420,6 +422,7 @@ def _run_resolve(
 
         if not decision.accept:
             stats.rejected += 1
+            _mark_tried(session, restaurant)
             continue
 
         if _accept(session, restaurant, decision, run_id):
@@ -447,6 +450,22 @@ def _note(
             decision=reason,
         )
     )
+
+
+def _mark_tried(session: Session, restaurant: Restaurant) -> None:
+    """Stamp a rejected restaurant as decided, leaving its business id untouched.
+
+    Parameters:
+        session (Session): Open session; rolled back by the caller on dry runs.
+        restaurant (Restaurant): The row Text Search found no acceptable match for.
+    """
+    session.execute(
+        update(Restaurant)
+        .where(Restaurant.id == restaurant.id)
+        .values(business_place_resolved_at=dt.datetime.now(dt.UTC))
+        .execution_options(synchronize_session=False)
+    )
+    session.expire(restaurant)
 
 
 def _accept(
