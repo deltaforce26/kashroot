@@ -262,16 +262,20 @@ def places_resolve(
     typer.echo(f"  accepted                   {stats.accepted}")
     typer.echo(f"  rejected                   {stats.rejected}")
     typer.echo(f"  skipped (changed mid-run)  {stats.skipped_concurrent}")
+    typer.echo(f"  protected (seed CSV id)    {stats.protected_seed}")
     if stats.reasons:
         typer.echo("  decision reasons:")
         for reason, n in sorted(stats.reasons.items(), key=lambda kv: -kv[1]):
             typer.echo(f"    {reason:<20} {n}")
     if dry_run and stats.rows:
-        typer.echo("\n  restaurant -> candidate / distance / decision:")
+        typer.echo("\n  restaurant -> candidate / distance / radius / decision:")
         for row in stats.rows:
             distance = f"{row.distance_m:.0f}m" if row.distance_m is not None else "-"
+            radius = f"{row.radius_m:.0f}m" if row.radius_m is not None else "-"
             candidate = row.candidate_name or "-"
-            typer.echo(f"    {row.name_he:<30} {candidate:<30} {distance:>8}  {row.decision}")
+            typer.echo(
+                f"    {row.name_he:<30} {candidate:<30} {distance:>8} {radius:>8}  {row.decision}"
+            )
     if dry_run:
         typer.secho("\n  nothing written — re-run with --apply to commit", fg=typer.colors.YELLOW)
 

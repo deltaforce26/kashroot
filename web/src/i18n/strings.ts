@@ -40,7 +40,7 @@ const he = {
     any: { title: "כל תעודת כשרות", subtitle: "כל מסעדה עם תעודה בתוקף" },
     mehadrin: { title: "רבנות מהדרין + בד״צים", subtitle: "רבנות ברמת מהדרין, וכל הבד״צים ברשימה" },
     badatz: { title: "בד״צים נבחרים בלבד", subtitle: "בוחרים בדיוק אילו גופי כשרות" },
-    custom: { title: "מותאם אישית", subtitle: "רשימה מלאה + דרישות מיוחדות" },
+    custom: { title: "מותאם אישית", subtitle: "בחירה מהרשימה המלאה" },
   },
 
   home: {
@@ -579,7 +579,7 @@ const en: Strings = {
       subtitle: "Rabbanut at Mehadrin level, and every Badatz on the list",
     },
     badatz: { title: "Selected Badatzim only", subtitle: "Pick exactly which certifiers" },
-    custom: { title: "Custom", subtitle: "Full list + specific requirements" },
+    custom: { title: "Custom", subtitle: "Pick from the full list" },
   },
 
   home: {

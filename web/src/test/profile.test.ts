@@ -104,11 +104,11 @@ describe("wire payload", () => {
     expect(toPayload(a)).toEqual(toPayload(b));
   });
 
-  it("carries the whitelist and required attributes and nothing else", () => {
+  it("carries the whitelist and drops stored required attributes while their picker is hidden", () => {
     const profile = toggleAttribute(toggleCertifier(EMPTY_PROFILE, "c-rubin"), "pas_yisrael");
     expect(toPayload(profile)).toEqual({
       whitelist: [{ certifier_id: "c-rubin", min_level: "regular" }],
-      required_attributes: ["pas_yisrael"],
+      required_attributes: [],
       // Layer 2 preferences go out empty: the POC collects none.
       preferred_diets: [],
       preferred_price_level: null,
