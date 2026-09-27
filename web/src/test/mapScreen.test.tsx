@@ -59,9 +59,10 @@ function renderApp(route = "/") {
   );
 }
 
-/** Onboards with the widest preset, which lands on home. */
+/** From the landing's call to action, onboards with the widest preset, which lands on home. */
 async function onboard(user: User) {
   const rendered = renderApp("/");
+  await user.click(await screen.findByRole("link", { name: he.landing.cta }));
   await screen.findByText(he.presets.any.title);
   await user.click(screen.getByText(he.presets.any.title));
   await user.click(screen.getByRole("button", { name: he.onboarding.continue }));

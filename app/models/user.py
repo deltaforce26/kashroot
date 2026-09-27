@@ -50,7 +50,10 @@ class UserProfile(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "user_profile"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("app_user.id", ondelete="CASCADE"), nullable=False, index=True
+        PGUUID(as_uuid=True),
+        ForeignKey("app_user.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     name: Mapped[str] = mapped_column(String(120), nullable=False, server_default="default")
     is_default: Mapped[bool] = mapped_column(nullable=False, server_default="true")
@@ -103,7 +106,10 @@ class SavedList(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "saved_list"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("app_user.id", ondelete="CASCADE"), nullable=False, index=True
+        PGUUID(as_uuid=True),
+        ForeignKey("app_user.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     #: Set when the list has been shared; the share URL is the only way in.
@@ -121,14 +127,22 @@ class SavedList(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 class SavedListItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "saved_list_item"
     __table_args__ = (
-        UniqueConstraint("saved_list_id", "restaurant_id", name="uq_saved_list_item_list_restaurant"),
+        UniqueConstraint(
+            "saved_list_id", "restaurant_id", name="uq_saved_list_item_list_restaurant"
+        ),
     )
 
     saved_list_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("saved_list.id", ondelete="CASCADE"), nullable=False, index=True
+        PGUUID(as_uuid=True),
+        ForeignKey("saved_list.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     restaurant_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("restaurant.id", ondelete="CASCADE"), nullable=False, index=True
+        PGUUID(as_uuid=True),
+        ForeignKey("restaurant.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     position: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     note: Mapped[str | None] = mapped_column(Text)

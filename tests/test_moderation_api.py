@@ -286,9 +286,13 @@ def test_expiry_queue_window_and_degraded_exclusion(client, session) -> None:
     certifier = make_certifier(session)
     restaurant = make_restaurant(session)
     today = israel_today()
-    soon = make_certificate(session, restaurant, certifier, valid_until=today + dt.timedelta(days=7))
+    soon = make_certificate(
+        session, restaurant, certifier, valid_until=today + dt.timedelta(days=7)
+    )
     make_certificate(session, restaurant, certifier, valid_until=today + dt.timedelta(days=30))
-    overdue = make_certificate(session, restaurant, certifier, valid_until=today - dt.timedelta(days=3))
+    overdue = make_certificate(
+        session, restaurant, certifier, valid_until=today - dt.timedelta(days=3)
+    )
     # Already degraded — must not resurface in the queue.
     make_certificate(
         session,

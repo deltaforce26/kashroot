@@ -20,6 +20,8 @@ from app.services.rate_limit_consts import (
     DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_HOUR,
     DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_DAY,
     DEFAULT_PHOTO_UPLOAD_RATE_LIMIT_PER_HOUR,
+    DEFAULT_PLACES_PHOTO_RATE_LIMIT_PER_DAY,
+    DEFAULT_PLACES_PHOTO_RATE_LIMIT_PER_HOUR,
 )
 
 
@@ -72,6 +74,13 @@ class Settings(BaseSettings):
     flag_report_rate_limit_per_hour: int = DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_HOUR
     flag_report_rate_limit_per_day: int = DEFAULT_FLAG_REPORT_RATE_LIMIT_PER_DAY
 
+    # Per-IP fixed-window limits on GET /v1/restaurants/{id}/photos/{index} (own
+    # "places_photo" scope; app.services.rate_limit). Higher than the write
+    # endpoints above — a normal detail-page view issues one request per gallery
+    # photo, all reads.
+    places_photo_rate_limit_per_hour: int = DEFAULT_PLACES_PHOTO_RATE_LIMIT_PER_HOUR
+    places_photo_rate_limit_per_day: int = DEFAULT_PLACES_PHOTO_RATE_LIMIT_PER_DAY
+
     # Which MediaStorage backend serves certificate evidence photos. "auto" resolves
     # to Supabase when the credentials below are set and to S3/MinIO otherwise, so
     # `docker compose up` keeps working untouched.
@@ -97,6 +106,28 @@ class Settings(BaseSettings):
     google_maps_api_key: str | None = None
     # Politeness delay between paid geocoding calls.
     geocode_delay_ms: int = 50
+
+    # Server-side Places API (New) key for GET /v1/restaurants/{id}/places and its
+    # photo redirect (app.services.places). Falls back to google_maps_api_key via
+    # the places_api_key property below, since one server-restricted key with both
+    # the Geocoding API and Places API (New) enabled works for both — set this
+    # separately only if the keys must differ. Unset → the endpoint degrades
+    # (photos=[], hours=null) rather than erroring; see .env.example.
+    google_places_api_key: str | None = None
+
+    @property
+    def places_api_key(self) -> str | None:
+        """
+        Resolve the key ``app.services.places`` should use.
+
+        Parameters:
+            None
+
+        Return:
+            str | None: ``google_places_api_key`` if set, else ``google_maps_api_key``
+                (both are server-side keys with no client exposure), else ``None``.
+        """
+        return self.google_places_api_key or self.google_maps_api_key
 
     # Certifier list snapshots carry no validity window (see data/README.md); a certificate
     # sourced from a published list goes stale this many days after its list date unless the
@@ -125,6 +156,13 @@ class Settings(BaseSettings):
     # Optional base URL of the admin console, for a link to its flag queue (/flags)
     # in the notification email, e.g. "https://admin.kashroot.example".
     admin_base_url: str | None = None
+
+    # Origin of the public web app (the Vite SPA on Vercel), for absolute URLs in
+    # GET /v1/sitemap.xml, e.g. "https://kashroot.example" (no trailing slash needed —
+    # it is stripped). When unset, the origin is recovered from the X-Forwarded-Host /
+    # X-Forwarded-Proto request headers Vercel sets on its /v1/* rewrite, and failing
+    # that from the request's own base URL (app.api.public_seo.resolve_public_web_origin).
+    public_web_origin: str | None = None
 
     @field_validator("storage_backend", mode="before")
     @classmethod

@@ -28,6 +28,7 @@ import { useSaved } from "../saved/SavedProvider";
 import { hasDegraded, listById, type SavedPlace } from "../saved/saved";
 import { savedListAsText } from "../saved/shareText";
 import { useSavedDetails } from "../saved/useSavedDetails";
+import { useDocumentHead } from "../seo/useDocumentHead";
 
 /**
  * A place the API has not answered for — offline, or still in flight. It is drawn
@@ -78,6 +79,12 @@ export function SavedList() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const list = listId ? listById(state, listId) : null;
+  // The list's own name, for the tab; device-local like the index, so noindex.
+  useDocumentHead({
+    title: list?.name ?? t.saved.title,
+    description: t.seo.siteDescription,
+    noindex: true,
+  });
   const { details, offline } = useSavedDetails(
     list ? list.places.map((place) => place.restaurantId) : [],
     toPayload(profile),

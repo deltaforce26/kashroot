@@ -16,7 +16,7 @@ def test_normalize_text_strips_nikud_and_collapses_whitespace():
 
 
 def test_normalize_text_unifies_hebrew_quotes():
-    assert normalize_text('רשב״י') == 'רשב"י'
+    assert normalize_text("רשב״י") == 'רשב"י'
     assert normalize_text("ר׳ נחמן") == "ר' נחמן"
 
 
@@ -35,7 +35,7 @@ def test_branch_split_only_on_spaced_slash():
     assert split_branch_addresses("לבוש מרדכי 2 / בריינדס 3") == ["לבוש מרדכי 2", "בריינדס 3"]
     # Apartment / entrance numbers must survive intact.
     assert split_branch_addresses("שבזי 33/2") == ["שבזי 33/2"]
-    assert split_branch_addresses("קרית חב\"ד 220/05") == ['קרית חב"ד 220/05']
+    assert split_branch_addresses('קרית חב"ד 220/05') == ['קרית חב"ד 220/05']
 
 
 def test_branch_split_handles_three_branches_and_empty():
@@ -58,7 +58,7 @@ def test_slugify_city_prefers_english_falls_back_to_hebrew():
 
 
 def test_dedupe_key_is_stable_across_cosmetic_differences():
-    a = restaurant_dedupe_key('מסעדת רשב״י', "בני  ברק", "יגאל אלון 6")
+    a = restaurant_dedupe_key("מסעדת רשב״י", "בני  ברק", "יגאל אלון 6")
     b = restaurant_dedupe_key('מסעדת רשב"י ', "בני ברק", "יגאל אלון 6")
     assert a == b
 

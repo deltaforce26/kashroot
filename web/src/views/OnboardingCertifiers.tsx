@@ -25,10 +25,13 @@ import {
 } from "../profile/profile";
 import { CheckIcon } from "../components/icons";
 import { ErrorState, LoadingList } from "../components/states";
+import { useDocumentHead } from "../seo/useDocumentHead";
 
 export function OnboardingCertifiers({ standalone = false }: { standalone?: boolean }) {
   const { t, lang } = useI18n();
   const navigate = useNavigate();
+  // Step two of the same flow: same title, same one-liner, same noindex.
+  useDocumentHead({ title: t.seo.onboardingTitle, description: t.seo.siteDescription, noindex: true });
   const returnTo = useReturnTo();
   const { profile, setProfile, certifiers, certifiersLoading, certifiersFailed, reloadCertifiers } =
     useProfile();

@@ -20,7 +20,12 @@ import { AlertIcon, CloudOffIcon, PinIcon, SearchIcon } from "./icons";
  */
 const SLOW_REQUEST_MS = 6000;
 
-export function LoadingList({ rows = 4 }: { rows?: number }) {
+/**
+ * `label` is what the wait is announced as. The default says the list is being
+ * checked against the profile, which is true everywhere but the landing page — a
+ * screen with no profile to check against, which names its own wait instead.
+ */
+export function LoadingList({ rows = 4, label }: { rows?: number; label?: string }) {
   const { t } = useI18n();
   const [slow, setSlow] = useState(false);
 
@@ -32,7 +37,7 @@ export function LoadingList({ rows = 4 }: { rows?: number }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }} aria-busy="true">
       <span className="sr-only" role="status">
-        {t.states.loading}
+        {label ?? t.states.loading}
       </span>
       {Array.from({ length: rows }, (_, index) => (
         <div className="skeleton" key={index} aria-hidden="true" />

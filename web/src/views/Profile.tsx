@@ -12,9 +12,12 @@ import { useI18n } from "../i18n/I18nProvider";
 import { certifierName, sortCertifiersForDisplay } from "../profile/profile";
 import { useProfile } from "../profile/ProfileProvider";
 import { DARK_MODE_ENABLED, useTheme } from "../theme/ThemeProvider";
+import { useDocumentHead } from "../seo/useDocumentHead";
 
 export function Profile() {
   const { t, lang, setLang } = useI18n();
+  // The reader's own religious preferences: never a page for the index.
+  useDocumentHead({ title: t.profile.title, description: t.seo.siteDescription, noindex: true });
   const navigate = useNavigate();
   const { profile, certifiers, reset } = useProfile();
   const { isDark, toggle } = useTheme();

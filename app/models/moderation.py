@@ -39,7 +39,10 @@ class Flag(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (Index("ix_flag_state_created_at", "state", "created_at"),)
 
     restaurant_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("restaurant.id", ondelete="CASCADE"), nullable=False, index=True
+        PGUUID(as_uuid=True),
+        ForeignKey("restaurant.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     certificate_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("certificate.id", ondelete="SET NULL")
@@ -72,10 +75,16 @@ class OwnerClaim(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "owner_claim"
 
     restaurant_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("restaurant.id", ondelete="CASCADE"), nullable=False, index=True
+        PGUUID(as_uuid=True),
+        ForeignKey("restaurant.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("app_user.id", ondelete="CASCADE"), nullable=False, index=True
+        PGUUID(as_uuid=True),
+        ForeignKey("app_user.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     state: Mapped[OwnerClaimState] = mapped_column(
         pg_enum(OwnerClaimState, "owner_claim_state"),
@@ -130,13 +139,13 @@ class AuditLog(UUIDPrimaryKeyMixin, Base):
     #: Monotonic append order — a total ordering for the trail even when created_at
     #: ties within a transaction. BIGINT identity in PostgreSQL; the SQLite test shim
     #: feeds it from a process-local counter (see tests/conftest.py).
-    seq: Mapped[int] = mapped_column(
-        BigInteger, Identity(always=False), nullable=False, index=True
-    )
+    seq: Mapped[int] = mapped_column(BigInteger, Identity(always=False), nullable=False, index=True)
 
     entity_type: Mapped[str] = mapped_column(String(60), nullable=False)
     entity_id: Mapped[uuid.UUID | None] = mapped_column(PGUUID(as_uuid=True))
-    action: Mapped[AuditAction] = mapped_column(pg_enum(AuditAction, "audit_action"), nullable=False)
+    action: Mapped[AuditAction] = mapped_column(
+        pg_enum(AuditAction, "audit_action"), nullable=False
+    )
     #: {"field": {"before": ..., "after": ...}} — the diff, not the whole row.
     changes: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default="{}")
     #: Who did it: user id when a human, pipeline name when automated.

@@ -65,6 +65,8 @@ Render prompts for every var marked `sync: false`. None of them are in git.
 | `KASHROOT_SUPABASE_SERVICE_KEY` | The **secret** key (`sb_secret_…`), never the publishable one |
 | `KASHROOT_ADMIN_API_TOKENS` | `{}` — the admin console is not deployed, so nothing should authenticate |
 | `KASHROOT_GOOGLE_MAPS_API_KEY` | Server-side Geocoding key. Not the browser key |
+| `KASHROOT_GOOGLE_PLACES_API_KEY` | Server-restricted key with **Places API (New)** enabled, for the restaurant-detail photos/hours endpoint. Optional — falls back to `KASHROOT_GOOGLE_MAPS_API_KEY` when unset, so one server key with both APIs enabled covers both. Not the browser key; unset means the endpoint degrades (no photos/hours) rather than failing |
+| `KASHROOT_PUBLIC_WEB_ORIGIN` | `https://kashroot.app` — set in `render.yaml`; add it by hand if the service predates that line. Used in `/sitemap.xml` URLs (see `docs/seo-runbook.md`) |
 
 > **The database URL here differs from your local `.env`.** Local uses the *session*
 > pooler (5432) because it also runs migrations. The deployed app should use the
@@ -73,6 +75,10 @@ Render prompts for every var marked `sync: false`. None of them are in git.
 
 > `KASHROOT_ADMIN_API_TOKENS` set to `{}` makes every admin endpoint 401. That is the
 > correct posture for a public deployment with no real moderator accounts.
+
+> Places photos/hours are cached in Redis (or in-process if Redis is unreachable)
+> for 10 minutes and never written to the database — restarting the service or
+> letting an entry expire just costs one more Google call, nothing is lost.
 
 ### Free tier
 
@@ -114,8 +120,9 @@ A wrong host here fails as a 404 on every API call, with no CORS error to hint a
 | `VITE_API_MODE` | `live` |
 | `VITE_GOOGLE_MAPS_BROWSER_KEY` | The referrer-restricted **browser** key |
 | `VITE_GOOGLE_MAPS_MAP_ID` | A map ID from the Cloud console (optional, recommended) |
+| `VITE_SITE_ORIGIN` | The same public origin as `KASHROOT_PUBLIC_WEB_ORIGIN`; pins canonical URLs and adds the `Sitemap:` line to `robots.txt` (optional, see `docs/seo-runbook.md`) |
 
-All three are baked in at build time, so changing any of them needs a redeploy, not
+All of these are baked in at build time, so changing any of them needs a redeploy, not
 a restart.
 
 The browser key needs **Maps JavaScript API**, **Geocoding API** and **Places API
@@ -141,6 +148,7 @@ fine right up until the demo.
 In Google Cloud Console → Credentials → the browser key → Website restrictions, add:
 
 ```
+https://kashroot.app/*
 https://<your-project>.vercel.app/*
 ```
 

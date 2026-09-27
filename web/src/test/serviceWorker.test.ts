@@ -19,6 +19,7 @@ import {
   API_RUNTIME_CACHING,
   API_URL_PATTERN,
   CACHING_HANDLERS,
+  PUBLIC_RESTAURANT_URL_PATTERN,
   ruleFor,
   type RuntimeCachingRule,
 } from "../pwa/runtimeCaching";
@@ -50,6 +51,29 @@ describe("service worker runtime caching", () => {
     }
   });
 
+  /**
+   * The profile-free facts endpoint is a GET with no verdict in it, but a
+   * certificate's stored state and expiry are kashrut facts and a revocation must
+   * show the moment it is published — so it is excluded from the GET cache by name.
+   */
+  it("never caches the public restaurant facts, the one GET that carries certificate state", () => {
+    const rule = ruleFor("/v1/restaurants/9d4f3a7c-0000-4000-8000-000000000001", "GET");
+    expect(rule?.handler).toBe("NetworkOnly");
+    // …while the certifier list, which carries none, is still served from cache.
+    expect(ruleFor("/v1/certifiers", "GET")?.handler).toBe("NetworkFirst");
+  });
+
+  /**
+   * The landing page's directory is the other cacheable GET: restaurant names,
+   * addresses and certifier names, with no certificate state in it. It falls under
+   * the generic GET rule rather than a rule of its own — asserted so that stays a
+   * decision, and so a future path-scoped exclusion cannot catch it by accident.
+   */
+  it("serves the landing directory from the short-lived GET cache, like the certifier list", () => {
+    expect(ruleFor("/v1/directory", "GET")?.handler).toBe("NetworkFirst");
+    expect(ruleFor("/v1/directory", "GET")).toBe(ruleFor("/v1/certifiers", "GET"));
+  });
+
   it("declares the POST rule explicitly rather than relying on Workbox's GET default", () => {
     const post = API_RUNTIME_CACHING.find((rule) => rule.method === "POST");
     expect(post, "POST must be routed explicitly, not left to a default").toBeDefined();
@@ -71,6 +95,24 @@ describe("service worker runtime caching", () => {
       const maxAge = rule.options?.expiration?.maxAgeSeconds ?? Infinity;
       expect(maxAge).toBeLessThanOrEqual(60 * 60 * 6);
     }
+  });
+
+  /**
+   * Google Places enrichment (`GET /v1/restaurants/{id}/places` and
+   * `GET /v1/restaurants/{id}/photos/{index}`) needed no new rule: both paths
+   * already fall under `PUBLIC_RESTAURANT_URL_PATTERN`, which routes every GET
+   * under `/v1/restaurants/` to `NetworkOnly`. Photos are never cached because the
+   * redirect target is a short-lived Google URL, not a stable one worth storing;
+   * hours are never cached for the same reason the profile-free facts are not — a
+   * revocation or an hours change must show the moment it is published.
+   */
+  it("routes the places endpoint and the photo redirect through the same NetworkOnly rule", () => {
+    const placesPath = "/v1/restaurants/9d4f3a7c-0000-4000-8000-000000000001/places";
+    const photoPath = "/v1/restaurants/9d4f3a7c-0000-4000-8000-000000000001/photos/0";
+    expect(PUBLIC_RESTAURANT_URL_PATTERN.test(placesPath)).toBe(true);
+    expect(PUBLIC_RESTAURANT_URL_PATTERN.test(photoPath)).toBe(true);
+    expect(ruleFor(placesPath, "GET")?.handler).toBe("NetworkOnly");
+    expect(ruleFor(photoPath, "GET")?.handler).toBe("NetworkOnly");
   });
 
   /**

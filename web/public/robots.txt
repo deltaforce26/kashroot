@@ -1,0 +1,24 @@
+# Kashroot — crawler policy.
+#
+# This file is STATIC: Vite copies it into the build output and Vercel serves it
+# from there, ahead of every rewrite in vercel.json. It must never be proxied to
+# the API. The API host suspends when idle and its first response can take most
+# of a minute; a robots.txt that times out reads to Google as "the site is
+# unreachable", and Google pauses crawling the whole site until it can be fetched
+# again. The sitemap is proxied (it needs the database); this file is not.
+#
+# The disallowed paths are app flow or one visitor's own state: onboarding, the
+# device-local saved lists, the profile, the map and the search results, which are
+# all one profile's verdicts. Restaurant pages (/r/<id>) are the indexable content.
+#
+# A `Sitemap:` line is appended at build time when VITE_SITE_ORIGIN is set — see
+# the robotsWithSitemap plugin in vite.config.ts. Nothing is edited by hand here.
+
+User-agent: *
+Allow: /
+Disallow: /onboarding/
+Disallow: /saved
+Disallow: /profile
+Disallow: /map
+Disallow: /search
+Disallow: /filters

@@ -5,8 +5,16 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { mockRestaurant, mockSearch } from "../api/mock/server";
-import { CERTIFIERS } from "../api/mock/fixtures";
+import {
+  DIRECTORY_SAMPLE_PER_CITY,
+  directoryCityEn,
+  mockDirectory,
+  mockRestaurant,
+  mockRestaurantPlaces,
+  mockSearch,
+  placesOpenState,
+} from "../api/mock/server";
+import { CERTIFIERS, RESTAURANTS } from "../api/mock/fixtures";
 import type { ProfileRequest } from "../api/types";
 
 const ALL_CERTIFIERS: ProfileRequest = {
@@ -177,5 +185,175 @@ describe("search response", () => {
     const verdicts = new Set(response.items.map((item) => item.kashrut.verdict));
     expect(verdicts.has("unknown")).toBe(true);
     expect(verdicts.has("no_match")).toBe(true);
+  });
+});
+
+/**
+ * The landing page's directory, replayed to the contract of `GET /v1/directory`:
+ * grouped by city, ordered by size, sampled alphabetically, and with no verdict or
+ * certificate state anywhere in it — there is no profile on this path.
+ */
+describe("directory response", () => {
+  it("groups every fixture by city, largest city first, and counts the whole city", async () => {
+    const response = await mockDirectory();
+    expect(response.total_restaurants).toBe(RESTAURANTS.length);
+    expect(response.cities.map((city) => city.city_he)).toEqual(["ירושלים", "בני ברק", "טבריה"]);
+    expect(response.cities.map((city) => city.restaurant_count)).toEqual([8, 2, 1]);
+    for (const city of response.cities) {
+      expect(city.restaurants.length).toBeLessThanOrEqual(DIRECTORY_SAMPLE_PER_CITY);
+      expect(city.restaurants.length).toBe(Math.min(city.restaurant_count, DIRECTORY_SAMPLE_PER_CITY));
+    }
+  });
+
+  it("labels each city with its records' `city_en`, grouped by `city_he` alone", async () => {
+    const response = await mockDirectory();
+    expect(response.cities.map((city) => city.city_en)).toEqual(["Jerusalem", "Bnei Brak", "Tiberias"]);
+    for (const city of response.cities) {
+      const group = RESTAURANTS.filter((restaurant) => restaurant.city_he === city.city_he);
+      expect(city.city_en).toBe(directoryCityEn(group));
+    }
+  });
+
+  it("picks a city's `city_en` as the API does: majority, ties alphabetical, null if none", () => {
+    const named = (...names: (string | null)[]) => names.map((city_en) => ({ city_en }));
+    // The majority wins, wherever the nulls fall.
+    expect(directoryCityEn(named("Jerusalem", null, "Yerushalayim", "Jerusalem"))).toBe("Jerusalem");
+    expect(directoryCityEn(named("Yerushalayim", "Yerushalayim", "Jerusalem"))).toBe("Yerushalayim");
+    // A tie is broken alphabetically, not by first appearance.
+    expect(directoryCityEn(named("Yerushalayim", "Jerusalem"))).toBe("Jerusalem");
+    expect(directoryCityEn(named("Jerusalem", "Yerushalayim"))).toBe("Jerusalem");
+    // Nulls are not values: they never win a tie and never become the label.
+    expect(directoryCityEn(named(null, null, "Haifa"))).toBe("Haifa");
+    expect(directoryCityEn(named(null, null))).toBeNull();
+    expect(directoryCityEn([])).toBeNull();
+  });
+
+  it("orders a city's rows and each row's certifiers alphabetically — never by anything else", async () => {
+    const response = await mockDirectory();
+    for (const city of response.cities) {
+      const names = city.restaurants.map((row) => row.name_he);
+      expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, "he")));
+      for (const row of city.restaurants) {
+        expect(row.certifier_names_he).toEqual(
+          [...row.certifier_names_he].sort((a, b) => a.localeCompare(b, "he")),
+        );
+        expect(row.certifier_names_en).toHaveLength(row.certifier_names_he.length);
+      }
+    }
+  });
+
+  it("deduplicates a restaurant's certifiers, and carries no verdict or certificate state", async () => {
+    const response = await mockDirectory();
+    const rows = response.cities.flatMap((city) => city.restaurants);
+    // Two certificates from the same certifier on the record: one name on the row.
+    const hapisga = rows.find((row) => row.restaurant_id === "r-hapisga");
+    expect(hapisga?.certifier_names_he).toEqual(["בד״ץ מהדרין — הרב רובין"]);
+    // No certificate at all: an empty list, not an invented certifier.
+    expect(rows.find((row) => row.restaurant_id === "r-sushi-bvg")?.certifier_names_he).toEqual([]);
+
+    const text = JSON.stringify(response);
+    expect(text).not.toMatch(/kashrut|verdict|"match"|no_match|unknown|status|state|attributes|valid_until/);
+  });
+});
+
+/**
+ * `GET /v1/restaurants/{id}/places`, replayed. Google photos and hours only —
+ * never kashrut evidence, never blocking, never persisted. The three fixtures
+ * cover 24/7, a cross-midnight day, and Shabbat-closed with an early Friday close;
+ * the fourth restaurant carries no `places` block at all.
+ */
+describe("places enrichment", () => {
+  it("is open around the clock for a 24/7 fixture, on any day at any hour", async () => {
+    const response = await mockRestaurantPlaces("r-nougatine", new Date("2026-08-17T03:00:00+03:00"));
+    expect(response.place_id_known).toBe(true);
+    expect(response.provider).toBe("google");
+    expect(response.photos).toHaveLength(2);
+    expect(response.hours?.open_now).toBe(true);
+    expect(response.hours?.closes_at).toBeNull();
+    expect(response.hours?.days.every((day) => day.always_open)).toBe(true);
+  });
+
+  it("crosses midnight on Thursday only, closing every other night at 23:30", async () => {
+    // Thursday 20:00 — inside the 18:00–02:00 range that crosses into Friday.
+    const thursdayEvening = await mockRestaurantPlaces("r-hapisga", new Date("2026-08-20T20:00:00+03:00"));
+    expect(thursdayEvening.hours?.today).toBe(4);
+    expect(thursdayEvening.hours?.open_now).toBe(true);
+    expect(thursdayEvening.hours?.closes_at).toBe("02:00");
+
+    // Friday 01:00 — still open, on Thursday's carried-over range.
+    const fridaySmallHours = await mockRestaurantPlaces("r-hapisga", new Date("2026-08-21T01:00:00+03:00"));
+    expect(fridaySmallHours.hours?.open_now).toBe(true);
+    expect(fridaySmallHours.hours?.closes_at).toBe("02:00");
+
+    // Monday 20:00 — an ordinary night, closing at 23:30, not crossing midnight.
+    const mondayEvening = await mockRestaurantPlaces("r-hapisga", new Date("2026-08-17T20:00:00+03:00"));
+    expect(mondayEvening.hours?.open_now).toBe(true);
+    expect(mondayEvening.hours?.closes_at).toBe("23:30");
+
+    // Thursday 10:00 — before opening.
+    const thursdayMorning = await mockRestaurantPlaces("r-hapisga", new Date("2026-08-20T10:00:00+03:00"));
+    expect(thursdayMorning.hours?.open_now).toBe(false);
+    expect(thursdayMorning.hours?.opens_at).toBe("18:00");
+  });
+
+  it("closes for Shabbat entirely and closes early on Friday", async () => {
+    // Saturday (day 6) — closed all day, and the next opening is Sunday morning.
+    const saturday = await mockRestaurantPlaces("r-katzefet", new Date("2026-08-22T10:00:00+03:00"));
+    expect(saturday.hours?.today).toBe(6);
+    expect(saturday.hours?.open_now).toBe(false);
+    expect(saturday.hours?.opens_at).toBe("09:00");
+    expect(saturday.hours?.days.find((day) => day.day === 6)?.closed).toBe(true);
+
+    // Friday (day 5) at 10:00 — open, closing early at 14:30.
+    const fridayMorning = await mockRestaurantPlaces("r-katzefet", new Date("2026-08-21T10:00:00+03:00"));
+    expect(fridayMorning.hours?.open_now).toBe(true);
+    expect(fridayMorning.hours?.closes_at).toBe("14:30");
+
+    // Friday at 20:00 — closed for the week; the next opening skips Saturday
+    // entirely and lands on Sunday.
+    const fridayEvening = await mockRestaurantPlaces("r-katzefet", new Date("2026-08-21T20:00:00+03:00"));
+    expect(fridayEvening.hours?.open_now).toBe(false);
+    expect(fridayEvening.hours?.opens_at).toBe("09:00");
+
+    // Sunday (day 0) at 10:00 — an ordinary open day again.
+    const sunday = await mockRestaurantPlaces("r-katzefet", new Date("2026-08-16T10:00:00+03:00"));
+    expect(sunday.hours?.today).toBe(0);
+    expect(sunday.hours?.open_now).toBe(true);
+    expect(sunday.hours?.closes_at).toBe("22:00");
+  });
+
+  it("answers the same degraded shape for a restaurant with no Google place id", async () => {
+    const response = await mockRestaurantPlaces("r-sushi-bvg", NOW);
+    expect(response).toEqual({ place_id_known: false, provider: "google", photos: [], hours: null });
+  });
+
+  it("404s for an id not in the fixtures, like every other restaurant endpoint", async () => {
+    await expect(mockRestaurantPlaces("r-does-not-exist", NOW)).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("carries no kashrut vocabulary anywhere in the response", async () => {
+    const response = await mockRestaurantPlaces("r-hapisga", NOW);
+    expect(JSON.stringify(response)).not.toMatch(
+      /kashrut|verdict|certificate|certifier|"match"|no_match|attributes/,
+    );
+  });
+});
+
+describe("placesOpenState", () => {
+  it("reads an explicit always_open day as open with no closing time", () => {
+    const days = [{ day: 3, ranges: [], closed: false, always_open: true }];
+    const state = placesOpenState(days, new Date("2026-08-19T05:00:00+03:00"));
+    expect(state).toEqual({ openNow: true, closesAt: null, opensAt: null });
+  });
+
+  it("skips a closed day entirely when looking for the next opening", () => {
+    const days = [
+      { day: 0, ranges: [{ open: "09:00", close: "17:00" }], closed: false, always_open: false },
+      { day: 1, ranges: [], closed: true, always_open: false },
+      { day: 2, ranges: [{ open: "09:00", close: "17:00" }], closed: false, always_open: false },
+    ];
+    // Sunday (day 0) after close: Monday is closed, so the next opening is Tuesday.
+    const state = placesOpenState(days, new Date("2026-08-16T20:00:00+03:00"));
+    expect(state).toEqual({ openNow: false, closesAt: null, opensAt: "09:00" });
   });
 });

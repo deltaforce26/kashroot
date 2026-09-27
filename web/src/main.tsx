@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -35,6 +36,8 @@ createRoot(container).render(
           */}
         <LaunchScreen />
       </I18nProvider>
+      {/* Vercel Web Analytics: page views only, no cookies. Enabled per project in the Vercel dashboard. */}
+      <Analytics />
     </ThemeProvider>
   </StrictMode>,
 );

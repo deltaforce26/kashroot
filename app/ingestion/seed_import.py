@@ -513,7 +513,6 @@ def _row_certifier_slugs(row: dict[str, str]) -> list[str]:
         raise SeedImportError(
             "row has no certifier_ids; a record without a certifier is not a record"
         )
-
     return slugs
 
 

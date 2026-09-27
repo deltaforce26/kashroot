@@ -13,14 +13,24 @@
 import type {
   AmenityKey,
   CertificateEvidenceOut,
+  CertificateState,
   CertifierChip,
   CertifierListItem,
   DietType,
+  DirectoryCityOut,
+  DirectoryOut,
+  DirectoryRestaurantOut,
   FitScoreOut,
   GeoPointOut,
   KashrutVerdictOut,
+  PhotoAttributionOut,
+  PlaceHoursDayOut,
+  PlacesEnrichmentOut,
   ProfileRequest,
+  PublicCertificateOut,
+  PublicCertifierOut,
   RestaurantDetailResponseOut,
+  RestaurantPublicOut,
   SearchResponseOut,
   SearchResultItemOut,
 } from "./types";
@@ -125,6 +135,195 @@ export function toDetailView(response: RestaurantDetailResponseOut): DetailView 
     website: response.website,
     amenities: response.amenities,
     certificates: response.certificates,
+  };
+}
+
+/**
+ * One published attribute fact, ready to print: the key names the string-table
+ * label, `published` is the certificate's own true/false. The absent (unknown)
+ * keys are not in the list at all — nothing here is rendered as false by default.
+ */
+export interface PublishedFact {
+  key: string;
+  published: boolean;
+}
+
+/** A certificate on the profile-free page: facts as stored, nothing decided. */
+export interface PublicCertificateView {
+  certifier: PublicCertifierOut;
+  status: CertificateState;
+  validUntil: string | null;
+  facts: PublishedFact[];
+}
+
+export interface PublicRestaurantView {
+  id: string;
+  nameHe: string;
+  nameEn: string | null;
+  cityHe: string | null;
+  addressHe: string | null;
+  geo: GeoPointOut | null;
+  dietType: DietType | null;
+  priceLevel: number | null;
+  phone: string | null;
+  website: string | null;
+  amenities: Record<string, boolean>;
+  certificates: PublicCertificateView[];
+  updatedAt: string;
+}
+
+/**
+ * The attribute map flattened into rows *here*, in the API layer, so the view
+ * prints a list it was handed and never reads the map itself — the boundary
+ * `src/test/no-client-kashrut-logic.test.ts` checks is textual, and it is kept
+ * trivially true by keeping every `.attributes` read on this side of it.
+ */
+function toPublicCertificateView(certificate: PublicCertificateOut): PublicCertificateView {
+  return {
+    certifier: certificate.certifier,
+    status: certificate.status,
+    validUntil: certificate.valid_until,
+    facts: Object.entries(certificate.attributes).map(([key, published]) => ({ key, published })),
+  };
+}
+
+export function toPublicView(response: RestaurantPublicOut): PublicRestaurantView {
+  return {
+    id: response.restaurant_id,
+    nameHe: response.name_he,
+    nameEn: response.name_en,
+    cityHe: response.city_he,
+    addressHe: response.address_he,
+    geo: response.geo,
+    dietType: response.diet_type,
+    priceLevel: response.price_level,
+    phone: response.phone,
+    website: response.website,
+    amenities: response.amenities,
+    certificates: response.certificates.map(toPublicCertificateView),
+    updatedAt: response.updated_at,
+  };
+}
+
+/** A certifier's two names as the directory hands them over — no id, no type. */
+export interface DirectoryCertifierView {
+  nameHe: string;
+  nameEn: string | null;
+}
+
+/** One landing-page row: a name, an address and who certifies it. Nothing decided. */
+export interface DirectoryRestaurantView {
+  id: string;
+  nameHe: string;
+  nameEn: string | null;
+  addressHe: string | null;
+  /** In the API's order — alphabetical, which is not a ranking. */
+  certifiers: DirectoryCertifierView[];
+}
+
+export interface DirectoryCityView {
+  cityHe: string;
+  /** The records' own English name for the city, when they have one. */
+  cityEn: string | null;
+  restaurantCount: number;
+  restaurants: DirectoryRestaurantView[];
+}
+
+export interface DirectoryView {
+  totalRestaurants: number;
+  cities: DirectoryCityView[];
+}
+
+function toDirectoryRestaurantView(item: DirectoryRestaurantOut): DirectoryRestaurantView {
+  return {
+    id: item.restaurant_id,
+    nameHe: item.name_he,
+    nameEn: item.name_en,
+    addressHe: item.address_he,
+    // The wire carries two parallel lists. They are zipped here so a view prints one
+    // name per certifier and never lines the two lists up by index itself.
+    certifiers: item.certifier_names_he.map((nameHe, index) => ({
+      nameHe,
+      nameEn: item.certifier_names_en[index] ?? null,
+    })),
+  };
+}
+
+function toDirectoryCityView(city: DirectoryCityOut): DirectoryCityView {
+  return {
+    cityHe: city.city_he,
+    cityEn: city.city_en,
+    restaurantCount: city.restaurant_count,
+    restaurants: city.restaurants.map(toDirectoryRestaurantView),
+  };
+}
+
+export function toDirectoryView(response: DirectoryOut): DirectoryView {
+  return {
+    totalRestaurants: response.total_restaurants,
+    cities: response.cities.map(toDirectoryCityView),
+  };
+}
+
+/**
+ * Google Places enrichment, view-shaped. `hours` stays `null` exactly when the wire
+ * says `null` — a restaurant with no place id and one whose Google call failed are
+ * the same shape here on purpose (`app/services/places.py`'s degraded response),
+ * so the hero and hours section only ever need one fallback path, not two.
+ */
+export interface PlacePhotoView {
+  index: number;
+  url: string;
+  attributions: PhotoAttributionOut[];
+}
+
+export interface PlaceHoursRow {
+  day: number;
+  ranges: { open: string; close: string }[];
+  closed: boolean;
+  alwaysOpen: boolean;
+}
+
+export interface PlacesHoursView {
+  openNow: boolean | null;
+  closesAt: string | null;
+  opensAt: string | null;
+  today: number;
+  days: PlaceHoursRow[];
+}
+
+export interface PlacesView {
+  placeIdKnown: boolean;
+  photos: PlacePhotoView[];
+  hours: PlacesHoursView | null;
+}
+
+function toHoursRow(day: PlaceHoursDayOut): PlaceHoursRow {
+  return {
+    day: day.day,
+    ranges: day.ranges.map((range) => ({ open: range.open, close: range.close })),
+    closed: day.closed,
+    alwaysOpen: day.always_open,
+  };
+}
+
+export function toPlacesView(response: PlacesEnrichmentOut): PlacesView {
+  return {
+    placeIdKnown: response.place_id_known,
+    photos: response.photos.map((photo) => ({
+      index: photo.index,
+      url: photo.url,
+      attributions: photo.attributions,
+    })),
+    hours: response.hours
+      ? {
+          openNow: response.hours.open_now,
+          closesAt: response.hours.closes_at,
+          opensAt: response.hours.opens_at,
+          today: response.hours.today,
+          days: response.hours.days.map(toHoursRow),
+        }
+      : null,
   };
 }
 

@@ -331,3 +331,136 @@ export interface RestaurantDetailResponseOut {
   fit: FitScoreOut;
   certificates: CertificateEvidenceOut[];
 }
+
+/* ── The profile-free path (app/api/schemas_public_seo.py) ──────────────── */
+
+/** schemas_public_seo.py :: CertifierFactOut — identity only, no `type`. */
+export interface PublicCertifierOut {
+  id: string;
+  name_he: string;
+  name_en: string | null;
+}
+
+/**
+ * schemas_public_seo.py :: CertificateFactOut. A certificate exactly as stored and
+ * nothing evaluated: no outcome, no reasons, no confidence, no freshness. `status`
+ * is the certificate's own state — never a kashrut verdict.
+ */
+export interface PublicCertificateOut {
+  certifier: PublicCertifierOut;
+  status: CertificateState;
+  valid_until: string | null;
+  /** Tri-state, as on `CertificateEvidenceOut`: absent key = unknown, never false. */
+  attributes: Record<string, boolean>;
+}
+
+/**
+ * `GET /v1/restaurants/{id}` — the restaurant block of the detail response with
+ * `kashrut`, `fit` and `distance_km` dropped. There is no profile on this path, so
+ * there is nothing to evaluate against and no centre to measure from.
+ */
+export interface RestaurantPublicOut
+  extends Omit<RestaurantDetailResponseOut, "distance_km" | "kashrut" | "fit" | "certificates"> {
+  certificates: PublicCertificateOut[];
+  /** ISO 8601 UTC datetime. */
+  updated_at: string;
+}
+
+/**
+ * schemas_public_seo.py :: DirectoryRestaurantOut — identity only: enough for a
+ * landing-page row and its link to `/r/<id>`. No certificate state, no attributes,
+ * no verdict.
+ */
+export interface DirectoryRestaurantOut {
+  restaurant_id: string;
+  name_he: string;
+  name_en: string | null;
+  address_he: string | null;
+  /** Active certifiers, deduplicated, alphabetical by `name_he` — never by type. */
+  certifier_names_he: string[];
+  /** Parallel to `certifier_names_he`; `null` where a certifier has no English name. */
+  certifier_names_en: (string | null)[];
+}
+
+/** schemas_public_seo.py :: DirectoryCityOut */
+export interface DirectoryCityOut {
+  city_he: string;
+  /**
+   * The city's English name, from `Restaurant.city_en` across its restaurants: the
+   * most common non-null value (ties alphabetical), or `null` when none has one. A
+   * display label only — grouping is keyed by `city_he`.
+   */
+  city_en: string | null;
+  /** The full count for the city, however many rows `restaurants` samples. */
+  restaurant_count: number;
+  /** A sample of at most twelve, alphabetical by `name_he`. */
+  restaurants: DirectoryRestaurantOut[];
+}
+
+/**
+ * `GET /v1/directory` — every public restaurant grouped by city, facts only, for
+ * the landing page a visitor without a profile (and every crawler) sees at `/`.
+ * Cities are ordered by `restaurant_count` descending. Nothing in the tree is a
+ * verdict, and nothing in it is ordered by anything but size and the alphabet.
+ */
+export interface DirectoryOut {
+  total_restaurants: number;
+  cities: DirectoryCityOut[];
+}
+
+/* ── Google Places enrichment (app/api/schemas_places.py) ────────────────
+ *
+ * Photos and hours only. Never kashrut evidence, never persisted, and never on the
+ * critical path for the verdict — `GET /v1/restaurants/{id}/places` is a second,
+ * independent request the hero and hours sections fill in from once it answers.
+ */
+
+export interface PhotoAttributionOut {
+  display_name: string;
+  uri: string | null;
+}
+
+/** `url` is same-origin, resolved the way every other API path is. */
+export interface PlacePhotoOut {
+  index: number;
+  width_px: number | null;
+  height_px: number | null;
+  url: string;
+  attributions: PhotoAttributionOut[];
+}
+
+export interface HoursRangeOut {
+  open: string;
+  close: string;
+}
+
+/** `day` is 0 = Sunday, matching the app's Sunday-first week. */
+export interface PlaceHoursDayOut {
+  day: number;
+  ranges: HoursRangeOut[];
+  closed: boolean;
+  always_open: boolean;
+}
+
+export interface PlaceHoursOut {
+  open_now: boolean | null;
+  closes_at: string | null;
+  opens_at: string | null;
+  /** 0 = Sunday, indexing into `days`. */
+  today: number;
+  /** Always 7 rows, Sunday-first. */
+  days: PlaceHoursDayOut[];
+  weekday_descriptions: string[];
+}
+
+/**
+ * `hours` is `null` whenever the restaurant carries no Google place id, or when
+ * Google could not be reached — the same degraded shape either way, so the client
+ * never has to tell "unknown" apart from "failed".
+ */
+export interface PlacesEnrichmentOut {
+  place_id_known: boolean;
+  provider: "google";
+  photos: PlacePhotoOut[];
+  hours: PlaceHoursOut | null;
+}

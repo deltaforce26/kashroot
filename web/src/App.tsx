@@ -5,6 +5,15 @@
  * one certifier — because without one there is nothing to check a restaurant
  * against. Users without one are sent to onboarding rather than shown a list of
  * verdicts derived from an empty profile.
+ *
+ * Two exceptions, for the same reason. `/r/:id` is the address search engines and
+ * shared links land on, and `/` is the site's root; behind the gate both were
+ * redirects — invisible to Googlebot and to the person who tapped the link. Without
+ * a profile each now renders a profile-free page: the facts on record
+ * (`RestaurantPublic`), or the landing page with a call to action and a city-by-city
+ * directory of links to those facts pages (`Landing`). With a profile they are the
+ * verdict screen and Home, as they always were. The gate is not weakened: no
+ * verdict is shown without a profile, because neither profile-free page has one.
  */
 
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
@@ -16,24 +25,42 @@ import { isProfileUsable } from "./profile/profile";
 import { SaveTargetProvider } from "./saved/SaveTargetProvider";
 import { useProfile } from "./profile/ProfileProvider";
 import { Home } from "./views/Home";
+import { Landing } from "./views/Landing";
 import { MapView } from "./views/MapView";
 import { NotFound } from "./views/NotFound";
 import { OnboardingCertifiers } from "./views/OnboardingCertifiers";
 import { OnboardingPreset } from "./views/OnboardingPreset";
 import { Profile } from "./views/Profile";
 import { Restaurant } from "./views/Restaurant";
+import { RestaurantPublic } from "./views/RestaurantPublic";
 import { Saved } from "./views/Saved";
 import { SavedList } from "./views/SavedList";
 import { Search } from "./views/Search";
 
+function hasUsableProfile(profile: ReturnType<typeof useProfile>["profile"]): boolean {
+  return profile.completedOnboarding && isProfileUsable(profile);
+}
+
 function RequireProfile({ children }: { children: ReactNode }) {
   const { profile } = useProfile();
   const location = useLocation();
-  if (!profile.completedOnboarding || !isProfileUsable(profile)) {
+  if (!hasUsableProfile(profile)) {
     const from = `${location.pathname}${location.search}`;
     return <Navigate to="/onboarding/preset" replace state={{ from }} />;
   }
   return <>{children}</>;
+}
+
+/** `/r/:id` — the verdict screen with a profile, the public facts page without one. */
+function RestaurantRoute() {
+  const { profile } = useProfile();
+  return hasUsableProfile(profile) ? <Restaurant /> : <RestaurantPublic />;
+}
+
+/** `/` — Home with a profile, the landing page without one. Never a redirect. */
+function HomeRoute() {
+  const { profile } = useProfile();
+  return hasUsableProfile(profile) ? <Home /> : <Landing />;
 }
 
 /** Visible while the fixtures stand in for Track B — so no one demos it unknowingly. */
@@ -55,14 +82,8 @@ export default function App() {
         <Routes>
           <Route path="/onboarding/preset" element={<OnboardingPreset />} />
           <Route path="/onboarding/certifiers" element={<OnboardingCertifiers />} />
-          <Route
-            path="/"
-            element={
-              <RequireProfile>
-                <Home />
-              </RequireProfile>
-            }
-          />
+          {/* Deliberately not behind RequireProfile — see the header comment. */}
+          <Route path="/" element={<HomeRoute />} />
           {/* The filters screen became the filter bar's bottom sheet, which opens in
               place over home and search. The old address still lands somewhere real. */}
           <Route path="/filters" element={<Navigate to="/" replace />} />
@@ -74,14 +95,8 @@ export default function App() {
               </RequireProfile>
             }
           />
-          <Route
-            path="/r/:id"
-            element={
-              <RequireProfile>
-                <Restaurant />
-              </RequireProfile>
-            }
-          />
+          {/* Deliberately not behind RequireProfile — see the header comment. */}
+          <Route path="/r/:id" element={<RestaurantRoute />} />
           <Route
             path="/saved"
             element={

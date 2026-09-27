@@ -32,6 +32,8 @@ import {
   type CertifierListItem,
   type CertificationLevel,
   type Confidence,
+  type DirectoryOut,
+  type DirectoryRestaurantOut,
   type FlagCreatedOut,
   type FlagRequest,
   type FitComponentOut,
@@ -40,10 +42,14 @@ import {
   type GeoPoint,
   type KashrutVerdictOut,
   type PhotoUploadOut,
+  type PlaceHoursDayOut,
+  type PlaceHoursOut,
+  type PlacesEnrichmentOut,
   type ProfileRequest,
   type ReasonCode,
   type ReasonOut,
   type RestaurantDetailResponseOut,
+  type RestaurantPublicOut,
   type SearchRequest,
   type SearchResponseOut,
   type SearchResultItemOut,
@@ -55,6 +61,7 @@ import {
   RESTAURANTS,
   type FixtureCertificate,
   type FixturePhoto,
+  type FixturePlaceHoursDay,
   type FixtureRestaurant,
 } from "./fixtures";
 
@@ -536,6 +543,248 @@ export function mockRestaurant(
       return toEvidence(cert, evaluation, now, photo);
     }),
   });
+}
+
+/**
+ * GET /v1/restaurants/{id}, replayed (app/api/public_seo.py): the restaurant block
+ * and every certificate's stored facts, with no profile and therefore no
+ * evaluation — `evaluateRestaurant` is deliberately not called on this path. A
+ * missing id is a 404, as on the API.
+ */
+export function mockRestaurantPublic(id: string, now = new Date()): Promise<RestaurantPublicOut> {
+  const restaurant = RESTAURANTS.find((candidate) => candidate.id === id);
+  if (!restaurant) return delayReject(new ApiError(404, "not_found"));
+
+  return delay({
+    restaurant_id: restaurant.id,
+    name_he: restaurant.name_he,
+    name_en: restaurant.name_en,
+    address_he: restaurant.address_he,
+    city_he: restaurant.city_he,
+    phone: restaurant.phone,
+    website: null,
+    diet_type: restaurant.diet_type,
+    price_level: restaurant.price_level,
+    amenities: restaurant.amenities as Record<string, boolean>,
+    geo: { lat: restaurant.lat, lon: restaurant.lon },
+    certificates: restaurant.certificates.map((cert) => {
+      const { id: certifierId, name_he, name_en } = chipById(cert.certifier_id);
+      return {
+        certifier: { id: certifierId, name_he, name_en },
+        status: cert.state,
+        valid_until: cert.valid_until,
+        attributes: cert.attributes as Record<string, boolean>,
+      };
+    }),
+    updated_at: now.toISOString(),
+  });
+}
+
+/* ── Google Places enrichment (app/api/public_places.py) ─────────────────
+ *
+ * Photos and hours only, replayed against the fixture's own `places` block. A
+ * restaurant with no `places` — most of them — answers exactly as the live API
+ * does for a restaurant with no Google place id: `place_id_known: false`, no
+ * photos, no hours. Nothing here is kashrut evidence and nothing here is persisted.
+ */
+
+function toMinutes(hhmm: string): number {
+  const [hours, minutes] = hhmm.split(":").map(Number);
+  return (hours ?? 0) * 60 + (minutes ?? 0);
+}
+
+/**
+ * `open_now` / `closes_at` / `opens_at` at `now`, over Sunday-first day rows. A
+ * range whose close is not after its open (`18:00`–`02:00`) is read as crossing
+ * midnight into the next day, exactly as `app/services/places_hours.py` does.
+ */
+const ISRAEL_TZ = "Asia/Jerusalem";
+const ISRAEL_CLOCK = new Intl.DateTimeFormat("en-US", {
+  timeZone: ISRAEL_TZ,
+  weekday: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+const WEEKDAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+/**
+ * `now` read on the Israel civil clock, Sunday-first — the backend normalises
+ * every caller to Israel time, so the mock must not read the runtime's own zone.
+ */
+export function israelClock(now: Date): { dayIndex: number; minuteOfDay: number } {
+  const parts = ISRAEL_CLOCK.formatToParts(now);
+  const part = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return {
+    dayIndex: WEEKDAY_INDEX[part("weekday")] ?? 0,
+    minuteOfDay: Number(part("hour")) * 60 + Number(part("minute")),
+  };
+}
+
+export function placesOpenState(
+  days: FixturePlaceHoursDay[],
+  now: Date,
+): { openNow: boolean | null; closesAt: string | null; opensAt: string | null } {
+  const { dayIndex: todayIndex, minuteOfDay: nowMin } = israelClock(now);
+  const byDay = new Map(days.map((day) => [day.day, day]));
+  const today = byDay.get(todayIndex);
+  const yesterday = byDay.get((todayIndex + 6) % 7);
+
+  if (today?.always_open) return { openNow: true, closesAt: null, opensAt: null };
+
+  if (yesterday && !yesterday.closed) {
+    for (const range of yesterday.ranges) {
+      const closeMin = toMinutes(range.close);
+      if (closeMin <= toMinutes(range.open) && nowMin < closeMin) {
+        return { openNow: true, closesAt: range.close, opensAt: null };
+      }
+    }
+  }
+
+  if (today && !today.closed) {
+    for (const range of today.ranges) {
+      const openMin = toMinutes(range.open);
+      const closeMin = toMinutes(range.close);
+      const crossesMidnight = closeMin <= openMin;
+      if (nowMin >= openMin && (crossesMidnight || nowMin < closeMin)) {
+        return { openNow: true, closesAt: range.close, opensAt: null };
+      }
+    }
+  }
+
+  for (let offset = 0; offset < 8; offset++) {
+    const day = byDay.get((todayIndex + offset) % 7);
+    if (!day) continue;
+    if (day.always_open) return { openNow: false, closesAt: null, opensAt: "00:00" };
+    if (day.closed) continue;
+    const range = day.ranges.find((candidate) => offset > 0 || toMinutes(candidate.open) > nowMin);
+    if (range) return { openNow: false, closesAt: null, opensAt: range.open };
+  }
+  return { openNow: false, closesAt: null, opensAt: null };
+}
+
+function toPlaceHoursDayOut(day: FixturePlaceHoursDay): PlaceHoursDayOut {
+  return { day: day.day, ranges: day.ranges, closed: day.closed, always_open: day.always_open };
+}
+
+function placeHoursOf(days: FixturePlaceHoursDay[], now: Date): PlaceHoursOut {
+  const state = placesOpenState(days, now);
+  return {
+    open_now: state.openNow,
+    closes_at: state.closesAt,
+    opens_at: state.opensAt,
+    today: israelClock(now).dayIndex,
+    days: [...days].sort((a, b) => a.day - b.day).map(toPlaceHoursDayOut),
+    // Google's own localized one-liners are not reproduced here — the app builds
+    // its hours rows from `days`, never from this array.
+    weekday_descriptions: [],
+  };
+}
+
+/**
+ * `GET /v1/restaurants/{id}/places`, replayed. A restaurant with no `places` block
+ * answers the same degraded shape the live API returns when it holds no Google
+ * place id, or when the Google call itself failed — the client has one fallback
+ * path for both.
+ */
+export function mockRestaurantPlaces(id: string, now = new Date()): Promise<PlacesEnrichmentOut> {
+  const restaurant = RESTAURANTS.find((candidate) => candidate.id === id);
+  if (!restaurant) return delayReject(new ApiError(404, "not_found"));
+
+  const places = restaurant.places;
+  if (!places || !places.place_id_known) {
+    return delay({ place_id_known: false, provider: "google" as const, photos: [], hours: null });
+  }
+
+  return delay({
+    place_id_known: true,
+    provider: "google" as const,
+    photos: places.photos.map((photo, index) => ({
+      index,
+      width_px: 800,
+      height_px: 600,
+      url: `/mock/places/${(index % 3) + 1}.svg`,
+      attributions: photo.attributions,
+    })),
+    hours: places.days ? placeHoursOf(places.days, now) : null,
+  });
+}
+
+/**
+ * Mirrors `DIRECTORY_SAMPLE_PER_CITY` (app/api/consts.py): how many of a city's rows
+ * the landing page is handed. The city's `restaurant_count` is the full count.
+ */
+export const DIRECTORY_SAMPLE_PER_CITY = 12;
+
+const byHebrewName = (a: string, b: string): number => a.localeCompare(b, "he");
+
+function toDirectoryRow(restaurant: FixtureRestaurant): DirectoryRestaurantOut {
+  // Identity only, deduplicated by certifier and sorted by name — the same rule the
+  // API applies. A certificate's state is deliberately not read here.
+  const certifiers = restaurantChips(restaurant).sort((a, b) => byHebrewName(a.name_he, b.name_he));
+  return {
+    restaurant_id: restaurant.id,
+    name_he: restaurant.name_he,
+    name_en: restaurant.name_en,
+    address_he: restaurant.address_he,
+    certifier_names_he: certifiers.map((certifier) => certifier.name_he),
+    certifier_names_en: certifiers.map((certifier) => certifier.name_en),
+  };
+}
+
+/**
+ * A city group's English label, as `_city_en_for_group` (app/api/public_seo.py)
+ * picks it: the most common non-null `city_en` among the group's restaurants, ties
+ * broken alphabetically, `null` when none has one. Grouping stays keyed by
+ * `city_he`; this only names the group. Exported so the rule is tested directly.
+ */
+export function directoryCityEn(group: ReadonlyArray<{ city_en: string | null }>): string | null {
+  const counts = new Map<string, number>();
+  for (const restaurant of group) {
+    if (restaurant.city_en !== null) {
+      counts.set(restaurant.city_en, (counts.get(restaurant.city_en) ?? 0) + 1);
+    }
+  }
+  let best: string | null = null;
+  for (const [cityEn, count] of counts) {
+    const bestCount = best === null ? -1 : (counts.get(best) ?? 0);
+    if (count > bestCount || (count === bestCount && best !== null && cityEn < best)) {
+      best = cityEn;
+    }
+  }
+  return best;
+}
+
+/**
+ * GET /v1/directory, replayed (app/api/public_seo.py): every fixture grouped by
+ * `city_he`, cities from largest to smallest (ties alphabetical), each city's rows
+ * alphabetical by name and capped at the sample size. `evaluateRestaurant` is not
+ * called on this path — there is no profile, so there is nothing to evaluate — and
+ * every ordering is alphabetical because the app never ranks.
+ */
+export function mockDirectory(): Promise<DirectoryOut> {
+  const byCity = new Map<string, FixtureRestaurant[]>();
+  for (const restaurant of RESTAURANTS) {
+    const group = byCity.get(restaurant.city_he) ?? [];
+    group.push(restaurant);
+    byCity.set(restaurant.city_he, group);
+  }
+
+  const cities = [...byCity.entries()]
+    .sort(([cityA, groupA], [cityB, groupB]) =>
+      groupB.length - groupA.length || byHebrewName(cityA, cityB),
+    )
+    .map(([city_he, group]) => ({
+      city_he,
+      city_en: directoryCityEn(group),
+      restaurant_count: group.length,
+      restaurants: [...group]
+        .sort((a, b) => byHebrewName(a.name_he, b.name_he))
+        .slice(0, DIRECTORY_SAMPLE_PER_CITY)
+        .map(toDirectoryRow),
+    }));
+
+  return delay({ total_restaurants: RESTAURANTS.length, cities });
 }
 
 /**

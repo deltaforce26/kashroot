@@ -16,7 +16,29 @@
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
     <link rel="icon" href="/icons/icon-192.png" sizes="192x192" />
     <link rel="stylesheet" href="/fonts/fonts.css" />
-    <title>Kashroot</title>
+    <!--
+      Static defaults for whoever reads the raw document before any script runs —
+      a crawler on its first pass, a chat app unfurling a link. Every route then
+      overwrites these same tags in place through src/seo/useDocumentHead.ts; the
+      hook updates the existing element rather than adding a second one. og:image
+      stays relative here: the deploy origin is only known at build time, and the
+      hook rewrites it as an absolute URL the moment the app boots.
+    -->
+    <meta
+      name="description"
+      content="מסעדות כשרות שנבדקות מול הסטנדרט שלכם: מגדירים פעם אחת אילו גופי כשרות אתם מקבלים ומה חייב להופיע בתעודה — וכל מסעדה מוצגת עם התשובה והראיות מאחוריה."
+    />
+    <meta property="og:title" content="Kashroot — כשרות לפי הסטנדרט שלך" />
+    <meta
+      property="og:description"
+      content="מסעדות כשרות שנבדקות מול הסטנדרט שלכם: מגדירים פעם אחת אילו גופי כשרות אתם מקבלים ומה חייב להופיע בתעודה — וכל מסעדה מוצגת עם התשובה והראיות מאחוריה."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Kashroot" />
+    <meta property="og:locale" content="he_IL" />
+    <meta property="og:image" content="/icons/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
+    <title>Kashroot — כשרות לפי הסטנדרט שלך</title>
   </head>
   <body>
     <div id="root"></div>
