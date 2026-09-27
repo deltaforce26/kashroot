@@ -30,6 +30,7 @@ count.
 | `record_state` | `LIST_VERIFIED` (clean row from official list, 435 rows) or `UNKNOWN_PENDING_VERIFICATION` (57 rows) |
 | `needs_review` | TRUE where poster layout (or, for the Tishrei 5787 rows, an unresolved certifier attribution) made city/phone/address/certifier assignment ambiguous (59 rows) |
 | `dedupe_hash_sha256` | Present in the Tishrei 5787 corpus; not read by the importer (dedupe keys are derived at import time by `restaurant_dedupe_key`, not from this column) |
+| `google_business_place_id` | Optional. Google Place ID of the business itself (from a Maps share link or the Place ID Finder). When present, `seed-import` stores it (with `business_place_source = seed_csv`) and `places-resolve` skips the row — `--force` included, since a CSV-provided id is never re-searched. Blank leaves any id a previous `places-resolve` run found untouched. To change one, edit the CSV cell and re-import |
 
 ### Sources (`sources/`)
 | File | Certifier | Quality |

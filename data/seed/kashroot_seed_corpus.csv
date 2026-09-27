@@ -1,4 +1,4 @@
-﻿restaurant_name_he,address_he,city_he,city_en,phone,business_type_he,diet_type,certifier_ids,corroboration_count,source_documents,source_date,record_state,needs_review,notes,dedupe_hash_sha256
+﻿restaurant_name_he,address_he,city_he,city_en,phone,business_type_he,diet_type,certifier_ids,corroboration_count,source_documents,source_date,record_state,needs_review,notes,dedupe_hash_sha256,google_business_place_id
 אברמיטו,יגאל אלון 6,בית שמש,Beit Shemesh,*5113,מסעדות ומזנונים,,landa_bnei_brak,2,landa_restaurants_elul_5786;rabbanut_bb_kitchens_pdf,Elul 5786 (Aug-Sep 2026),LIST_VERIFIED,FALSE,,b2f12971ecdbb088c3d9b78985f7fd0db91f8d95cba6b3379dbcaf568f2c55ba
 איטליוני,ירושלים 36,בני ברק,Bnei Brak,1700501222,מסעדה חלבית,dairy,landa_bnei_brak,2,landa_restaurants_elul_5786;rabbanut_bb_kitchens_pdf,Elul 5786 (Aug-Sep 2026),LIST_VERIFIED,FALSE,,ce0062b2c2f179f4be388b6a56529df49f191dc28e02eefdfdc49c8948abd8f6
 ג'סט מיט,מצדה 7,בני ברק,Bnei Brak,*6867,מסעדות ומזנונים,,landa_bnei_brak,2,landa_restaurants_elul_5786;rabbanut_bb_kitchens_pdf,Elul 5786 (Aug-Sep 2026),LIST_VERIFIED,FALSE,,617c36399fae0bdc2eb40084565b4567a1cd7c557a547f9d371b98b7e5476da1

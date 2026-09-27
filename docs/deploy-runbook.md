@@ -30,7 +30,7 @@ The Supabase project is populated and current. Confirm before deploying:
 .venv\Scripts\python.exe -m app.cli db-check
 ```
 
-Expect `alembic revision 0009_business_place_id`, `postgis 3.3.7` and
+Expect `alembic revision 0010_business_place_source`, `postgis 3.3.7` and
 `row-level security ... all protected`. An unprotected table fails the check: on
 Supabase it is readable and writable by anyone with the project URL (see
 `docs/supabase-runbook.md`).
@@ -64,6 +64,14 @@ geocoded ones). `--force` re-searches every row and may replace an accepted id.
 Text Search is billed per call, same tier as Geocoding. The
 key needs **Places API (New)** enabled — the same key `geocode` and the enrichment
 endpoints already use (`KASHROOT_GOOGLE_PLACES_API_KEY` / `KASHROOT_GOOGLE_MAPS_API_KEY`).
+
+The seed CSV can also carry a known `google_business_place_id` per row (see
+`data/README.md`) — `seed-import` stores it with `business_place_source = seed_csv`,
+and `places-resolve` never spends an API call on that row, `--force` included; the
+CLI's `protected_seed` stat line counts how many rows `--force` skipped for this
+reason. Addresses with no house number (malls: `קניון רמות`, `מרכז מסחרי נווה יעקב`)
+get a 400m acceptance radius instead of the usual 150m, since the restaurant's own
+geocoded point there is the whole complex's centroid, not one storefront.
 
 ---
 

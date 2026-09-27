@@ -6,10 +6,12 @@ import pytest
 from sqlalchemy import func, select
 
 from app.ingestion.normalize import split_branch_addresses
+from app.ingestion.places_resolve_consts import BUSINESS_PLACE_SOURCE_SEED_CSV
 from app.ingestion.seed_import import (
     CERTIFIER_SEED,
     DEFAULT_CSV_PATH,
     SOURCE_DOCUMENT_SEED,
+    SeedImportError,
     import_seed,
     read_rows,
 )
@@ -265,3 +267,83 @@ def test_every_created_certificate_is_audited(session, imported):
     assert len(audited) == count(session, Certificate)
     assert all(entry.evidence.get("source_document") for entry in audited)
     assert all(entry.ingestion_run_id is not None for entry in audited)
+
+
+# --------------------------------------------------------------------------------------
+# google_business_place_id (seed-CSV-provided business place ids)
+# --------------------------------------------------------------------------------------
+
+_PLACE_ID_HEADER = (
+    "restaurant_name_he,address_he,city_he,city_en,phone,business_type_he,"
+    "diet_type,certifier_ids,corroboration_count,source_documents,source_date,"
+    "record_state,needs_review,notes,google_business_place_id"
+)
+
+
+def _place_id_row(place_id: str = "", address: str = "הרצל 1") -> str:
+    return (
+        f"מסעדת בדיקה,{address},אשקלון,Ashkelon,0500000000,מסעדה בשרית,"
+        "meat,badatz_eda_haredit,1,"
+        "eda_haredit_south_poster,Tamuz 5786 (Jun-Jul 2026),"
+        f"LIST_VERIFIED,FALSE,,{place_id}"
+    )
+
+
+def _write_csv(tmp_path, name: str, *rows: str):
+    path = tmp_path / name
+    path.write_text("\n".join([_PLACE_ID_HEADER, *rows, ""]), encoding="utf-8-sig")
+    return path
+
+
+def test_csv_id_imported_with_source_and_timestamp(session, tmp_path):
+    csv_path = _write_csv(tmp_path, "place_id.csv", _place_id_row("ChIJfromseed"))
+
+    import_seed(session, csv_path, dry_run=False, actor="pytest")
+
+    restaurant = session.scalar(select(Restaurant))
+    assert restaurant.google_business_place_id == "ChIJfromseed"
+    assert restaurant.business_place_source == BUSINESS_PLACE_SOURCE_SEED_CSV
+    assert restaurant.business_place_resolved_at is not None
+
+
+def test_blank_cell_on_reimport_keeps_a_search_found_id(session, tmp_path):
+    csv_path = _write_csv(tmp_path, "place_id.csv", _place_id_row(""))
+    import_seed(session, csv_path, dry_run=False, actor="pytest")
+    restaurant = session.scalar(select(Restaurant))
+    restaurant.google_business_place_id = "ChIJfromsearch"
+    restaurant.business_place_source = "google_places_text_search"
+    session.commit()
+
+    import_seed(session, csv_path, dry_run=False, actor="pytest")
+
+    refreshed = session.get(Restaurant, restaurant.id)
+    assert refreshed.google_business_place_id == "ChIJfromsearch"
+    assert refreshed.business_place_source == "google_places_text_search"
+
+
+def test_same_id_on_reimport_logs_no_change(session, tmp_path):
+    csv_path = _write_csv(tmp_path, "place_id.csv", _place_id_row("ChIJsame"))
+    import_seed(session, csv_path, dry_run=False, actor="pytest")
+
+    second = import_seed(session, csv_path, dry_run=False, actor="pytest")
+
+    assert "restaurant.google_business_place_id" not in second.changed_fields
+    assert "restaurant.business_place_resolved_at" not in second.changed_fields
+
+
+def test_invalid_id_raises_seed_import_error(session, tmp_path):
+    csv_path = _write_csv(tmp_path, "place_id.csv", _place_id_row("has a space"))
+
+    with pytest.raises(SeedImportError):
+        import_seed(session, csv_path, dry_run=False, actor="pytest")
+
+
+def test_id_on_multi_branch_row_raises_seed_import_error(session, tmp_path):
+    csv_path = _write_csv(
+        tmp_path,
+        "place_id.csv",
+        _place_id_row("ChIJshouldnotbeallowed", address="הרצל 1 / אלנבי 2"),
+    )
+
+    with pytest.raises(SeedImportError):
+        import_seed(session, csv_path, dry_run=False, actor="pytest")

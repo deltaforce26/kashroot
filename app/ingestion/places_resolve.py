@@ -26,13 +26,16 @@ import time
 from dataclasses import asdict, dataclass, field
 from typing import Any, Protocol
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session
 
 from app.ingestion.places_resolve_consts import (
+    BUSINESS_PLACE_SOURCE_SEED_CSV,
+    BUSINESS_PLACE_SOURCE_TEXT_SEARCH,
     LANGUAGE_CODE,
     LOCATION_BIAS_RADIUS_M,
     MAX_DISTANCE_M,
+    MAX_DISTANCE_NO_HOUSE_NUMBER_M,
     MAX_RESULT_COUNT,
     PIPELINE,
     PIPELINE_VERSION,
@@ -53,6 +56,28 @@ _POINT_TEXT_PATTERN = re.compile(r"POINT\(\s*(-?[\d.]+)\s+(-?[\d.]+)\s*\)", re.I
 
 #: Mean Earth radius (m), for the haversine distance used to score candidates.
 _EARTH_RADIUS_M = 6_371_000.0
+
+#: Any ASCII or Hebrew digit — a house number. Malls and shopping centers
+#: ("קניון רמות", "מרכז מסחרי נווה יעקב") are published with no street number at
+#: all, so their geocoded point is the whole complex's centroid, not one storefront.
+_DIGIT_PATTERN = re.compile(r"\d")
+
+
+def _has_house_number(address_he: str | None) -> bool:
+    """
+    Whether an address cites a house number. Pure — no I/O.
+
+    Parameters:
+        address_he (str | None): The restaurant's Hebrew street address.
+
+    Return:
+        bool: ``True`` when the address contains at least one digit; ``False`` for a
+            number-less address (a mall/complex name) or a missing address.
+    """
+    if not address_he:
+        return False
+
+    return bool(_DIGIT_PATTERN.search(address_he))
 
 
 class PlacesResolveError(RuntimeError):
@@ -183,17 +208,24 @@ class ResolveDecision:
 
 
 def classify_candidates(
-    response: dict[str, Any], origin_lat: float, origin_lon: float
+    response: dict[str, Any],
+    origin_lat: float,
+    origin_lon: float,
+    *,
+    max_distance_m: float = MAX_DISTANCE_M,
 ) -> ResolveDecision:
     """
-    Accept the first candidate within ``MAX_DISTANCE_M`` of the restaurant's own
+    Accept the first candidate within ``max_distance_m`` of the restaurant's own
     geocoded point; reject (and write nothing) otherwise. Pure function over
-    (raw response x origin point).
+    (raw response x origin point x radius).
 
     Parameters:
         response (dict[str, Any]): The raw Text Search JSON.
         origin_lat (float): The restaurant's own geocoded latitude.
         origin_lon (float): The restaurant's own geocoded longitude.
+        max_distance_m (float): The acceptance radius — ``MAX_DISTANCE_M`` by
+            default, or ``MAX_DISTANCE_NO_HOUSE_NUMBER_M`` for a house-number-less
+            address; the caller picks based on ``_has_house_number``.
 
     Return:
         ResolveDecision: The accept/reject decision, with evidence either way.
@@ -214,7 +246,7 @@ def classify_candidates(
         if nearest_distance is None or distance < nearest_distance:
             nearest_distance = distance
             nearest_name = display_name
-        if distance <= MAX_DISTANCE_M:
+        if distance <= max_distance_m:
             return ResolveDecision(
                 accept=True,
                 reason=REASON_ACCEPTED,
@@ -244,6 +276,7 @@ class ResolveRow:
     candidate_name: str | None
     distance_m: float | None
     decision: str
+    radius_m: float | None = None
 
 
 @dataclass
@@ -255,6 +288,8 @@ class ResolveStats:
     accepted: int = 0
     rejected: int = 0
     skipped_concurrent: int = 0
+    #: Seed-CSV-sourced ids ``--force`` declined to re-search (never re-searched).
+    protected_seed: int = 0
     reasons: dict[str, int] = field(default_factory=dict)
     rows: list[ResolveRow] = field(default_factory=list)
 
@@ -375,6 +410,15 @@ def _run_resolve(
         # "Tried" is the timestamp, not the id: a rejection stamps the row too, so a
         # plain re-run never pays Google again for a restaurant it already decided.
         query = query.where(Restaurant.business_place_resolved_at.is_(None))
+    else:
+        # A seed-CSV id is deterministic and free — --force re-searches everything
+        # *this pipeline* previously decided, never a row the CSV itself supplied.
+        query = query.where(
+            or_(
+                Restaurant.business_place_source.is_(None),
+                Restaurant.business_place_source != BUSINESS_PLACE_SOURCE_SEED_CSV,
+            )
+        )
     if city:
         query = query.where(Restaurant.city_slug == city)
     query = query.order_by(Restaurant.city_slug, Restaurant.name_he, Restaurant.dedupe_key)
@@ -382,6 +426,15 @@ def _run_resolve(
         query = query.limit(limit)
     targets = list(session.scalars(query))
     stats.candidates = len(targets)
+
+    if force:
+        protected_q = select(Restaurant).where(
+            Restaurant.geo.is_not(None),
+            Restaurant.business_place_source == BUSINESS_PLACE_SOURCE_SEED_CSV,
+        )
+        if city:
+            protected_q = protected_q.where(Restaurant.city_slug == city)
+        stats.protected_seed = len(list(session.scalars(protected_q)))
 
     already_q = select(Restaurant).where(
         Restaurant.geo.is_not(None), Restaurant.business_place_resolved_at.is_not(None)
@@ -417,8 +470,20 @@ def _run_resolve(
         response = searcher.search_text(body)
         stats.api_calls += 1
 
-        decision = classify_candidates(response, origin[0], origin[1])
-        _note(stats, restaurant, decision.display_name, decision.distance_m, decision.reason)
+        radius_m = (
+            MAX_DISTANCE_M
+            if _has_house_number(restaurant.address_he)
+            else MAX_DISTANCE_NO_HOUSE_NUMBER_M
+        )
+        decision = classify_candidates(response, origin[0], origin[1], max_distance_m=radius_m)
+        _note(
+            stats,
+            restaurant,
+            decision.display_name,
+            decision.distance_m,
+            decision.reason,
+            radius_m,
+        )
 
         if not decision.accept:
             stats.rejected += 1
@@ -439,6 +504,7 @@ def _note(
     candidate_name: str | None,
     distance_m: float | None,
     reason: str,
+    radius_m: float | None = None,
 ) -> None:
     stats.note_reason(reason)
     stats.rows.append(
@@ -448,6 +514,7 @@ def _note(
             candidate_name=candidate_name,
             distance_m=distance_m,
             decision=reason,
+            radius_m=radius_m,
         )
     )
 
@@ -482,6 +549,7 @@ def _accept(
         .values(
             google_business_place_id=decision.place_id,
             business_place_resolved_at=resolved_at,
+            business_place_source=BUSINESS_PLACE_SOURCE_TEXT_SEARCH,
         )
         .execution_options(synchronize_session=False)
     )
