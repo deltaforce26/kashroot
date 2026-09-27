@@ -83,6 +83,11 @@ def seed_import(
     )
     typer.echo(f"  needs_review records   {stats.needs_review}")
     typer.echo(f"  pending certificates   {stats.pending_certificates}")
+    typer.echo(f"  source docs ignored    {stats.source_documents_ignored}")
+    if stats.ignored_source_slugs:
+        typer.echo("  ignored source slugs (unregistered — data/README.md):")
+        for slug, count in sorted(stats.ignored_source_slugs.items(), key=lambda kv: -kv[1]):
+            typer.echo(f"    {slug:<34} {count}")
     if stats.changed_fields:
         typer.echo("  changed fields:")
         for name, count in sorted(stats.changed_fields.items(), key=lambda kv: -kv[1]):

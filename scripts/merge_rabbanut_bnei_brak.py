@@ -35,6 +35,11 @@ an expiry date, or a demo-seed marker) that the surviving row does not. Deleting
 row that knows more than its survivor would lose evidence, which is the one thing this
 codebase must never do quietly.
 
+This is a thin wrapper over the generic pure-merge machinery in
+``scripts/certifier_merge_lib.py`` (``run_merge``); see ``scripts/merge_certifier.py``
+for the fully parametrised CLI this and ``scripts/merge_rav_landa_variant.py`` are
+specialisations of.
+
 Run ``python -m scripts.merge_rabbanut_bnei_brak`` for a dry run (default; the
 transaction is rolled back), or with ``--apply`` to commit.
 """
@@ -43,39 +48,22 @@ from __future__ import annotations
 
 import argparse
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import session_scope
-from app.models import AuditAction, AuditLog, Certifier
-from scripts.certifier_merge_lib import (
-    AUDIT_REASON_KEY,
-    ENTITY_CERTIFIER,
-    MergePlan,
-)
-from scripts.certifier_merge_lib import assert_unwhitelisted as _assert_unwhitelisted
+from scripts.certifier_merge_lib import MergePlan
 from scripts.certifier_merge_lib import (
     facts_lost as _facts_lost,  # noqa: F401  re-exported for tests
 )
-from scripts.certifier_merge_lib import merge_certificates as _merge_certificates_generic
-from scripts.certifier_merge_lib import move_source_documents as _move_source_documents_generic
+from scripts.certifier_merge_lib import format_merge_report as _format_merge_report
+from scripts.certifier_merge_lib import run_merge as _run_merge
 from scripts.certifier_merge_lib import target_import_key as _target_import_key_generic
 
 SOURCE_SLUG = "rabbanut_bnei_brak"
 TARGET_SLUG = "landa_bnei_brak"
-MOVED_SOURCE_DOCUMENT_SLUG = "rabbanut_bb_kitchens_pdf"
 
 MERGE_ACTOR = "merge:rabbanut_bnei_brak->landa_bnei_brak"
 AUDIT_REASON_VALUE = "certifier_merge_aug_2026"
-
-ERROR_MISSING_CERTIFIER = (
-    "Certifier {slug!r} not found. Nothing to do, or the merge already ran — "
-    "check `select slug from certifier`."
-)
-
-REPORT_HEADER_DRY = "merge rabbanut_bnei_brak -> landa_bnei_brak — DRY RUN (rolled back)"
-REPORT_HEADER_APPLY = "merge rabbanut_bnei_brak -> landa_bnei_brak — APPLIED"
-REPORT_NOT_WRITTEN = "\n  nothing written — re-run with --apply to commit"
 
 
 def _target_import_key(import_key: str | None) -> str | None:
@@ -91,47 +79,9 @@ def _target_import_key(import_key: str | None) -> str | None:
     return _target_import_key_generic(import_key, SOURCE_SLUG, TARGET_SLUG)
 
 
-def _merge_certificates(session: Session, source: Certifier, target: Certifier) -> MergePlan:
-    """
-    Move or delete every certificate attributed to the source certifier.
-
-    Parameters:
-        session (Session): Open database session.
-        source (Certifier): The certifier being merged away.
-        target (Certifier): The certifier receiving its certificates.
-
-    Return:
-        MergePlan: What was changed, for reporting.
-    """
-    return _merge_certificates_generic(
-        session, source, target, actor=MERGE_ACTOR, reason_value=AUDIT_REASON_VALUE
-    )
-
-
-def _move_source_documents(session: Session, source: Certifier, target: Certifier) -> list[str]:
-    """
-    Reattribute the source certifier's published documents to the target.
-
-    Parameters:
-        session (Session): Open database session.
-        source (Certifier): The certifier being merged away.
-        target (Certifier): The certifier receiving its documents.
-
-    Return:
-        list[str]: Slugs of the documents that moved.
-    """
-    return _move_source_documents_generic(
-        session, source, target, actor=MERGE_ACTOR, reason_value=AUDIT_REASON_VALUE
-    )
-
-
 def merge(session: Session, *, dry_run: bool = True) -> MergePlan:
     """
     Perform the whole merge, committing or rolling back as asked.
-
-    ``dry_run=True`` performs every read and write against the session, reports what
-    changed, then rolls it back — the same diff-review shape as
-    ``app.ingestion.seed_import.import_seed``.
 
     Parameters:
         session (Session): Open database session.
@@ -140,65 +90,14 @@ def merge(session: Session, *, dry_run: bool = True) -> MergePlan:
     Return:
         MergePlan: Everything that changed.
     """
-    source = session.scalar(select(Certifier).where(Certifier.slug == SOURCE_SLUG))
-    target = session.scalar(select(Certifier).where(Certifier.slug == TARGET_SLUG))
-    if source is None:
-        raise SystemExit(ERROR_MISSING_CERTIFIER.format(slug=SOURCE_SLUG))
-    if target is None:
-        raise SystemExit(ERROR_MISSING_CERTIFIER.format(slug=TARGET_SLUG))
-
-    _assert_unwhitelisted(session, source)
-    plan = _merge_certificates(session, source, target)
-    plan.source_documents = _move_source_documents(session, source, target)
-    session.flush()
-    session.add(
-        AuditLog(
-            entity_type=ENTITY_CERTIFIER,
-            entity_id=source.id,
-            action=AuditAction.DELETE,
-            changes={
-                "before": {"slug": source.slug, "name_he": source.name_he},
-                "after": None,
-            },
-            actor=MERGE_ACTOR,
-            evidence={AUDIT_REASON_KEY: AUDIT_REASON_VALUE, "merged_into": target.slug},
-        )
+    return _run_merge(
+        session,
+        SOURCE_SLUG,
+        TARGET_SLUG,
+        actor=MERGE_ACTOR,
+        reason_value=AUDIT_REASON_VALUE,
+        dry_run=dry_run,
     )
-    session.delete(source)
-    session.flush()
-
-    if dry_run:
-        session.rollback()
-    else:
-        session.commit()
-
-    return plan
-
-
-def _report(plan: MergePlan, applied: bool) -> None:
-    """
-    Print what the merge did, in the shape the other CLI tools use.
-
-    Parameters:
-        plan (MergePlan): The computed changes.
-        applied (bool): Whether the transaction was committed.
-
-    Return:
-        None
-    """
-    print(REPORT_HEADER_APPLY if applied else REPORT_HEADER_DRY)
-    print(f"  certificates rewritten   {len(plan.rewritten)}")
-    print(f"  certificates deleted     {len(plan.deleted)}")
-    print(f"  demo-seed rows preserved {plan.demo_seed_preserved}")
-    print(f"  source documents moved   {len(plan.source_documents)}")
-    for slug in plan.source_documents:
-        print(f"    {slug}")
-    if plan.deleted:
-        print("  deleted as duplicates:")
-        for _, name in plan.deleted:
-            print(f"    {name}")
-    if not applied:
-        print(REPORT_NOT_WRITTEN)
 
 
 def main() -> None:
@@ -214,7 +113,11 @@ def main() -> None:
 
     with session_scope() as session:
         plan = merge(session, dry_run=not args.apply)
-    _report(plan, applied=args.apply)
+    print(
+        _format_merge_report(
+            plan, source_slug=SOURCE_SLUG, target_slug=TARGET_SLUG, applied=args.apply
+        )
+    )
 
 
 if __name__ == "__main__":

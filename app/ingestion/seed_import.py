@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import csv
 import datetime as dt
+import logging
 import re
 import uuid
 from collections.abc import Iterator
@@ -71,6 +72,8 @@ PIPELINE_VERSION = "1.0.0"
 DEFAULT_CSV_PATH = Path("data/seed/kashroot_seed_corpus.csv")
 SOURCES_DIR = Path("data/sources")
 
+logger = logging.getLogger(__name__)
+
 #: A Google Place ID is opaque but always ASCII letters/digits/underscore/hyphen —
 #: same character class the corpus uses for its own certifier slugs, reused here so
 #: an ambiguous/garbled CSV cell fails loudly instead of being stored as a guess.
@@ -97,6 +100,13 @@ CERTIFIER_SEED: dict[str, dict[str, Any]] = {
     # slugs. Both source documents survive the merge, so provenance and
     # ``corroboration_count`` (which counts source documents, not certifiers) are
     # unchanged; only the certifier attribution moved.
+    #
+    # Product-owner confirmation (2026-09-25): bare "הרב לנדא" / "הרב לנדאו" labels in
+    # third-party directories (e.g. misadot_mehadrin_restaurants_csv) map to this
+    # certifier. Rav Landa's hechsher operates nationwide, not only in Bnei Brak, so a
+    # row's location outside Bnei Brak is not evidence against this attribution. The
+    # 4 rows formerly held under the placeholder ``rav_landa_variant_unverified`` were
+    # reattributed here on that basis — see data/README.md.
     "landa_bnei_brak": {
         "name_he": 'בד"ץ שארית ישראל - הרב לנדא',
         "name_en": "Badatz Rav Landa (Bnei Brak)",
@@ -211,15 +221,30 @@ CERTIFIER_SEED: dict[str, dict[str, Any]] = {
         "name_en": "Badatz Kehilot",
         "type": CertifierType.BADATZ,
     },
-    # Distinct from ``landa_bnei_brak`` on purpose: these 4 rows carry a Landa-like label
-    # the source itself could not confirm is the same badatz. Modeled as its own
-    # certifier rather than merged, so an unverified badge never silently inherits
-    # ``landa_bnei_brak``'s standing; every row under it already carries
-    # ``needs_review=TRUE`` / ``UNKNOWN_PENDING_VERIFICATION``. Flagged for review.
-    "rav_landa_variant_unverified": {
-        "name_he": "לנדא - וריאנט לא מאומת",
-        "name_en": "Landa — unverified variant",
-        "type": CertifierType.PRIVATE,
+    # The Burgers Bar Netanya branch page reads 'בהידור הכשרות בד"צ, כשרות הבשר מחפוד'.
+    # Identified by the product owner on 2026-09-26 as Badatz Behidur HaKashrut (general
+    # supervision; the meat is separately under rav_machpud). Replaces the placeholder
+    # ``badatz_unnamed`` that the row carried in the Tishrei 5787 corpus refresh.
+    "badatz_behidur_hakashrut": {
+        "name_he": 'בד"ץ בהידור הכשרות',
+        "name_en": "Badatz Behidur HaKashrut",
+        "type": CertifierType.BADATZ,
+    },
+    # Added 2026-09-26 for the Burgers Bar branch pages (Tishrei 5787 corpus refresh).
+    # Local religious councils, named after the slug jurisdiction like the Rabbanut block
+    # above; names are derived from the place name, not published by a certifier list here.
+    # Efrat: the branch page reads 'מהדרין אפרת, כשרות הבשר מחפוד' (meat separately under
+    # rav_machpud). Beer Sheva: 'בד"צ רבנות באר שבע', certifier confirmed by the product
+    # owner on 2026-09-25.
+    "rabbanut_efrat": {
+        "name_he": "הרבנות המקומית אפרת",
+        "name_en": "Local Rabbinate — Efrat",
+        "type": CertifierType.RABBANUT_LOCAL,
+    },
+    "rabbanut_beer_sheva": {
+        "name_he": "הרבנות המקומית באר שבע",
+        "name_en": "Local Rabbinate — Beer Sheva",
+        "type": CertifierType.RABBANUT_LOCAL,
     },
 }
 
@@ -354,6 +379,8 @@ SOURCE_DATE_EARLIEST: dict[str, dt.date] = {
     "Tishrei 5787 (Sep 2026)": dt.date(2026, 9, 12),  # 1 Tishrei 5787
     # An access date is exact, not a Hebrew-calendar range — earliest == that date.
     "Accessed 2026-09-25": dt.date(2026, 9, 25),
+    # A bare ISO date (the hand-entered ``user_input`` row) is likewise exact.
+    "2026-09-25": dt.date(2026, 9, 25),
 }
 
 RECORD_STATE_MAP: dict[str, RecordState] = {
@@ -380,6 +407,12 @@ class SeedImportStats:
     certificates_unchanged: int = 0
     needs_review: int = 0
     pending_certificates: int = 0
+    #: Row-citations of a source-document slug not in ``SOURCE_DOCUMENT_SEED``, dropped
+    #: rather than imported (product decision 2026-09-26 — see data/README.md).
+    source_documents_ignored: int = 0
+    #: The same count, broken down by slug, so the dry-run diff summary shows exactly
+    #: which unregistered provenance was discarded.
+    ignored_source_slugs: dict[str, int] = field(default_factory=dict)
     #: field name → count of rows whose value changed (the diff-review summary)
     changed_fields: dict[str, int] = field(default_factory=dict)
     #: Set only when ``--prune`` ran.
@@ -490,12 +523,41 @@ def _row_certifier_slugs(row: dict[str, str]) -> list[str]:
     return slugs
 
 
-def _row_source_slugs(row: dict[str, str]) -> list[str]:
+def _row_source_slugs(row: dict[str, str], stats: SeedImportStats) -> list[str]:
+    """
+    Return the row's source-document slugs that are registered in ``SOURCE_DOCUMENT_SEED``,
+    dropping any that are not.
+
+    Product decision (2026-09-26): source documents outside the registry (one-off web
+    pages, manual notes, etc.) are deliberately never registered — see data/README.md for
+    the full list and reasoning. A row citing one of them must still import; refusing the
+    whole row over provenance the product owner already decided not to track would throw
+    away a real restaurant record. The drop is never silent: every distinct unknown slug
+    this run encounters is counted in ``stats.ignored_source_slugs`` and logged once, so
+    the dry-run diff summary shows exactly what provenance was discarded. A row left with
+    zero known sources still imports with no primary document — ``_primary_document``
+    already returns ``None`` for an empty list, so ``verified_at`` / ``valid_from`` stay
+    ``None`` for it, which is the fail-safe rule working as intended, not a gap.
+
+    Parameters:
+        row (dict[str, str]): The CSV row.
+        stats (SeedImportStats): Run-level counters, updated in place for every
+            unregistered slug this row cites.
+
+    Return:
+        list[str]: The row's source-document slugs known to ``SOURCE_DOCUMENT_SEED``, in
+            corpus order.
+    """
     slugs = [s.strip() for s in (row.get("source_documents") or "").split(";") if s.strip()]
+    known = [s for s in slugs if s in SOURCE_DOCUMENT_SEED]
     unknown = [s for s in slugs if s not in SOURCE_DOCUMENT_SEED]
-    if unknown:
-        raise SeedImportError(f"unknown source document(s) {unknown}")
-    return slugs
+    for slug in unknown:
+        if slug not in stats.ignored_source_slugs:
+            logger.warning("seed_import: unregistered source document %r ignored", slug)
+        stats.ignored_source_slugs[slug] = stats.ignored_source_slugs.get(slug, 0) + 1
+        stats.source_documents_ignored += 1
+
+    return known
 
 
 def _row_google_business_place_id(row: dict[str, str]) -> str | None:
@@ -694,7 +756,7 @@ def _import_row(
     csv_import_keys: set[str],
 ) -> None:
     certifier_slugs = _row_certifier_slugs(row)
-    source_slugs = _row_source_slugs(row)
+    source_slugs = _row_source_slugs(row, stats)
     primary_doc = _primary_document(source_slugs, documents)
 
     needs_review = parse_csv_bool(row.get("needs_review"))

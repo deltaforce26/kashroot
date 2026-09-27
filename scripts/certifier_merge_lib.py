@@ -48,6 +48,14 @@ ERROR_WHITELISTED = (
     "Refusing to merge: {count} user profile(s) whitelist {slug!r}. Those rows must "
     "be repointed or removed first, or a user silently loses a certifier they chose."
 )
+ERROR_MISSING_CERTIFIER = (
+    "Certifier {slug!r} not found. Nothing to do, or the merge already ran — "
+    "check `select slug from certifier`."
+)
+
+REPORT_HEADER_DRY_TEMPLATE = "merge {source} -> {target} — DRY RUN (rolled back)"
+REPORT_HEADER_APPLY_TEMPLATE = "merge {source} -> {target} — APPLIED"
+REPORT_NOT_WRITTEN = "\n  nothing written — re-run with --apply to commit"
 
 
 @dataclass
@@ -285,3 +293,103 @@ def move_source_documents(
         moved.append(document.slug)
 
     return moved
+
+
+def run_merge(
+    session: Session,
+    source_slug: str,
+    target_slug: str,
+    *,
+    actor: str,
+    reason_value: str,
+    dry_run: bool = True,
+) -> MergePlan:
+    """
+    Merge one certifier's certificates and documents into another, then delete it.
+
+    Both ``source_slug`` and ``target_slug`` must already exist as certifier rows —
+    this is the pure-merge path (two previously-distinct certifiers turning out to be
+    one, or a placeholder confirmed to be an already-seeded certifier), not a rename
+    of an otherwise-unreferenced placeholder. ``dry_run=True`` performs every read and
+    write against the session, reports what changed, then rolls it back — the same
+    diff-review shape as ``app.ingestion.seed_import.import_seed``.
+
+    Parameters:
+        session (Session): Open database session.
+        source_slug (str): Certifier slug being merged away and deleted.
+        target_slug (str): Certifier slug receiving the source's certificates.
+        actor (str): Audit-log actor label for this merge.
+        reason_value (str): Audit-log ``reason`` evidence value for this merge.
+        dry_run (bool): When True, roll the changes back instead of committing.
+
+    Return:
+        MergePlan: Everything that changed.
+    """
+    source = session.scalar(select(Certifier).where(Certifier.slug == source_slug))
+    target = session.scalar(select(Certifier).where(Certifier.slug == target_slug))
+    if source is None:
+        raise SystemExit(ERROR_MISSING_CERTIFIER.format(slug=source_slug))
+    if target is None:
+        raise SystemExit(ERROR_MISSING_CERTIFIER.format(slug=target_slug))
+
+    assert_unwhitelisted(session, source)
+    plan = merge_certificates(session, source, target, actor=actor, reason_value=reason_value)
+    plan.source_documents = move_source_documents(
+        session, source, target, actor=actor, reason_value=reason_value
+    )
+    session.flush()
+    session.add(
+        AuditLog(
+            entity_type=ENTITY_CERTIFIER,
+            entity_id=source.id,
+            action=AuditAction.DELETE,
+            changes={
+                "before": {"slug": source.slug, "name_he": source.name_he},
+                "after": None,
+            },
+            actor=actor,
+            evidence={AUDIT_REASON_KEY: reason_value, "merged_into": target.slug},
+        )
+    )
+    session.delete(source)
+    session.flush()
+
+    if dry_run:
+        session.rollback()
+    else:
+        session.commit()
+
+    return plan
+
+
+def format_merge_report(
+    plan: MergePlan, *, source_slug: str, target_slug: str, applied: bool
+) -> str:
+    """
+    Render a merge's outcome in the shape every merge CLI prints.
+
+    Parameters:
+        plan (MergePlan): The computed changes.
+        source_slug (str): Certifier slug that was merged away.
+        target_slug (str): Certifier slug that received the certificates.
+        applied (bool): Whether the transaction was committed.
+
+    Return:
+        str: The multi-line report text, ready to print.
+    """
+    header_template = REPORT_HEADER_APPLY_TEMPLATE if applied else REPORT_HEADER_DRY_TEMPLATE
+    lines = [
+        header_template.format(source=source_slug, target=target_slug),
+        f"  certificates rewritten   {len(plan.rewritten)}",
+        f"  certificates deleted     {len(plan.deleted)}",
+        f"  demo-seed rows preserved {plan.demo_seed_preserved}",
+        f"  source documents moved   {len(plan.source_documents)}",
+    ]
+    lines.extend(f"    {slug}" for slug in plan.source_documents)
+    if plan.deleted:
+        lines.append("  deleted as duplicates:")
+        lines.extend(f"    {name}" for _, name in plan.deleted)
+    if not applied:
+        lines.append(REPORT_NOT_WRITTEN)
+
+    return "\n".join(lines)
