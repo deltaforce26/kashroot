@@ -960,6 +960,7 @@ with open(OUT, "w", newline="", encoding="utf-8-sig") as f:
             "record_state",
             "needs_review",
             "notes",
+            "google_business_place_id",
         ]
     )
     for k in order:
@@ -980,6 +981,7 @@ with open(OUT, "w", newline="", encoding="utf-8-sig") as f:
                 "UNKNOWN_PENDING_VERIFICATION" if m["nr"] == "TRUE" else "LIST_VERIFIED",
                 m["nr"],
                 m["note"],
+                "",
             ]
         )
 
