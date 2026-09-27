@@ -239,6 +239,22 @@ CERTIFIER_SEED: dict[str, dict[str, Any]] = {
         "name_en": "Local Rabbinate — Beer Sheva",
         "type": CertifierType.RABBANUT_LOCAL,
     },
+    # Added 2026-09-27 for the Pizza Shemesh Ashdod branch (pizza_shemesh_branches_page,
+    # label 'רבני הקריות'). The name spans several Haifa-bay towns and the row sits in
+    # Ashdod, so it is not modeled as any single local council; typed PRIVATE like
+    # beit_yosef until reviewed. English name is a transliteration, not a published one.
+    "rabbanei_hakiryot": {
+        "name_he": "רבני הקריות",
+        "name_en": "Rabbanei HaKrayot",
+        "type": CertifierType.PRIVATE,
+    },
+    # Added 2026-09-27 for the Pizza Shemesh Lod branches (pizza_shemesh_branches_page,
+    # label 'בד"צ בית ישראל, העדה החרדית'). The label names a badatz directly.
+    "badatz_beit_israel": {
+        "name_he": 'בד"ץ בית ישראל',
+        "name_en": "Badatz Beit Israel",
+        "type": CertifierType.BADATZ,
+    },
 }
 
 #: The seven source documents behind the corpus. ``date_label`` is the document's own
