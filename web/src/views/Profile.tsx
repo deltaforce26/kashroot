@@ -63,30 +63,6 @@ export function Profile() {
           </div>
         </section>
 
-        <section className="panel glass">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <span style={{ fontWeight: 700, fontSize: 14.5 }}>{t.profile.required}</span>
-            <button
-              type="button"
-              style={{ fontSize: 12, color: "var(--sub)" }}
-              onClick={() => navigate("/onboarding/certifiers")}
-            >
-              {t.profile.edit}
-            </button>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 9 }}>
-            {profile.requiredAttributes.length === 0 ? (
-              <span style={{ fontSize: 12, color: "var(--sub)" }}>{t.profile.none}</span>
-            ) : (
-              profile.requiredAttributes.map((attribute) => (
-                <span key={attribute} className="tag-static tag-static--outline">
-                  {t.attributes[attribute]} ✓
-                </span>
-              ))
-            )}
-          </div>
-        </section>
-
         <section className="panel glass rows">
           <div className="row">
             <span>{t.profile.diet}</span>
