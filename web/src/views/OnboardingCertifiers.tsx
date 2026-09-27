@@ -1,13 +1,13 @@
 /**
- * Onboarding step 2 of 2 — whitelist + required attributes (design 3c).
+ * Onboarding step 2 of 2 — certifier whitelist (design 3c).
  *
  * The certifier list is flat and alphabetical. No grouping by type, no "recommended",
  * no ordering by stringency, no badge that implies one body is stricter than another.
  * The user decides; the app only records the decision.
  *
- * Required attributes carry the fail-safe in their own copy: each one must appear
- * explicitly on a certificate to count, so adding one narrows results into UNKNOWN
- * rather than quietly passing.
+ * The design's required-attributes picker is hidden for now: the corpus carries no
+ * certificate-level attributes yet, so any requirement would turn every place UNKNOWN.
+ * See `toPayload` in profile.ts.
  */
 
 import { useState } from "react";
@@ -16,11 +16,9 @@ import { ROOTLESS, useReturnTo } from "../hooks/useReturnTo";
 import { useI18n } from "../i18n/I18nProvider";
 import { useProfile } from "../profile/ProfileProvider";
 import {
-  OFFERED_ATTRIBUTES,
   isWhitelisted,
   certifierName,
   sortCertifiersForDisplay,
-  toggleAttribute,
   toggleCertifier,
 } from "../profile/profile";
 import { CheckIcon } from "../components/icons";
@@ -108,32 +106,6 @@ export function OnboardingCertifiers({ standalone = false }: { standalone?: bool
             })}
           </div>
         )}
-
-        <div>
-          <h2 style={{ font: "700 16px Assistant, sans-serif", margin: "14px 0 4px" }}>
-            {t.onboarding.extraRequirements}
-          </h2>
-          <p style={{ fontSize: 12, color: "var(--sub)", margin: "0 0 10px", lineHeight: 1.5 }}>
-            {t.onboarding.extraRequirementsLead}
-          </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {OFFERED_ATTRIBUTES.map((attribute) => {
-              const on = draft.requiredAttributes.includes(attribute);
-              return (
-                <button
-                  key={attribute}
-                  type="button"
-                  className={`tag ${on ? "" : "glass"}`}
-                  aria-pressed={on}
-                  onClick={() => setDraft(toggleAttribute(draft, attribute))}
-                >
-                  {t.attributes[attribute]}
-                  {on ? " ✓" : ""}
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </div>
 
       <div style={{ padding: "8px 24px 20px", flex: "none" }}>
