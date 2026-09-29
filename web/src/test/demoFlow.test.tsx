@@ -388,14 +388,11 @@ describe("demo flow", () => {
   });
 
   /**
-   * The search grid was the hole: `VerdictPill` and `FitScoreBar` were DOM siblings
-   * in `.card__tile-foot`, and the only thing keeping a kashrut verdict from sitting
-   * beside a preference score — reading as one blended metric — was
-   * `flex-direction: column` in a stylesheet no test could see. jsdom does no
-   * layout, so the markup now carries the separation itself: the fit score lives in
-   * a `.fit-row` of its own, which is asserted here rather than assumed.
+   * Search renders the same grid tile as home, so a restaurant looks identical in
+   * both places. That tile has no room for Layer 2 anywhere but beside the verdict
+   * pill, so it carries no fit score at all — asserted here rather than assumed.
    */
-  it("keeps the two layers separate on the search tiles too, not only the home rows", async () => {
+  it("renders search results with the home grid tile: verdict, no fit score", async () => {
     const user = userEvent.setup();
     const { container } = renderApp("/");
 
@@ -405,17 +402,14 @@ describe("demo flow", () => {
 
     // Search is reached from home's search field now, not from a tab of its own.
     await user.click(await screen.findByRole("button", { name: he.nav.search }));
-    await waitFor(() => expect(container.querySelector(".card--tile")).not.toBeNull());
+    await waitFor(() => expect(container.querySelector(".card--grid")).not.toBeNull());
 
-    // The tiles really do show both layers — otherwise the assertions below pass
-    // by rendering neither.
-    const tiles = [...container.querySelectorAll(".card--tile")];
+    const tiles = [...container.querySelectorAll(".card--grid")];
     expect(tiles.length).toBeGreaterThan(0);
     for (const tile of tiles) {
       expect(tile.querySelector(".verdict")).not.toBeNull();
-      expect(tile.querySelector(".fit")).not.toBeNull();
+      expect(tile.querySelector(".fit")).toBeNull();
     }
-    expectLayersSeparated(container, ".card--tile");
   });
 
   it("keeps them separate on the restaurant screen, where the verdict is largest", async () => {
@@ -490,8 +484,8 @@ function expectLayersSeparated(container: HTMLElement, present: string) {
 
 /**
  * Belt to the markup's braces. The stylesheet still does the visual work, and these
- * two declarations are the ones that keep Layer 2 on its own line inside the search
- * tile. They were previously untested — flipping `flex-direction` alone used to put
+ * declarations are the ones that keep Layer 2 on its own line inside a card. They
+ * were previously untested — flipping `flex-direction` alone used to put
  * the verdict and the fit score side by side with every test still green.
  */
 describe("the stylesheet declarations the separation leans on", () => {
@@ -506,12 +500,6 @@ describe("the stylesheet declarations the separation leans on", () => {
     return css.slice(start, css.indexOf("}", start));
   }
 
-  it("stacks the search tile's foot rather than lining it up", () => {
-    const rule = block(".card--tile .card__tile-foot");
-    expect(rule).toMatch(/flex-direction:\s*column/);
-    // …and even under `row` the fit row would wrap onto a line of its own.
-    expect(rule).toMatch(/flex-wrap:\s*wrap/);
-  });
 
   it("gives the fit row a whole line inside any card", () => {
     expect(block(".fit-row")).toMatch(/width:\s*100%/);

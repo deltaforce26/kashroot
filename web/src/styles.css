@@ -574,7 +574,7 @@ a {
 }
 
 /*
- * Layer 2's container, everywhere it appears: the row card, the search tile and the
+ * Layer 2's container, everywhere it appears: the row card and the
  * restaurant screen. It is a full-width block holding the fit score and nothing else.
  *
  * This is the separation guarantee, and it is deliberately not a single property on
@@ -602,7 +602,7 @@ a {
 }
 
 /*
- * The whole-card link (search tile, map carousel card). It is a stretched anchor
+ * The whole-card link (grid tile, map carousel card). It is a stretched anchor
  * laid over the card rather than a click handler on the <article>, so the card
  * keeps real link semantics: keyboard focus, middle-click, open-in-new-tab.
  *
@@ -642,52 +642,9 @@ a {
   margin: 16px 0 6px;
 }
 
-.card--tile {
-  padding: 14px;
-  min-height: 198px;
-  display: flex;
-  flex-direction: column;
-}
-
-/* The design draws this photo circle at the bottom-left of an RTL card, i.e. at the
-   inline-end edge — so it mirrors to bottom-right in the English UI. */
-.card--tile .card__photo {
-  top: auto;
-  bottom: -16px;
-  inset-inline-end: -14px;
-  transform: none;
-  width: 112px;
-  height: 112px;
-}
-
-/* …and the pill/fit/arrow stack sits at the opposite edge, the inline start.
-   `flex-wrap: wrap` is load-bearing, not tidiness: together with `.fit-row`'s
-   `flex: 0 0 100%` it keeps Layer 2 on a line of its own even if this container's
-   direction is ever changed to `row`. Both declarations are pinned by a test. */
-.card--tile .card__tile-foot {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 8px;
-  position: relative;
-  z-index: 1;
-}
-
-/* The tile's verdict row carries the pill alone; the stack's gap does the spacing. */
-.card--tile .card__foot--tile {
-  margin-top: 0;
-}
-
-/* Inside the tile stack the gap already spaces the rows. */
-.card--tile .fit-row {
-  margin-top: 0;
-}
-
 /*
- * Home grid card (2-up). Same tinted ground and striped photo circle as the search
- * tile, but a shorter body: one meta line, then the verdict pill alone on the foot
+ * Home grid card (2-up). Also used by search. Tinted ground and striped photo circle,
+ * a short body: one meta line, then the verdict pill alone on the foot
  * row — the whole card is the link, so it carries no go button. No `.fit-row`
  * appears here — see `RestaurantGridCard`.
  */
@@ -1631,11 +1588,27 @@ a {
  * normal padding — the standard full-bleed-inside-a-padded-container trick.
  */
 .detail-hero {
+  --hero-fade: 96px;
   position: relative;
   margin-inline: calc(-1 * var(--gutter));
-  height: 260px;
+  height: calc(260px + var(--hero-fade));
   overflow: hidden;
   flex: none;
+  /* Dissolves the photo and its scrim into the real page background (itself a
+     gradient, so a colour stop can't match it) instead of ending on a hard line.
+     The overlay text sits above this band, so it is never faded. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--hero-fade)), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--hero-fade)), transparent);
+  /* The fade's faint lower half is nearly transparent; let the page ride up over it
+     rather than leaving it as empty space. */
+  margin-bottom: calc(-0.5 * var(--hero-fade));
+}
+
+/* The hero is positioned, so it would paint over the in-flow content now tucked
+   under its tail. Positioning what follows restores tree order. `:where` keeps this
+   at zero specificity so any rule that sets its own position (sticky bars) wins. */
+:where(.detail-hero ~ *) {
+  position: relative;
 }
 
 .detail-hero__img {
@@ -1675,7 +1648,7 @@ a {
 
 .detail-hero__bottom {
   position: absolute;
-  bottom: 16px;
+  bottom: calc(var(--hero-fade) - 8px);
   inset-inline: 18px;
   z-index: 2;
   display: flex;

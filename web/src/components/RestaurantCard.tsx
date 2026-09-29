@@ -120,72 +120,12 @@ export function RestaurantRowCard({ item, saved, onToggleSave }: CardProps) {
   );
 }
 
-export function RestaurantTileCard({ item, saved, onToggleSave }: CardProps) {
-  const { t } = useI18n();
-  const { name, meta } = useCardText(item);
-
-  return (
-    <article className={`card card--tile ${tintClass(item.dietType)}`}>
-      {/* The whole tile is the link. It is one stretched anchor covering the card
-          rather than a click handler on the <article>, so it keeps real link
-          semantics — keyboard focus, middle-click, open-in-new-tab. The save
-          button sits above it on `.card__above`. */}
-      <Link to={`/r/${item.id}`} className="card__link" aria-label={name} />
-      <span className="card__photo stripe" aria-hidden="true">
-        {t.photoPlaceholder}
-      </span>
-      {/* `position: relative` with no z-index keeps this head painting above the
-          absolutely positioned photo (tree order) without opening a stacking
-          context — so the save button's `.card__above` still resolves against the
-          card and stays above the stretched link. */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 6,
-          position: "relative",
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
-          <span className="card__title" style={{ fontSize: 15 }}>
-            {name}
-          </span>
-          <div className="card__meta on-tint" style={{ fontSize: 11 }}>
-            {meta}
-          </div>
-        </div>
-        <button
-          type="button"
-          className="card__above"
-          aria-label={saved ? t.restaurant.saved : t.restaurant.save}
-          aria-pressed={saved}
-          onClick={() => onToggleSave(item)}
-        >
-          <BookmarkIcon size={17} filled={saved} />
-        </button>
-      </div>
-      {/* The tile has the same two-row structure as the row card, for the same
-          reason: the verdict pill and the fit score were once DOM siblings here,
-          separated only by `flex-direction: column`. One flipped CSS line would have
-          put a kashrut verdict and a preference score side by side as one apparent
-          metric. They are now in separate rows by construction. */}
-      <div className="card__tile-foot">
-        <div className="card__foot card__foot--tile">
-          <VerdictPill verdict={item.kashrut.verdict} />
-        </div>
-        <div className="fit-row">
-          <FitScoreBar fit={item.fit} />
-        </div>
-      </div>
-    </article>
-  );
-}
-
 /**
  * The home grid tile: name, one line of facts and the verdict pill over the
  * tinted, striped ground.
  *
- * The whole tile is the link, the same way the search tile is — one stretched
+ * Home and search both use this tile, so a restaurant looks the same wherever it
+ * appears in a grid. The whole tile is the link — one stretched
  * anchor over the card rather than a click handler on the <article>, so it keeps
  * real link semantics (keyboard focus, middle-click, open-in-new-tab). That
  * replaces the go button the comp drew in the foot: a card that is itself the
@@ -195,7 +135,7 @@ export function RestaurantTileCard({ item, saved, onToggleSave }: CardProps) {
  * It shows no Fit Score. That is the point of the shape — at half a row card's
  * width there is no room for Layer 2 to sit anywhere but beside the verdict pill,
  * and a preference score touching a kashrut verdict is the one adjacency the
- * design brief forbids. The score still has a home on the search tile and on the
+ * design brief forbids. The score still has a home on the row card and on the
  * restaurant screen, where it gets a labelled row of its own.
  */
 export function RestaurantGridCard({ item, saved, onToggleSave }: CardProps) {
