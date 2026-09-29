@@ -40,10 +40,13 @@ Confirm ids with `list_labels` once per run (they are stable but cheap to check)
 thread you process gets exactly one of `Handled` or `Needs-You`, plus a category
 label where one fits. Apply labels with `label_thread`.
 
-Work queue query (Gmail syntax, oldest first is fine):
+Work queue query (Gmail syntax, oldest first is fine). Search by label **name**,
+lowercase with `/` and spaces as `-` (`label:agent-handled`). Searching by label id
+(`label:Label_2`) silently matches nothing, so an id-based exclusion returns every
+thread and the run would reprocess the whole inbox. Ids are only for `label_thread`.
 
 ```
-in:inbox -label:Label_2 -label:Label_3 newer_than:14d
+in:inbox -label:agent-handled -label:agent-needs-you newer_than:14d
 ```
 
 Read each candidate with `get_thread` and `messageFormat: PLAIN_TEXT`.
