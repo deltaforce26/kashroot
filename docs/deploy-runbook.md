@@ -53,7 +53,8 @@ Run `kashroot places-resolve --apply` once after each `kashroot geocode --apply`
 business's — so `PlacesService.enrichment` (photos/hours) came back empty for almost
 every restaurant. `places-resolve` fills the separate `google_business_place_id`
 column via one Places (New) Text Search call per unresolved restaurant (name +
-address + city, biased to its geocoded point, accepted only within 150m of it), and
+address + city, hard-restricted to a 1 km box around its geocoded point, up to 10
+candidates, accepted within 150m of that point), and
 `/v1/restaurants/{id}/places` prefers that column, falling back to `google_place_id`
 only when no business id was resolved.
 
@@ -72,6 +73,18 @@ CLI's `protected_seed` stat line counts how many rows `--force` skipped for this
 reason. Addresses with no house number (malls: `קניון רמות`, `מרכז מסחרי נווה יעקב`)
 get a 400m acceptance radius instead of the usual 150m, since the restaurant's own
 geocoded point there is the whole complex's centroid, not one storefront.
+
+A candidate outside the radius is still accepted (reason `accepted_street_match`) when
+its formatted address names the same street and house number as ours — this is how a
+same-name chain branch whose geocoded point is off (e.g. a neighbourhood suffix in the
+address) resolves; the limitation is that our address must carry a house number and it
+must match exactly, so street-name variants without a number never match.
+
+If a restaurant's geocoded point is wrong because its address was dirty, clean the
+address, then run `kashroot geocode --force` (dry run first) to re-geocode rows that
+already have a point (`needs_review` rows are still skipped). It overwrites the point and
+clears text-search business place ids so `places-resolve` picks the row up again; ids
+that came from the seed CSV are kept.
 
 ---
 

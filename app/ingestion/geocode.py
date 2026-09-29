@@ -8,8 +8,11 @@ every write audited. What it will and will not do:
   matches the city we expected. Everything else — zero results, multiple candidates,
   approximate fixes, city mismatches, partial matches — flags the restaurant
   ``needs_review`` and writes **no point**. Doubt degrades, never resolves itself.
-* **Never overwrites an existing point.** Candidates are restaurants with ``geo IS
-  NULL`` only; a manually placed point (or one from a previous run) is never touched.
+* **Never overwrites an existing point unless ``--force``.** By default candidates are
+  restaurants with ``geo IS NULL`` only; a manually placed point (or one from a previous
+  run) is never touched. ``force`` also re-geocodes rows that have a point (still never
+  ``needs_review`` rows), overwriting geo/geocoded_at/google_place_id with the old values
+  audited, and clearing the business place id columns unless they came from the seed CSV.
 * **Never re-bills Google.** Every raw response is cached in ``geocode_cache`` keyed by
   the normalized query; cache rows survive dry-run rollback (they are evidence, not
   guesses) and re-runs resolve from them without an API call.
@@ -34,6 +37,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.ingestion.normalize import normalize_for_key, normalize_text
+from app.ingestion.places_resolve_consts import BUSINESS_PLACE_SOURCE_SEED_CSV
+from app.ingestion.places_resolve_report import extract_lat_lng
 from app.models import (
     AuditAction,
     AuditLog,
@@ -393,6 +398,9 @@ class GeocodeStats:
     #: Uncached queries not sent because API calls were not allowed (free dry run).
     would_call_api: int = 0
     accepted: int = 0
+    #: Accepted rows that already had a point and got a new one (``force`` only);
+    #: also counted in ``accepted``.
+    overwritten: int = 0
     flagged_needs_review: int = 0
     #: Rows that changed underneath us between candidate selection and write time
     #: (e.g. a moderator placed a point mid-run) — skipped, never overwritten.
@@ -416,6 +424,7 @@ def geocode_restaurants(
     actor: str = "cli",
     limit: int | None = None,
     city: str | None = None,
+    force: bool = False,
 ) -> GeocodeStats:
     """Geocode restaurants missing a point. Returns the diff summary.
 
@@ -448,6 +457,7 @@ def geocode_restaurants(
             allow_api_calls=allow_api_calls,
             limit=limit,
             city=city,
+            force=force,
         )
     except Exception as exc:
         session.rollback()
@@ -488,6 +498,7 @@ def _run_geocode(
     allow_api_calls: bool,
     limit: int | None,
     city: str | None,
+    force: bool = False,
 ) -> None:
     # Context counters are scoped like the run itself: a per-city run reports
     # per-city numbers.
@@ -505,9 +516,11 @@ def _run_geocode(
 
     query = (
         select(Restaurant)
-        .where(Restaurant.geo.is_(None), Restaurant.needs_review.is_(False))
+        .where(Restaurant.needs_review.is_(False))
         .order_by(Restaurant.city_slug, Restaurant.name_he, Restaurant.dedupe_key)
     )
+    if not force:
+        query = query.where(Restaurant.geo.is_(None))
     if city:
         query = query.where(Restaurant.city_slug == city)
     if limit is not None:
@@ -517,6 +530,7 @@ def _run_geocode(
     if not targets:
         return
 
+    snapshots: dict[Any, dict[str, Any]] = {r.id: _snapshot(r) for r in targets}
     items: list[tuple[Restaurant, str | None]] = [
         (r, build_geocode_query(r.address_he, r.city_he)) for r in targets
     ]
@@ -572,7 +586,11 @@ def _run_geocode(
         )
     )
     for restaurant, q in items:
+        snapshot = snapshots[restaurant.id]
+        had_point = snapshot["had_point"]
         if q is None:
+            if had_point:
+                continue
             _flag(session, restaurant, "missing_address", {"query": None}, run_id, stats)
             continue
         entry = cached.get(q)
@@ -597,14 +615,24 @@ def _run_geocode(
             "locality": decision.locality,
         }
         if not decision.accept:
-            _flag(session, restaurant, decision.reason, evidence, run_id, stats)
+            if not had_point:
+                _flag(session, restaurant, decision.reason, evidence, run_id, stats)
             continue
-        if decision.place_id and decision.place_id in used_place_ids:
+        own_place_id = snapshot["place_id"] if had_point else None
+        if (
+            decision.place_id
+            and decision.place_id in used_place_ids
+            and decision.place_id != own_place_id
+        ):
             # Two records resolving to one Google place — a dedupe question for a
             # moderator, not something to overwrite silently.
-            _flag(session, restaurant, "duplicate_place_id", evidence, run_id, stats)
+            if not had_point:
+                _flag(session, restaurant, "duplicate_place_id", evidence, run_id, stats)
             continue
-        if _accept(session, restaurant, decision, evidence, run_id, stats) and decision.place_id:
+        if (
+            _accept(session, restaurant, decision, evidence, run_id, stats, snapshot)
+            and decision.place_id
+        ):
             used_place_ids.add(decision.place_id)
 
     session.flush()
@@ -613,12 +641,19 @@ def _run_geocode(
 #: Write-time guard: the row must still be in the state that made it a candidate.
 #: Candidate selection is unlocked; a moderator can place a point or flag a row while
 #: the run is in flight. Every write re-checks and skips instead of overwriting.
-def _guarded_update(session: Session, restaurant: Restaurant, values: dict[str, Any]) -> bool:
+def _guarded_update(
+    session: Session,
+    restaurant: Restaurant,
+    values: dict[str, Any],
+    *,
+    had_point: bool = False,
+) -> bool:
+    geo_guard = Restaurant.geo.is_not(None) if had_point else Restaurant.geo.is_(None)
     result = session.execute(
         update(Restaurant)
         .where(
             Restaurant.id == restaurant.id,
-            Restaurant.geo.is_(None),
+            geo_guard,
             Restaurant.needs_review.is_(False),
         )
         .values(**values)
@@ -628,6 +663,33 @@ def _guarded_update(session: Session, restaurant: Restaurant, values: dict[str, 
     return result.rowcount == 1
 
 
+def _snapshot(restaurant: Restaurant) -> dict[str, Any]:
+    """
+    Capture the point/business-place state a restaurant had when it was selected as a
+    candidate, before any commit expires the instance — the audit log's real ``before``
+    values, and the guard for whether this accept is an overwrite.
+
+    Parameters:
+        restaurant (Restaurant): A freshly loaded candidate row.
+
+    Return:
+        dict[str, Any]: ``had_point``, ``geo`` (WKT-ish text), ``geocoded_at`` (ISO),
+            ``place_id``, and the three business-place columns.
+    """
+    point = extract_lat_lng(restaurant.geo)
+    resolved_at = restaurant.business_place_resolved_at
+
+    return {
+        "had_point": point is not None,
+        "geo": f"POINT({point[1]} {point[0]})" if point else None,
+        "geocoded_at": restaurant.geocoded_at.isoformat() if restaurant.geocoded_at else None,
+        "place_id": restaurant.google_place_id,
+        "business_id": restaurant.google_business_place_id,
+        "business_source": restaurant.business_place_source,
+        "business_resolved_at": resolved_at.isoformat() if resolved_at else None,
+    }
+
+
 def _accept(
     session: Session,
     restaurant: Restaurant,
@@ -635,28 +697,44 @@ def _accept(
     evidence: dict[str, Any],
     run_id: Any,
     stats: GeocodeStats,
+    snapshot: dict[str, Any],
 ) -> bool:
     restaurant_id = restaurant.id
+    had_point = snapshot["had_point"]
+    clear_business = had_point and snapshot["business_source"] != BUSINESS_PLACE_SOURCE_SEED_CSV
     geocoded_at = dt.datetime.now(dt.UTC)
-    written = _guarded_update(
-        session,
-        restaurant,
-        {
-            "geo": f"SRID=4326;POINT({decision.lng} {decision.lat})",
-            "geocoded_at": geocoded_at,
-            "google_place_id": decision.place_id,
-        },
-    )
+    values: dict[str, Any] = {
+        "geo": f"SRID=4326;POINT({decision.lng} {decision.lat})",
+        "geocoded_at": geocoded_at,
+        "google_place_id": decision.place_id,
+    }
+    if clear_business:
+        values.update(
+            google_business_place_id=None,
+            business_place_source=None,
+            business_place_resolved_at=None,
+        )
+    written = _guarded_update(session, restaurant, values, had_point=had_point)
     if not written:
         stats.skipped_concurrent += 1
         return False
-    changes = {
-        "geo": {"before": None, "after": f"POINT({decision.lng} {decision.lat})"},
-        "geocoded_at": {"before": None, "after": geocoded_at.isoformat()},
-        "google_place_id": {"before": None, "after": decision.place_id},
+    changes: dict[str, Any] = {
+        "geo": {"before": snapshot["geo"], "after": f"POINT({decision.lng} {decision.lat})"},
+        "geocoded_at": {"before": snapshot["geocoded_at"], "after": geocoded_at.isoformat()},
+        "google_place_id": {"before": snapshot["place_id"], "after": decision.place_id},
     }
+    if clear_business:
+        changes["google_business_place_id"] = {"before": snapshot["business_id"], "after": None}
+        changes["business_place_source"] = {"before": snapshot["business_source"], "after": None}
+        changes["business_place_resolved_at"] = {
+            "before": snapshot["business_resolved_at"],
+            "after": None,
+        }
     stats.accepted += 1
+    if had_point:
+        stats.overwritten += 1
     _audit(session, restaurant_id, AuditAction.UPDATE, changes, evidence, run_id)
+
     return True
 
 

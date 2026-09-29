@@ -19,8 +19,12 @@ PLACES_PHOTO_MEDIA_URL = "https://places.googleapis.com/v1/{photo_name}/media"
 #: API, is a street-address place id and carries no photos/hours).
 PLACES_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
 
-#: Only what the resolver needs to match and score a candidate.
-PLACES_TEXT_SEARCH_FIELD_MASK = "places.id,places.displayName,places.location,places.businessStatus"
+#: Only what the resolver needs to match and score a candidate. formattedAddress
+#: backs the street-match acceptance path (app.ingestion.places_match.address_matches)
+#: for a same-name chain branch outside the distance radius.
+PLACES_TEXT_SEARCH_FIELD_MASK = (
+    "places.id,places.displayName,places.location,places.businessStatus,places.formattedAddress"
+)
 
 #: Only what the enrichment endpoint uses — never a broader mask (cost + PRD scope:
 #: Google Places is never called from search lists, only a single restaurant's page).

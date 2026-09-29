@@ -27,7 +27,7 @@ from app.ingestion.places_resolve_consts import (
 )
 from app.models import RecordState, Restaurant
 from app.services.places import GooglePlacesClient
-from app.services.places_consts import PLACES_TEXT_SEARCH_URL
+from app.services.places_consts import PLACES_TEXT_SEARCH_FIELD_MASK, PLACES_TEXT_SEARCH_URL
 
 FAKE_API_KEY = "test-places-key-should-never-leak"
 
@@ -119,11 +119,22 @@ class TestPureHelpers(unittest.TestCase):
         self.assertEqual(body["textQuery"], "query text")
         self.assertEqual(body["languageCode"], "he")
         self.assertEqual(body["regionCode"], "IL")
-        self.assertEqual(body["maxResultCount"], 3)
-        self.assertEqual(
-            body["locationBias"]["circle"]["center"],
-            {"latitude": ORIGIN_LAT, "longitude": ORIGIN_LNG},
+        self.assertEqual(body["maxResultCount"], 10)
+        self.assertNotIn("locationBias", body)
+        box = body["locationRestriction"]["rectangle"]
+        lat_span = box["high"]["latitude"] - box["low"]["latitude"]
+        lng_span = box["high"]["longitude"] - box["low"]["longitude"]
+        self.assertAlmostEqual(lat_span, 2000.0 / 111_320.0, places=6)
+        self.assertGreater(lng_span, lat_span)
+        self.assertAlmostEqual(
+            (box["high"]["latitude"] + box["low"]["latitude"]) / 2, ORIGIN_LAT, places=6
         )
+        self.assertAlmostEqual(
+            (box["high"]["longitude"] + box["low"]["longitude"]) / 2, ORIGIN_LNG, places=6
+        )
+
+    def test_field_mask_includes_formatted_address(self) -> None:
+        self.assertIn("places.formattedAddress", PLACES_TEXT_SEARCH_FIELD_MASK)
 
     def test_candidate_accepted_within_150_meters(self) -> None:
         # ~0.0009 degrees lat ~= 100m.
@@ -291,6 +302,22 @@ class TestResolvePlacesPipeline(unittest.TestCase):
         self.assertEqual(stats.accepted, 0)
         refreshed = self.session.get(Restaurant, restaurant.id)
         self.assertIsNone(refreshed.google_business_place_id)
+
+    def test_street_match_accepts_far_chain_branch_and_reports_row(self) -> None:
+        restaurant = make_restaurant(self.session, address_he='הפלמ"ח 42 עמק רפאים')
+        response = search_text_response(lat=ORIGIN_LAT + 0.025, lng=ORIGIN_LNG)
+        response["places"][0]["formattedAddress"] = 'הפלמ"ח 42, ירושלים, ישראל'
+        searcher = StubSearcher([response])
+
+        stats = resolve_places(self.session, searcher, dry_run=False)
+
+        self.assertEqual(stats.accepted, 1)
+        self.assertEqual(stats.reasons, {"accepted_street_match": 1})
+        row = stats.rows[0]
+        self.assertEqual(row.address_he, 'הפלמ"ח 42 עמק רפאים')
+        self.assertEqual((row.lat, row.lng), (ORIGIN_LAT, ORIGIN_LNG))
+        refreshed = self.session.get(Restaurant, restaurant.id)
+        self.assertEqual(refreshed.google_business_place_id, "ChIJbusiness123")
 
     def test_city_and_limit_filters(self) -> None:
         make_restaurant(self.session, city_he="בני ברק", city_en="Bnei Brak")
