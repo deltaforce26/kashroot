@@ -104,6 +104,11 @@ class Restaurant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     #: falls back to google_place_id only when this is null.
     google_business_place_id: Mapped[str | None] = mapped_column(String(200), index=True)
     business_place_resolved_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    #: Where google_business_place_id came from: BUSINESS_PLACE_SOURCE_SEED_CSV (the
+    #: seed CSV's own google_business_place_id column — deterministic, free, never
+    #: overwritten by places_resolve --force) or BUSINESS_PLACE_SOURCE_TEXT_SEARCH
+    #: (app.ingestion.places_resolve). See app.ingestion.places_resolve_consts.
+    business_place_source: Mapped[str | None] = mapped_column(String(40))
 
     notes: Mapped[str | None] = mapped_column(Text)
 

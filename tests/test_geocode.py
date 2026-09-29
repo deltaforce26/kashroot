@@ -716,7 +716,7 @@ def test_shared_query_between_branches_costs_one_api_call(session):
 # --------------------------------------------------------------------------------------
 
 
-def test_migration_chain_heads_at_0009():
+def test_migration_chain_heads_at_0010():
     from pathlib import Path
 
     from alembic.config import Config
@@ -724,7 +724,10 @@ def test_migration_chain_heads_at_0009():
 
     root = Path(__file__).resolve().parents[1]
     script = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert script.get_heads() == ["0009_business_place_id"]
+    assert script.get_heads() == ["0010_business_place_source"]
+    assert (
+        script.get_revision("0010_business_place_source").down_revision == "0009_business_place_id"
+    )
     assert (
         script.get_revision("0009_business_place_id").down_revision
         == "0008_enable_row_level_security"
@@ -811,3 +814,107 @@ def test_migration_0002_matches_model_structurally():
     # SQLite test harness, so only this one is order-independent to assert on).
     assert "google_geocoding" in str(migrated.columns["provider"].server_default.arg)
     assert "google_geocoding" in str(model.columns["provider"].server_default.arg)
+
+
+# --------------------------------------------------------------------------------------
+# --force: re-geocode rows that already have a point
+# --------------------------------------------------------------------------------------
+
+OLD_POINT = "SRID=4326;POINT(34.0 32.0)"
+
+
+def _forced_run(session, *, response=None):
+    stub = StubGeocoder({QUERY: response or ok_response(google_result())})
+    stats = geocode_restaurants(
+        session, stub, dry_run=False, allow_api_calls=True, actor="pytest", force=True
+    )
+    return stub, stats
+
+
+def test_force_regeocodes_existing_point_and_audits_real_before(session):
+    restaurant = make_restaurant(
+        session, geo=OLD_POINT, geocoded_at=dt.datetime.now(dt.UTC), google_place_id="ChIJold"
+    )
+
+    stub, stats = _forced_run(session)
+
+    assert stub.calls == [QUERY]
+    assert stats.accepted == 1
+    assert stats.overwritten == 1
+    session.refresh(restaurant)
+    assert "34.8338" in str(restaurant.geo)
+    assert restaurant.google_place_id == "ChIJd8kRVoJHHRURn5W2jCzHIcE"
+    audit = session.scalar(select(AuditLog))
+    assert audit.changes["geo"]["before"] == "POINT(34.0 32.0)"
+    assert audit.changes["google_place_id"]["before"] == "ChIJold"
+
+
+def test_force_clears_text_search_business_id(session):
+    restaurant = make_restaurant(
+        session,
+        geo=OLD_POINT,
+        google_business_place_id="ChIJbiz",
+        business_place_source="google_places_text_search",
+        business_place_resolved_at=dt.datetime.now(dt.UTC),
+    )
+
+    _forced_run(session)
+
+    session.refresh(restaurant)
+    assert restaurant.google_business_place_id is None
+    assert restaurant.business_place_source is None
+    assert restaurant.business_place_resolved_at is None
+
+
+def test_force_keeps_seed_csv_business_id(session):
+    restaurant = make_restaurant(
+        session,
+        geo=OLD_POINT,
+        google_business_place_id="ChIJseed",
+        business_place_source="seed_csv",
+        business_place_resolved_at=dt.datetime.now(dt.UTC),
+    )
+
+    _forced_run(session)
+
+    session.refresh(restaurant)
+    assert restaurant.google_business_place_id == "ChIJseed"
+    assert restaurant.business_place_source == "seed_csv"
+    assert restaurant.business_place_resolved_at is not None
+    assert "34.8338" in str(restaurant.geo)
+
+
+def test_without_force_existing_point_is_skipped(session):
+    restaurant = make_restaurant(session, geo=OLD_POINT)
+    stub = StubGeocoder()
+
+    stats = geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
+
+    assert stats.candidates == 0
+    assert stats.overwritten == 0
+    session.refresh(restaurant)
+    assert "34.0" in str(restaurant.geo)
+
+
+def test_force_still_skips_needs_review_rows(session):
+    make_restaurant(session, geo=OLD_POINT, needs_review=True)
+    stub = StubGeocoder()
+
+    stats = geocode_restaurants(
+        session, stub, dry_run=False, allow_api_calls=True, actor="pytest", force=True
+    )
+
+    assert stats.candidates == 0
+    assert stub.calls == []
+
+
+def test_force_ambiguous_result_leaves_existing_point_alone(session):
+    restaurant = make_restaurant(session, geo=OLD_POINT)
+
+    _, stats = _forced_run(session, response=ZERO_RESULTS)
+
+    assert stats.accepted == 0
+    assert stats.flagged_needs_review == 0
+    session.refresh(restaurant)
+    assert restaurant.needs_review is False
+    assert "34.0" in str(restaurant.geo)

@@ -158,11 +158,15 @@ export function isProfileUsable(profile: KashrutProfile): boolean {
  *
  * The Layer 2 preference fields go out empty: the POC's UI collects no soft
  * preferences, and sending a guessed one would quietly reorder results.
+ *
+ * Required attributes also go out empty while their picker is hidden: a profile
+ * saved before it was hidden may still hold some, and the user could neither see
+ * nor clear them. Restore `[...profile.requiredAttributes].sort()` with the picker.
  */
 export function toPayload(profile: KashrutProfile): ProfileRequest {
   return {
     whitelist: [...profile.whitelist].sort((a, b) => a.certifier_id.localeCompare(b.certifier_id)),
-    required_attributes: [...profile.requiredAttributes].sort(),
+    required_attributes: [],
     ...emptyPreferences(),
   };
 }

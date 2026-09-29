@@ -30,7 +30,7 @@ The Supabase project is populated and current. Confirm before deploying:
 .venv\Scripts\python.exe -m app.cli db-check
 ```
 
-Expect `alembic revision 0009_business_place_id`, `postgis 3.3.7` and
+Expect `alembic revision 0010_business_place_source`, `postgis 3.3.7` and
 `row-level security ... all protected`. An unprotected table fails the check: on
 Supabase it is readable and writable by anyone with the project URL (see
 `docs/supabase-runbook.md`).
@@ -53,14 +53,38 @@ Run `kashroot places-resolve --apply` once after each `kashroot geocode --apply`
 business's — so `PlacesService.enrichment` (photos/hours) came back empty for almost
 every restaurant. `places-resolve` fills the separate `google_business_place_id`
 column via one Places (New) Text Search call per unresolved restaurant (name +
-address + city, biased to its geocoded point, accepted only within 150m of it), and
+address + city, hard-restricted to a 1 km box around its geocoded point, up to 10
+candidates, accepted within 150m of that point), and
 `/v1/restaurants/{id}/places` prefers that column, falling back to `google_place_id`
 only when no business id was resolved.
 
-This is a one-off cost, not a per-request one: each restaurant is searched once
-(`--force` to re-run) and Text Search is billed per call, same tier as Geocoding. The
+This is a one-off cost, not a per-request one: each restaurant is searched once —
+accepted or rejected, the row is stamped `business_place_resolved_at` and a plain
+re-run skips it, so re-running only pays for restaurants never tried (newly
+geocoded ones). `--force` re-searches every row and may replace an accepted id.
+Text Search is billed per call, same tier as Geocoding. The
 key needs **Places API (New)** enabled — the same key `geocode` and the enrichment
 endpoints already use (`KASHROOT_GOOGLE_PLACES_API_KEY` / `KASHROOT_GOOGLE_MAPS_API_KEY`).
+
+The seed CSV can also carry a known `google_business_place_id` per row (see
+`data/README.md`) — `seed-import` stores it with `business_place_source = seed_csv`,
+and `places-resolve` never spends an API call on that row, `--force` included; the
+CLI's `protected_seed` stat line counts how many rows `--force` skipped for this
+reason. Addresses with no house number (malls: `קניון רמות`, `מרכז מסחרי נווה יעקב`)
+get a 400m acceptance radius instead of the usual 150m, since the restaurant's own
+geocoded point there is the whole complex's centroid, not one storefront.
+
+A candidate outside the radius is still accepted (reason `accepted_street_match`) when
+its formatted address names the same street and house number as ours — this is how a
+same-name chain branch whose geocoded point is off (e.g. a neighbourhood suffix in the
+address) resolves; the limitation is that our address must carry a house number and it
+must match exactly, so street-name variants without a number never match.
+
+If a restaurant's geocoded point is wrong because its address was dirty, clean the
+address, then run `kashroot geocode --force` (dry run first) to re-geocode rows that
+already have a point (`needs_review` rows are still skipped). It overwrites the point and
+clears text-search business place ids so `places-resolve` picks the row up again; ids
+that came from the seed CSV are kept.
 
 ---
 

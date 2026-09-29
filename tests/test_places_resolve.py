@@ -6,6 +6,7 @@ matching the pattern in tests/test_seed_prune.py.
 
 from __future__ import annotations
 
+import datetime as dt
 import unittest
 from typing import Any
 
@@ -14,14 +15,19 @@ import pytest
 
 from app.ingestion.normalize import restaurant_dedupe_key, slugify_city
 from app.ingestion.places_resolve import (
+    _has_house_number,
     build_search_text_body,
     build_text_query,
     classify_candidates,
     resolve_places,
 )
+from app.ingestion.places_resolve_consts import (
+    BUSINESS_PLACE_SOURCE_SEED_CSV,
+    BUSINESS_PLACE_SOURCE_TEXT_SEARCH,
+)
 from app.models import RecordState, Restaurant
 from app.services.places import GooglePlacesClient
-from app.services.places_consts import PLACES_TEXT_SEARCH_URL
+from app.services.places_consts import PLACES_TEXT_SEARCH_FIELD_MASK, PLACES_TEXT_SEARCH_URL
 
 FAKE_API_KEY = "test-places-key-should-never-leak"
 
@@ -113,11 +119,22 @@ class TestPureHelpers(unittest.TestCase):
         self.assertEqual(body["textQuery"], "query text")
         self.assertEqual(body["languageCode"], "he")
         self.assertEqual(body["regionCode"], "IL")
-        self.assertEqual(body["maxResultCount"], 3)
-        self.assertEqual(
-            body["locationBias"]["circle"]["center"],
-            {"latitude": ORIGIN_LAT, "longitude": ORIGIN_LNG},
+        self.assertEqual(body["maxResultCount"], 10)
+        self.assertNotIn("locationBias", body)
+        box = body["locationRestriction"]["rectangle"]
+        lat_span = box["high"]["latitude"] - box["low"]["latitude"]
+        lng_span = box["high"]["longitude"] - box["low"]["longitude"]
+        self.assertAlmostEqual(lat_span, 2000.0 / 111_320.0, places=6)
+        self.assertGreater(lng_span, lat_span)
+        self.assertAlmostEqual(
+            (box["high"]["latitude"] + box["low"]["latitude"]) / 2, ORIGIN_LAT, places=6
         )
+        self.assertAlmostEqual(
+            (box["high"]["longitude"] + box["low"]["longitude"]) / 2, ORIGIN_LNG, places=6
+        )
+
+    def test_field_mask_includes_formatted_address(self) -> None:
+        self.assertIn("places.formattedAddress", PLACES_TEXT_SEARCH_FIELD_MASK)
 
     def test_candidate_accepted_within_150_meters(self) -> None:
         # ~0.0009 degrees lat ~= 100m.
@@ -208,7 +225,11 @@ class TestResolvePlacesPipeline(unittest.TestCase):
         self.assertEqual(searcher.calls, [])
 
     def test_already_resolved_is_skipped_unless_forced(self) -> None:
-        make_restaurant(self.session, google_business_place_id="ChIJexisting")
+        make_restaurant(
+            self.session,
+            google_business_place_id="ChIJexisting",
+            business_place_resolved_at=dt.datetime.now(dt.UTC),
+        )
         searcher = StubSearcher([])
 
         stats = resolve_places(self.session, searcher, dry_run=False)
@@ -216,6 +237,26 @@ class TestResolvePlacesPipeline(unittest.TestCase):
         self.assertEqual(stats.candidates, 0)
         self.assertEqual(stats.already_resolved, 1)
         self.assertEqual(searcher.calls, [])
+
+    def test_rejected_restaurant_is_not_retried_without_force(self) -> None:
+        restaurant = make_restaurant(self.session)
+        far_response = search_text_response(lat=ORIGIN_LAT + 0.01, lng=ORIGIN_LNG)
+        first = StubSearcher([far_response])
+        resolve_places(self.session, first, dry_run=False)
+        refreshed = self.session.get(Restaurant, restaurant.id)
+        self.assertIsNone(refreshed.google_business_place_id)
+        self.assertIsNotNone(refreshed.business_place_resolved_at)
+
+        second = StubSearcher([search_text_response(place_id="ChIJlater")])
+        stats = resolve_places(self.session, second, dry_run=False)
+        self.assertEqual(stats.candidates, 0)
+        self.assertEqual(second.calls, [])
+
+        forced = resolve_places(self.session, second, dry_run=False, force=True)
+        self.assertEqual(forced.accepted, 1)
+        self.assertEqual(
+            self.session.get(Restaurant, restaurant.id).google_business_place_id, "ChIJlater"
+        )
 
     def test_force_re_resolves_already_resolved_restaurant(self) -> None:
         restaurant = make_restaurant(self.session, google_business_place_id="ChIJold")
@@ -262,6 +303,22 @@ class TestResolvePlacesPipeline(unittest.TestCase):
         refreshed = self.session.get(Restaurant, restaurant.id)
         self.assertIsNone(refreshed.google_business_place_id)
 
+    def test_street_match_accepts_far_chain_branch_and_reports_row(self) -> None:
+        restaurant = make_restaurant(self.session, address_he='הפלמ"ח 42 עמק רפאים')
+        response = search_text_response(lat=ORIGIN_LAT + 0.025, lng=ORIGIN_LNG)
+        response["places"][0]["formattedAddress"] = 'הפלמ"ח 42, ירושלים, ישראל'
+        searcher = StubSearcher([response])
+
+        stats = resolve_places(self.session, searcher, dry_run=False)
+
+        self.assertEqual(stats.accepted, 1)
+        self.assertEqual(stats.reasons, {"accepted_street_match": 1})
+        row = stats.rows[0]
+        self.assertEqual(row.address_he, 'הפלמ"ח 42 עמק רפאים')
+        self.assertEqual((row.lat, row.lng), (ORIGIN_LAT, ORIGIN_LNG))
+        refreshed = self.session.get(Restaurant, restaurant.id)
+        self.assertEqual(refreshed.google_business_place_id, "ChIJbusiness123")
+
     def test_city_and_limit_filters(self) -> None:
         make_restaurant(self.session, city_he="בני ברק", city_en="Bnei Brak")
         make_restaurant(
@@ -277,6 +334,102 @@ class TestResolvePlacesPipeline(unittest.TestCase):
 
         self.assertEqual(stats.candidates, 1)
         self.assertEqual(len(searcher.calls), 1)
+
+    def test_accept_writes_text_search_source(self) -> None:
+        restaurant = make_restaurant(self.session)
+        searcher = StubSearcher([search_text_response()])
+
+        resolve_places(self.session, searcher, dry_run=False)
+
+        refreshed = self.session.get(Restaurant, restaurant.id)
+        self.assertEqual(refreshed.business_place_source, BUSINESS_PLACE_SOURCE_TEXT_SEARCH)
+
+    def test_force_skips_seed_csv_rows_and_counts_them_protected(self) -> None:
+        make_restaurant(
+            self.session,
+            google_business_place_id="ChIJfromseed",
+            business_place_resolved_at=dt.datetime.now(dt.UTC),
+            business_place_source=BUSINESS_PLACE_SOURCE_SEED_CSV,
+        )
+        searcher = StubSearcher([])
+
+        stats = resolve_places(self.session, searcher, dry_run=False, force=True)
+
+        self.assertEqual(stats.candidates, 0)
+        self.assertEqual(stats.protected_seed, 1)
+        self.assertEqual(searcher.calls, [])
+
+    def test_force_still_re_searches_text_search_sourced_rows(self) -> None:
+        make_restaurant(
+            self.session,
+            google_business_place_id="ChIJold",
+            business_place_resolved_at=dt.datetime.now(dt.UTC),
+            business_place_source=BUSINESS_PLACE_SOURCE_TEXT_SEARCH,
+        )
+        searcher = StubSearcher([search_text_response(place_id="ChIJnew")])
+
+        stats = resolve_places(self.session, searcher, dry_run=False, force=True)
+
+        self.assertEqual(stats.candidates, 1)
+        self.assertEqual(stats.accepted, 1)
+
+
+# --------------------------------------------------------------------------------------
+# House-number radius (400m for malls/complexes with no street number)
+# --------------------------------------------------------------------------------------
+
+
+class TestHasHouseNumber(unittest.TestCase):
+    def test_address_with_house_number_is_true(self) -> None:
+        self.assertTrue(_has_house_number("רבי עקיבא 15"))
+
+    def test_mall_name_with_no_number_is_false(self) -> None:
+        self.assertFalse(_has_house_number("קניון רמות"))
+
+    def test_empty_address_is_false(self) -> None:
+        self.assertFalse(_has_house_number(""))
+
+    def test_none_address_is_false(self) -> None:
+        self.assertFalse(_has_house_number(None))
+
+
+class TestNoHouseNumberRadius(unittest.TestCase):
+    @pytest.fixture(autouse=True)
+    def _inject_session(self, session):
+        self.session = session
+
+    def test_no_house_number_address_accepts_candidate_at_300m(self) -> None:
+        restaurant = make_restaurant(self.session, address_he="קניון רמות")
+        # ~0.0027 degrees lat ~= 300m.
+        response = search_text_response(lat=ORIGIN_LAT + 0.0027, lng=ORIGIN_LNG)
+        searcher = StubSearcher([response])
+
+        stats = resolve_places(self.session, searcher, dry_run=False)
+
+        self.assertEqual(stats.accepted, 1)
+        refreshed = self.session.get(Restaurant, restaurant.id)
+        self.assertIsNotNone(refreshed.google_business_place_id)
+
+    def test_no_house_number_address_rejects_candidate_at_500m(self) -> None:
+        make_restaurant(self.session, address_he="קניון רמות")
+        # ~0.0045 degrees lat ~= 500m.
+        response = search_text_response(lat=ORIGIN_LAT + 0.0045, lng=ORIGIN_LNG)
+        searcher = StubSearcher([response])
+
+        stats = resolve_places(self.session, searcher, dry_run=False)
+
+        self.assertEqual(stats.rejected, 1)
+        self.assertEqual(stats.accepted, 0)
+
+    def test_house_number_address_still_rejects_candidate_at_300m(self) -> None:
+        make_restaurant(self.session)  # default address_he="רבי עקיבא 15"
+        response = search_text_response(lat=ORIGIN_LAT + 0.0027, lng=ORIGIN_LNG)
+        searcher = StubSearcher([response])
+
+        stats = resolve_places(self.session, searcher, dry_run=False)
+
+        self.assertEqual(stats.rejected, 1)
+        self.assertEqual(stats.accepted, 0)
 
 
 if __name__ == "__main__":  # pragma: no cover

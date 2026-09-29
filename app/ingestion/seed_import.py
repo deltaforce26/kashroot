@@ -28,6 +28,7 @@ from __future__ import annotations
 import csv
 import datetime as dt
 import logging
+import re
 import uuid
 from collections.abc import Iterator
 from dataclasses import asdict, dataclass, field
@@ -46,6 +47,7 @@ from app.ingestion.normalize import (
     slugify_city,
     split_branch_addresses,
 )
+from app.ingestion.places_resolve_consts import BUSINESS_PLACE_SOURCE_SEED_CSV
 from app.ingestion.seed_prune import PruneStats, prune_seed_data
 from app.models import (
     AuditAction,
@@ -71,6 +73,11 @@ DEFAULT_CSV_PATH = Path("data/seed/kashroot_seed_corpus.csv")
 SOURCES_DIR = Path("data/sources")
 
 logger = logging.getLogger(__name__)
+
+#: A Google Place ID is opaque but always ASCII letters/digits/underscore/hyphen —
+#: same character class the corpus uses for its own certifier slugs, reused here so
+#: an ambiguous/garbled CSV cell fails loudly instead of being stored as a guess.
+_GOOGLE_BUSINESS_PLACE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,200}$")
 
 
 #: Certifiers referenced by the seed corpus. Rabbanut entries are *local religious
@@ -238,6 +245,22 @@ CERTIFIER_SEED: dict[str, dict[str, Any]] = {
         "name_he": "הרבנות המקומית באר שבע",
         "name_en": "Local Rabbinate — Beer Sheva",
         "type": CertifierType.RABBANUT_LOCAL,
+    },
+    # Added 2026-09-27 for the Pizza Shemesh Ashdod branch (pizza_shemesh_branches_page,
+    # label 'רבני הקריות'). The name spans several Haifa-bay towns and the row sits in
+    # Ashdod, so it is not modeled as any single local council; typed PRIVATE like
+    # beit_yosef until reviewed. English name is a transliteration, not a published one.
+    "rabbanei_hakiryot": {
+        "name_he": "רבני הקריות",
+        "name_en": "Rabbanei HaKrayot",
+        "type": CertifierType.PRIVATE,
+    },
+    # Added 2026-09-27 for the Pizza Shemesh Lod branches (pizza_shemesh_branches_page,
+    # label 'בד"צ בית ישראל, העדה החרדית'). The label names a badatz directly.
+    "badatz_beit_israel": {
+        "name_he": 'בד"ץ בית ישראל',
+        "name_en": "Badatz Beit Israel",
+        "type": CertifierType.BADATZ,
     },
 }
 
@@ -553,6 +576,30 @@ def _row_source_slugs(row: dict[str, str], stats: SeedImportStats) -> list[str]:
     return known
 
 
+def _row_google_business_place_id(row: dict[str, str]) -> str | None:
+    """
+    Parse the optional ``google_business_place_id`` CSV column.
+
+    A blank cell means "no opinion" — it never clears an id a previous
+    ``places-resolve`` run found. A non-blank cell must be a plausible Google Place
+    ID (ASCII letters/digits/underscore/hyphen, 1-200 chars) or the row is rejected
+    outright rather than stored as a guess.
+
+    Parameters:
+        row (dict[str, str]): The raw CSV row.
+
+    Return:
+        str | None: The stripped place id, or ``None`` when the cell is blank.
+    """
+    raw = (row.get("google_business_place_id") or "").strip()
+    if not raw:
+        return None
+    if not _GOOGLE_BUSINESS_PLACE_ID_PATTERN.match(raw):
+        raise SeedImportError(f"invalid google_business_place_id {raw!r}")
+
+    return raw
+
+
 def _parse_diet(row: dict[str, str]) -> DietType | None:
     raw = (row.get("diet_type") or "").strip()
     if not raw:
@@ -741,6 +788,13 @@ def _import_row(
     if len(addresses) > 1:
         stats.branch_rows_split += 1
 
+    place_id = _row_google_business_place_id(row)
+    if place_id is not None and len(addresses) > 1:
+        raise SeedImportError(
+            f"google_business_place_id {place_id!r} set on a row that splits into "
+            f"{len(addresses)} branches — a place id can't belong to several branches"
+        )
+
     for address in addresses:
         dedupe_key = restaurant_dedupe_key(name_he, city_he, address)
         csv_dedupe_keys.add(dedupe_key)
@@ -761,6 +815,13 @@ def _import_row(
         }
 
         restaurant = restaurants.get(dedupe_key)
+        if place_id is not None:
+            current_place_id = restaurant.google_business_place_id if restaurant else None
+            if place_id != current_place_id:
+                values["google_business_place_id"] = place_id
+                values["business_place_source"] = BUSINESS_PLACE_SOURCE_SEED_CSV
+                values["business_place_resolved_at"] = dt.datetime.now(dt.UTC)
+
         if restaurant is None:
             restaurant = Restaurant(dedupe_key=dedupe_key, **values)
             session.add(restaurant)

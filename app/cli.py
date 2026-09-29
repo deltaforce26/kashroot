@@ -134,6 +134,17 @@ def geocode(
             "--apply always allows API calls; a plain dry run is free.",
         ),
     ] = False,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            help=(
+                "Also re-geocode restaurants that already have a point (never "
+                "needs_review rows); overwrites geo and clears text-search business "
+                "place ids (CSV-provided ids are kept)."
+            ),
+        ),
+    ] = False,
 ) -> None:
     """Populate restaurant geo points via Google Geocoding (cache-first, fail-safe).
 
@@ -167,6 +178,7 @@ def geocode(
                 actor=actor,
                 limit=limit,
                 city=city,
+                force=force,
             )
     except GeocodeError as exc:
         typer.secho(f"geocode failed: {exc}", fg=typer.colors.RED, err=True)
@@ -181,6 +193,8 @@ def geocode(
     typer.echo(f"  API calls made             {stats.api_calls}")
     typer.echo(f"  would call API (uncached)  {stats.would_call_api}")
     typer.echo(f"  accepted points            {stats.accepted}")
+    if force:
+        typer.echo(f"  overwritten (had a point)  {stats.overwritten}")
     typer.echo(f"  flagged needs_review       {stats.flagged_needs_review}")
     typer.echo(f"  skipped (changed mid-run)  {stats.skipped_concurrent}")
     if stats.review_reasons:
@@ -211,7 +225,11 @@ def places_resolve(
     force: Annotated[
         bool,
         typer.Option(
-            "--force", help="Re-resolve restaurants that already have a business place id."
+            "--force",
+            help=(
+                "Re-search restaurants already decided (accepted or rejected); "
+                "CSV-provided ids are never touched."
+            ),
         ),
     ] = False,
 ) -> None:
@@ -262,16 +280,25 @@ def places_resolve(
     typer.echo(f"  accepted                   {stats.accepted}")
     typer.echo(f"  rejected                   {stats.rejected}")
     typer.echo(f"  skipped (changed mid-run)  {stats.skipped_concurrent}")
+    typer.echo(f"  protected (seed CSV id)    {stats.protected_seed}")
     if stats.reasons:
         typer.echo("  decision reasons:")
         for reason, n in sorted(stats.reasons.items(), key=lambda kv: -kv[1]):
             typer.echo(f"    {reason:<20} {n}")
     if dry_run and stats.rows:
-        typer.echo("\n  restaurant -> candidate / distance / decision:")
+        typer.echo(
+            "\n  restaurant / address / lat,lng -> candidate / distance / radius / decision:"
+        )
         for row in stats.rows:
             distance = f"{row.distance_m:.0f}m" if row.distance_m is not None else "-"
+            radius = f"{row.radius_m:.0f}m" if row.radius_m is not None else "-"
             candidate = row.candidate_name or "-"
-            typer.echo(f"    {row.name_he:<30} {candidate:<30} {distance:>8}  {row.decision}")
+            address = row.address_he or "-"
+            coords = f"{row.lat:.5f},{row.lng:.5f}" if row.lat is not None else "-"
+            typer.echo(
+                f"    {row.name_he:<30} {address:<28} {coords:<19} {candidate:<30} "
+                f"{distance:>8} {radius:>8}  {row.decision}"
+            )
     if dry_run:
         typer.secho("\n  nothing written — re-run with --apply to commit", fg=typer.colors.YELLOW)
 

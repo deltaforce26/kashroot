@@ -9,7 +9,7 @@ exclusively through `scripts/build_seed.py`, so the script is currently **not gu
 to reproduce this file** — see the Tishrei 5787 section before re-running it. Encoding:
 UTF-8 with BOM.
 
-**2026-09-26 refresh:** adds two trailing columns, `source_url` and `opening_hours_he`
+**2026-09-26 refresh:** adds two trailing columns, `source_url` and `opening_hours_he` (a third, `google_business_place_id`, was appended afterwards — see Columns)
 (see Columns below) — the importer (`app/ingestion/seed_import.py`) currently ignores
 both via `csv.DictReader`, so neither reaches the database yet. It also cites six
 source-document slugs that are deliberately **not** registered in `SOURCE_DOCUMENT_SEED`
@@ -50,6 +50,7 @@ reattributions change state/review/certifier flags, not row count.
 | `dedupe_hash_sha256` | Present in the Tishrei 5787 corpus; not read by the importer (dedupe keys are derived at import time by `restaurant_dedupe_key`, not from this column) |
 | `source_url` | Added in the 2026-09-26 refresh; not read by the importer |
 | `opening_hours_he` | Added in the 2026-09-26 refresh; not read by the importer |
+| `google_business_place_id` | Optional. Google Place ID of the business itself (from a Maps share link or the Place ID Finder). When present, `seed-import` stores it (with `business_place_source = seed_csv`) and `places-resolve` skips the row — `--force` included, since a CSV-provided id is never re-searched. Blank leaves any id a previous `places-resolve` run found untouched. To change one, edit the CSV cell and re-import |
 
 ### Sources (`sources/`)
 | File | Certifier | Quality |
