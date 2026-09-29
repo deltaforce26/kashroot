@@ -1588,11 +1588,27 @@ a {
  * normal padding — the standard full-bleed-inside-a-padded-container trick.
  */
 .detail-hero {
+  --hero-fade: 96px;
   position: relative;
   margin-inline: calc(-1 * var(--gutter));
-  height: 260px;
+  height: calc(260px + var(--hero-fade));
   overflow: hidden;
   flex: none;
+  /* Dissolves the photo and its scrim into the real page background (itself a
+     gradient, so a colour stop can't match it) instead of ending on a hard line.
+     The overlay text sits above this band, so it is never faded. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--hero-fade)), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--hero-fade)), transparent);
+  /* The fade's faint lower half is nearly transparent; let the page ride up over it
+     rather than leaving it as empty space. */
+  margin-bottom: calc(-0.5 * var(--hero-fade));
+}
+
+/* The hero is positioned, so it would paint over the in-flow content now tucked
+   under its tail. Positioning what follows restores tree order. `:where` keeps this
+   at zero specificity so any rule that sets its own position (sticky bars) wins. */
+:where(.detail-hero ~ *) {
+  position: relative;
 }
 
 .detail-hero__img {
@@ -1632,7 +1648,7 @@ a {
 
 .detail-hero__bottom {
   position: absolute;
-  bottom: 16px;
+  bottom: calc(var(--hero-fade) - 8px);
   inset-inline: 18px;
   z-index: 2;
   display: flex;

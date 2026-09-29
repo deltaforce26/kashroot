@@ -23,6 +23,7 @@ import { MAX_QUERY_LENGTH, type SearchRequest } from "../api/types";
 import { hasVerifiedMatch } from "../api/viewmodel";
 import { FilterBar } from "../components/filters/FilterBar";
 import { PinIcon, SearchIcon } from "../components/icons";
+import { LocationSheet } from "../components/LocationSheet";
 import { RestaurantGridCard } from "../components/RestaurantCard";
 import {
   EmptyQuery,
@@ -64,6 +65,7 @@ export function Search() {
   // Shared with home, so a filter picked here is the one picked there.
   const { filters, reset: resetFilters } = useFilters();
   const deferredQuery = useDeferredValue(query);
+  const [pickingPlace, setPickingPlace] = useState(false);
 
   const trimmedQuery = deferredQuery.trim();
 
@@ -91,15 +93,28 @@ export function Search() {
   return (
     <div className="shell">
       <header className="shell__header">
-        <span className="circle glass" aria-hidden="true">
+        {/* The same one control as home's header: pin and place both open the sheet. */}
+        <button
+          type="button"
+          className="circle glass"
+          aria-label={t.home.changeLocation}
+          aria-expanded={pickingPlace}
+          onClick={() => setPickingPlace(true)}
+        >
           <PinIcon />
-        </span>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11.5, color: "var(--sub)" }}>
+        </button>
+        <button
+          type="button"
+          style={{ flex: 1, textAlign: "start", minWidth: 0 }}
+          aria-label={t.home.changeLocation}
+          aria-expanded={pickingPlace}
+          onClick={() => setPickingPlace(true)}
+        >
+          <span style={{ display: "block", fontSize: 11.5, color: "var(--sub)" }}>
             {origin ? t.search.searchingNear : t.origin.searchingEverywhere}
-          </div>
-          <div style={{ fontWeight: 700, fontSize: 15.5 }}>{placeLabel}</div>
-        </div>
+          </span>
+          <span className="header__place">{placeLabel}</span>
+        </button>
       </header>
 
       <label className="searchbar glass" style={{ margin: "14px var(--gutter) 0" }}>
@@ -131,7 +146,7 @@ export function Search() {
         ) : total === 0 && !anyFilterActive(filters) ? (
           // No rows at all, before the profile was applied — a data gap, not a
           // verdict, and a different statement from "nothing meets your profile".
-          <NothingHere place={origin ? placeLabel : null} onChangePlace={() => navigate("/")} />
+          <NothingHere place={origin ? placeLabel : null} onChangePlace={() => setPickingPlace(true)} />
         ) : results.length === 0 ? (
           <EmptyResults
             onWidenProfile={() => navigate("/profile")}
@@ -177,6 +192,7 @@ export function Search() {
       </div>
 
       <SaveToListHost />
+      {pickingPlace && <LocationSheet onClose={() => setPickingPlace(false)} />}
       <TabBar />
     </div>
   );
