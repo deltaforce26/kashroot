@@ -24,7 +24,7 @@ import { hasVerifiedMatch } from "../api/viewmodel";
 import { FilterBar } from "../components/filters/FilterBar";
 import { PinIcon, SearchIcon } from "../components/icons";
 import { LocationSheet } from "../components/LocationSheet";
-import { RestaurantTileCard } from "../components/RestaurantCard";
+import { RestaurantGridCard } from "../components/RestaurantCard";
 import {
   EmptyQuery,
   EmptyResults,
@@ -163,7 +163,7 @@ export function Search() {
             </div>
             <div className="grid">
               {results.map((item) => (
-                <RestaurantTileCard
+                <RestaurantGridCard
                   key={item.id}
                   item={item}
                   saved={isSaved(item.id)}
