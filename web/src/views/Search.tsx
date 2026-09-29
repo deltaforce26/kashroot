@@ -23,7 +23,7 @@ import { MAX_QUERY_LENGTH, type SearchRequest } from "../api/types";
 import { hasVerifiedMatch } from "../api/viewmodel";
 import { FilterBar } from "../components/filters/FilterBar";
 import { PinIcon, SearchIcon } from "../components/icons";
-import { RestaurantTileCard } from "../components/RestaurantCard";
+import { RestaurantGridCard } from "../components/RestaurantCard";
 import {
   EmptyQuery,
   EmptyResults,
@@ -148,7 +148,7 @@ export function Search() {
             </div>
             <div className="grid">
               {results.map((item) => (
-                <RestaurantTileCard
+                <RestaurantGridCard
                   key={item.id}
                   item={item}
                   saved={isSaved(item.id)}
