@@ -41,8 +41,12 @@ export const PICKER_PRESETS: readonly PresetId[] = ["badatz", "custom"];
  * RESTORE IT when national Rabbanut data lands: put `"rabbanut"` back on `PresetId`,
  * in the list below, in `expandPreset`, in `storage.ts`'s `PRESETS`, and re-add
  * `presets.rabbanut` to both string tables. Do not restore it before then.
+ *
+ * HIDDEN: `"custom"` ("מותאם אישית") is not offered in onboarding at this stage —
+ * "badatz" already leads into the full picker. It stays a `PresetId`, because
+ * editing any preset's whitelist marks the profile custom (`toggleCertifier`).
  */
-export const PRESET_ORDER: readonly PresetId[] = ["any", "mehadrin", "badatz", "custom"];
+export const PRESET_ORDER: readonly PresetId[] = ["any", "mehadrin", "badatz"];
 
 export interface KashrutProfile {
   /** Which preset seeded this profile; kept so the UI can show it as selected. */
