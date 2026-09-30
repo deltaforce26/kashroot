@@ -535,24 +535,6 @@ a {
 
 .card--row {
   padding: 14px 16px;
-  padding-inline-end: 96px;
-}
-
-.card__photo {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  inset-inline-end: -20px;
-  width: 104px;
-  height: 104px;
-  border-radius: var(--radius-pill);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font: 9px ui-monospace, Menlo, monospace;
-  color: var(--sub);
-  text-align: center;
-  pointer-events: none;
 }
 
 .card__title {
@@ -643,7 +625,7 @@ a {
 }
 
 /*
- * Home grid card (2-up). Also used by search. Tinted ground and striped photo circle,
+ * Home grid card (2-up). Also used by search. Tinted ground,
  * a short body: one meta line, then the verdict pill alone on the foot
  * row — the whole card is the link, so it carries no go button. No `.fit-row`
  * appears here — see `RestaurantGridCard`.
@@ -655,21 +637,7 @@ a {
   flex-direction: column;
 }
 
-/* Centred on the card's lower edge and clipped by it, so the placeholder reads as a
-   photo well rather than a decoration. Centring is symmetric, so it needs no
-   mirroring: `inset-inline: 0` + `margin-inline: auto` centres in both directions. */
-.card--grid .card__photo {
-  top: auto;
-  bottom: -22px;
-  inset-inline: 0;
-  margin-inline: auto;
-  transform: none;
-  width: 116px;
-  height: 116px;
-}
-
-/* `position: relative` with no z-index: the head paints above the absolutely
-   positioned photo by tree order without opening a stacking context, so the save
+/* `position: relative` with no z-index: no stacking context is opened, so the save
    button's `.card__above` still resolves against the card and stays above the
    stretched `.card__link`. Giving this a z-index would trap the button underneath
    the link and make it unclickable. */

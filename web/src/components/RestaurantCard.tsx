@@ -78,9 +78,6 @@ export function RestaurantRowCard({ item, saved, onToggleSave }: CardProps) {
 
   return (
     <article className={`card card--row ${tintClass(item.dietType)}`}>
-      <span className="card__photo stripe" aria-hidden="true">
-        {t.photoPlaceholder}
-      </span>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
         <Link to={`/r/${item.id}`} className="card__title">
           {name}
@@ -122,7 +119,7 @@ export function RestaurantRowCard({ item, saved, onToggleSave }: CardProps) {
 
 /**
  * The home grid tile: name, one line of facts and the verdict pill over the
- * tinted, striped ground.
+ * tinted ground.
  *
  * Home and search both use this tile, so a restaurant looks the same wherever it
  * appears in a grid. The whole tile is the link — one stretched
@@ -145,13 +142,10 @@ export function RestaurantGridCard({ item, saved, onToggleSave }: CardProps) {
   return (
     <article className={`card card--grid ${tintClass(item.dietType)}`}>
       <Link to={`/r/${item.id}`} className="card__link" aria-label={name} />
-      <span className="card__photo stripe" aria-hidden="true">
-        {t.photoPlaceholder}
-      </span>
       {/* The head is `position: relative` with no z-index (see `.card--grid
-          .card__head`), so it paints above the photo by tree order without opening
-          a stacking context — which is what lets the save button's `.card__above`
-          resolve against the card and stay above the stretched link. */}
+          .card__head`), so it does not open a stacking context — which is what lets
+          the save button's `.card__above` resolve against the card and stay above
+          the stretched link. */}
       <div className="card__head">
         <div style={{ minWidth: 0 }}>
           <span className="card__title" style={{ fontSize: 15 }}>
