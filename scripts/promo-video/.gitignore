@@ -1,0 +1,10 @@
+node_modules/
+py/
+frames/
+qa/
+www/fonts/
+www/icons/
+*.mp4
+*.log
+*.pid
+timeline*.json

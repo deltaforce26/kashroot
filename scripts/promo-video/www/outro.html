@@ -1,0 +1,25 @@
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>outro</title><link rel="stylesheet" href="/base.css">
+<style>
+.stack{position:absolute;left:0;width:1080px;text-align:center}
+.lead{top:250px;font-weight:600;font-size:54px;color:var(--ink)}
+.qr{top:390px}
+.qr .card{display:inline-block;background:#fff;border-radius:40px;padding:34px;box-shadow:0 20px 60px rgba(22,22,22,.10)}
+.qr img{display:block;width:560px;height:560px;image-rendering:auto}
+.url{top:1090px;font-weight:700;font-size:110px;direction:ltr;letter-spacing:-1px;color:var(--ink)}
+.chag{top:1250px;font-weight:600;font-size:88px;color:var(--green)}
+.hint{top:1400px;font-weight:400;font-size:40px;color:var(--muted)}
+.mark{position:absolute;left:0;width:1080px;top:1660px;text-align:center;direction:ltr}
+.mark img{width:96px;height:96px;border-radius:24px;vertical-align:middle}
+.mark span{font-weight:700;font-size:44px;direction:ltr;display:inline-block;vertical-align:middle;margin-left:20px;color:var(--ink)}
+.a{opacity:0;transform:translateY(16px);animation:up .6s cubic-bezier(.2,.7,.2,1) forwards}
+.d1{animation-delay:.2s}.d2{animation-delay:.5s}.d3{animation-delay:.8s}
+@keyframes up{to{opacity:1;transform:none}}
+.a,.frond-band{animation-play-state:paused} body.go .a, body.go .frond-band{animation-play-state:running}
+</style></head><body>
+<div class="stack lead">סורקים ומגדירים את הסטנדרט שלכם</div>
+<div class="stack qr"><div class="card"><img src="/qr.png" alt="QR"></div></div>
+<div class="stack url a d1">kashroot.app</div>
+<div class="stack chag serif a d2">חג שמח</div>
+<div class="stack hint a d3">כשרות לפי הסטנדרט שלך · חול המועד סוכות תשפ״ז</div>
+<div class="mark a d3"><img src="/icons/icon.svg" alt=""><span>Kashroot</span></div>
+</body></html>

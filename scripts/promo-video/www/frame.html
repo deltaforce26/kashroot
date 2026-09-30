@@ -1,0 +1,18 @@
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>frame</title><link rel="stylesheet" href="/base.css">
+<style>
+body{background:transparent}
+svg{position:absolute;left:0;top:0}
+.foot{position:absolute;left:0;top:1786px;width:1080px;text-align:center;font-weight:600;font-size:36px;color:var(--muted2);direction:ltr}
+</style></head><body>
+<!-- Ground with a rounded hole where the phone sits; bezel ring; the screen area (660x1428 at 210,300) stays transparent for the recording. -->
+<svg width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <filter id="sh" x="-20%" y="-10%" width="140%" height="120%"><feGaussianBlur stdDeviation="22"/></filter>
+    <clipPath id="outside" clip-rule="evenodd"><path fill-rule="evenodd" d="M0 0H1080V1920H0Z M210 300 h660 v1428 h-660 z"/></clipPath>
+  </defs>
+  <path fill="#f0eee9" fill-rule="evenodd" d="M0 0H1080V1920H0Z M262 286 h556 a64 64 0 0 1 64 64 v1328 a64 64 0 0 1 -64 64 h-556 a64 64 0 0 1 -64 -64 v-1328 a64 64 0 0 1 64 -64 z"/>
+  <g clip-path="url(#outside)"><rect x="198" y="304" width="684" height="1456" rx="64" fill="rgba(22,22,22,.28)" filter="url(#sh)"/></g>
+  <path fill="#1a1b16" fill-rule="evenodd" d="M262 286 h556 a64 64 0 0 1 64 64 v1328 a64 64 0 0 1 -64 64 h-556 a64 64 0 0 1 -64 -64 v-1328 a64 64 0 0 1 64 -64 z M262 300 h556 a52 52 0 0 1 52 52 v1324 a52 52 0 0 1 -52 52 h-556 a52 52 0 0 1 -52 -52 v-1324 a52 52 0 0 1 52 -52 z"/>
+</svg>
+<div class="foot">kashroot.app</div>
+</body></html>
