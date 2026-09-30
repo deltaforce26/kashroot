@@ -18,13 +18,58 @@ const ORIGIN = {
 const DIR = "frames/app";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// KASHROOT_ROUTE_VIA_NODE=1: serve every page request through Playwright's Node-side fetch. For
+// sandboxes whose outbound TLS goes through an intercepting proxy that Node trusts
+// (NODE_EXTRA_CA_CERTS) but Chromium's own store does not; verification still happens in Node.
+const ROUTE_VIA_NODE = process.env.KASHROOT_ROUTE_VIA_NODE === "1";
+const PROXY = process.env.HTTPS_PROXY ?? process.env.https_proxy;
+
 const browser = await chromium.launch({ args: ["--force-device-scale-factor=3"] });
 const ctx = await browser.newContext({
   viewport: { width: 390, height: 844 },
   locale: "he-IL", isMobile: true, hasTouch: true, reducedMotion: "no-preference",
   geolocation: ORIGIN, permissions: ["geolocation"],
+  serviceWorkers: "block",                            // the PWA's runtime cache must not serve stale shots
+  ...(ROUTE_VIA_NODE && PROXY ? { proxy: { server: PROXY, bypass: "localhost,127.0.0.1" } } : {}),
 });
+if (ROUTE_VIA_NODE) {
+  // Memoised so the warm-up pass below makes the recorded pass answer instantly (no skeletons).
+  const cache = new Map();
+  await ctx.route("**/*", async (route) => {
+    const req = route.request();
+    const key = `${req.method()} ${req.url()} ${req.postData() ?? ""}`;
+    try {
+      let hit = cache.get(key);
+      if (!hit) {
+        const r = await route.fetch();
+        hit = { status: r.status(), headers: r.headers(), body: await r.body() };
+        if (hit.status === 200) cache.set(key, hit);
+      }
+      await route.fulfill(hit);
+    } catch (e) { await route.abort().catch(() => {}); }
+  });
+}
 const page = await ctx.newPage();
+const photosPainted = () =>
+  page.waitForFunction(
+    () => { const imgs = [...document.querySelectorAll("img.detail-hero__img, img.gallery__photo")]; return imgs.length > 1 && imgs.every((i) => i.complete); },
+    null, { timeout: 15000 },
+  ).catch(() => console.warn("photos still loading after warm-up"));
+
+// Warm-up pass: the same taps at full speed so the API, Places photos and hours are already in
+// the browser/route cache when the recorded pass makes the same requests.
+const cardLink = `a.card__link[href='/r/${RESTAURANT}']`;
+await page.goto(BASE + "/onboarding/preset");
+await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+await page.goto(BASE + "/onboarding/preset");
+await page.tap("button[aria-pressed] >> nth=2");
+await page.tap("button.cta");
+await page.waitForSelector("button.cta:not([disabled])");
+await page.tap("button.cta");
+await page.waitForSelector(cardLink, { timeout: 30000 });
+await page.tap(cardLink);
+await page.waitForSelector("text=למה זה מתאים לך");
+await photosPainted();
 const hide = () => page.addStyleTag({ content: "*{scroll-behavior:auto !important}" });
 
 // Fresh storage: onboarding + launch animation from scratch (the launch screen keys off sessionStorage).
@@ -38,7 +83,7 @@ await page.goto(BASE + "/onboarding/preset");
 await hide();
 cap.mark("preset");                                  // launch animation plays into the preset screen
 await sleep(3400);
-await page.tap("button[aria-pressed] >> nth=2");     // בד״צים נבחרים בלבד (PRESET_ORDER: any, mehadrin, badatz, custom)
+await page.tap("button[aria-pressed] >> nth=2");     // the `badatz` preset, titled "מותאם אישית" on the live site (PRESET_ORDER: any, mehadrin, badatz)
 cap.mark("preset-picked");
 await sleep(1300);
 await page.tap("button.cta");                         // המשך
@@ -49,7 +94,6 @@ await sleep(2600);
 await page.tap("button.cta");                         // סיום — הצגת התאמות
 await hide();
 cap.mark("home");
-const cardLink = `a.card__link[href='/r/${RESTAURANT}']`;
 await page.waitForSelector(cardLink, { timeout: 20000 });   // live API answered; verdict pills are on the cards
 await sleep(2200);
 const scrollBy = async (dy, ms) => {
