@@ -1,0 +1,45 @@
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>intro-sq</title><link rel="stylesheet" href="/base-sq.css">
+<style>
+.frond-band{position:absolute;top:0;left:0;width:1080px;height:150px;opacity:0;animation:fade 1.2s ease .2s forwards}
+@keyframes fade{to{opacity:1}}
+.mark{top:150px}.mark img{width:176px;height:176px;border-radius:42px;box-shadow:0 14px 40px rgba(22,22,22,.10)}
+.word{top:350px;font-weight:700;font-size:88px;letter-spacing:-1px;direction:ltr;line-height:1}
+.tag{top:452px;font-weight:500;font-size:38px;color:var(--muted)}
+.rule{position:absolute;left:480px;top:560px;width:120px;height:4px;border-radius:2px;background:linear-gradient(90deg,#84d5a4,#2f7a4d)}
+.head{top:620px;font-weight:600;font-size:80px;line-height:1.15;padding:0 60px}
+.sub{top:770px;font-weight:400;font-size:46px;color:#3a3a3a}
+.foot{top:990px;font-weight:600;font-size:30px;color:var(--muted2);direction:ltr}
+</style></head><body>
+<svg class="frond-band" viewBox="0 0 1080 150" fill="none" stroke-linecap="round" stroke-linejoin="round"><g id="fronds"></g></svg>
+<div class="stack mark a d1"><img src="/icons/icon.svg" alt=""></div>
+<div class="stack word a d2">Kashroot</div>
+<div class="stack tag a d3">כשרות לפי הסטנדרט שלך</div>
+<div class="rule a d4"></div>
+<div class="stack head serif a d4">אוכלים בחוץ בחול המועד?</div>
+<div class="stack sub a d5">לדעת לפני שמתיישבים</div>
+<div class="stack foot a d6">kashroot.app</div>
+<script>
+// Restrained line-art palm-frond garland along the top edge: stems with thin leaflets.
+const g = document.getElementById('fronds'); const NS='http://www.w3.org/2000/svg';
+function frond(x, y, len, angle, color, flip){
+  const grp=document.createElementNS(NS,'g');
+  grp.setAttribute('transform',`translate(${x} ${y}) rotate(${angle}) scale(${flip?-1:1} 1)`);
+  grp.setAttribute('stroke',color); grp.setAttribute('stroke-width','2.2');
+  const stem=document.createElementNS(NS,'path');
+  stem.setAttribute('d',`M0 0 Q ${len*0.5} ${-len*0.18} ${len} ${-len*0.05}`); grp.appendChild(stem);
+  const n=Math.round(len/13);
+  for(let i=2;i<n;i++){
+    const t=i/n; const px=len*t; const py=-len*0.18*2*t*(1-t) - len*0.05*t*t; // point on the quadratic
+    const L=(1-Math.abs(t-0.55))*34+8;
+    for(const s of [-1,1]){
+      const p=document.createElementNS(NS,'path');
+      p.setAttribute('d',`M${px} ${py} q ${L*0.35} ${s*L*0.55} ${L*0.75} ${s*L*0.95}`);
+      p.setAttribute('opacity', s<0?'0.85':'0.7'); grp.appendChild(p);
+    }
+  }
+  g.appendChild(grp);
+}
+const cols=['#2f7a4d','#84d5a4','#4c9a6a'];
+for(let i=0;i<7;i++){ const x=-20+i*172; frond(x, 36+((i%2)*10), 175, -6+(i%3)*4, cols[i%3], false); }
+</script>
+</body></html>

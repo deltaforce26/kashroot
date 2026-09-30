@@ -1,0 +1,11 @@
+@import url('/fonts/fonts.css');
+:root{--ground:#f0eee9;--ink:#161616;--muted:#6b6b6b;--muted2:#8a8a8a;--green:#2f7a4d;--green-soft:#84d5a4;--bezel:#1a1b16;}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1080px;overflow:hidden}
+body{background:var(--ground);color:var(--ink);font-family:'Assistant',sans-serif;direction:rtl;-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+.serif{font-family:'Frank Ruhl Libre',serif}
+.a{opacity:0;transform:translateY(18px);animation:up .7s cubic-bezier(.2,.7,.2,1) forwards}
+.d1{animation-delay:.15s}.d2{animation-delay:.45s}.d3{animation-delay:.65s}.d4{animation-delay:1.05s}.d5{animation-delay:1.35s}.d6{animation-delay:1.6s}
+@keyframes up{to{opacity:1;transform:none}}
+.a,.frond-band{animation-play-state:paused} body.go .a, body.go .frond-band{animation-play-state:running}
+.stack{position:absolute;left:0;width:1080px;text-align:center}

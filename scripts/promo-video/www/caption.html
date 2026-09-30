@@ -1,0 +1,9 @@
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>caption</title><link rel="stylesheet" href="/base.css">
+<style>
+html,body{height:270px;background:transparent}
+.wrap{position:absolute;left:0;top:0;width:1080px;height:270px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:14px;padding:0 60px;text-align:center}
+.h{font-weight:600;font-size:58px;line-height:1.15;color:#161616}
+.s{font-weight:400;font-size:38px;line-height:1.25;color:#6b6b6b}
+</style></head><body><div class="wrap"><div class="h" id="h"></div><div class="s" id="s"></div></div>
+<script>const q=new URLSearchParams(location.search);document.getElementById('h').textContent=q.get('h')||'';document.getElementById('s').textContent=q.get('s')||'';</script>
+</body></html>

@@ -1,0 +1,6 @@
+@import url('/fonts/fonts.css');
+:root{--ground:#f0eee9;--ink:#161616;--muted:#6b6b6b;--muted2:#8a8a8a;--green:#2f7a4d;--green-soft:#84d5a4;--bezel:#1a1b16;}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden}
+body{background:var(--ground);color:var(--ink);font-family:'Assistant',sans-serif;direction:rtl;-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+.serif{font-family:'Frank Ruhl Libre',serif}
