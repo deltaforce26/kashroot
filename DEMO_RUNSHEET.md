@@ -34,7 +34,7 @@ rather than discovering it live.
 
 ### 1. Onboarding — "define your standard once"
 
-Pick **בד״צים נבחרים** (Selected Badatzim), then require **גלאט** and **חלב ישראל**.
+Pick **מותאם אישית** (Custom), then require **גלאט** and **חלב ישראל**.
 
 > *"The user defines their standard once. The app never decides what's acceptable — it
 > reports what each certificate says against the standard you set."*

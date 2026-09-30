@@ -39,7 +39,7 @@ const he = {
     // PRESET_ORDER in profile/profile.ts. Restore the copy when the preset returns.
     any: { title: "כל תעודת כשרות", subtitle: "כל מסעדה עם תעודה בתוקף" },
     mehadrin: { title: "רבנות מהדרין + בד״צים", subtitle: "רבנות ברמת מהדרין, וכל הבד״צים ברשימה" },
-    badatz: { title: "בד״צים נבחרים בלבד", subtitle: "בוחרים בדיוק אילו גופי כשרות" },
+    badatz: { title: "מותאם אישית", subtitle: "בוחרים בדיוק אילו גופי כשרות" },
     custom: { title: "מותאם אישית", subtitle: "בחירה מהרשימה המלאה" },
   },
 
@@ -577,7 +577,7 @@ const en: Strings = {
       title: "Rabbanut Mehadrin + Badatzim",
       subtitle: "Rabbanut at Mehadrin level, and every Badatz on the list",
     },
-    badatz: { title: "Selected Badatzim only", subtitle: "Pick exactly which certifiers" },
+    badatz: { title: "Custom", subtitle: "Pick exactly which certifiers" },
     custom: { title: "Custom", subtitle: "Pick from the full list" },
   },
 
