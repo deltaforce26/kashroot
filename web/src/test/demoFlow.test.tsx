@@ -78,10 +78,18 @@ describe("demo flow", () => {
 
     expect(screen.queryByText("רבנות מקומית")).toBeNull();
     expect(screen.queryByText("Local Rabbanut")).toBeNull();
-    // The four that remain are all there — this is a removal, not a breakage.
-    for (const preset of [he.presets.any, he.presets.mehadrin, he.presets.badatz, he.presets.custom])
+    // The three that remain are all there — this is a removal, not a breakage.
+    for (const preset of [he.presets.any, he.presets.mehadrin, he.presets.badatz])
       expect(screen.getByText(preset.title)).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { pressed: false }).length).toBeGreaterThanOrEqual(4);
+    expect(screen.getAllByRole("button", { pressed: false }).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("does not offer the custom preset in onboarding", async () => {
+    const user = userEvent.setup();
+    renderApp("/");
+    await enterOnboarding(user);
+
+    expect(screen.queryByText(he.presets.custom.title)).toBeNull();
   });
 
   it("walks landing → preset → home list, and persists the profile", async () => {
