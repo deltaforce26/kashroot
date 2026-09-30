@@ -37,7 +37,7 @@ describe("preset expansion", () => {
    */
   it("does not offer a one-tap Rabbanut preset while the corpus holds one Rabbanut", () => {
     expect(PRESET_ORDER).not.toContain("rabbanut");
-    expect(PRESET_ORDER).toEqual(["any", "mehadrin", "badatz", "custom"]);
+    expect(PRESET_ORDER).toEqual(["any", "mehadrin", "badatz"]);
   });
 
   it("still lets a Rabbanut be whitelisted by hand", () => {

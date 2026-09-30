@@ -32,7 +32,10 @@ export function OnboardingPreset() {
   const returnTo = useReturnTo();
   const { profile, setProfile, certifiers, certifiersLoading, certifiersFailed, reloadCertifiers } =
     useProfile();
-  const [selected, setSelected] = useState<PresetId | null>(profile.presetId);
+  // A hand-edited ("custom") profile has no row here, so nothing starts selected.
+  const [selected, setSelected] = useState<PresetId | null>(
+    profile.presetId && PRESET_ORDER.includes(profile.presetId) ? profile.presetId : null,
+  );
 
   const skip = () => {
     // Skipping still needs a usable profile, so it lands on the widest one.
@@ -79,9 +82,8 @@ export function OnboardingPreset() {
         {certifiersFailed ? (
           <ErrorState onRetry={reloadCertifiers} />
         ) : certifiersLoading ? (
-          // Skeleton row count follows the real list — four since the "Local
-          // Rabbanut" preset was withdrawn (see profile.ts), so the screen does not
-          // reflow when the certifiers arrive.
+          // Skeleton row count follows the real list (see PRESET_ORDER in profile.ts),
+          // so the screen does not reflow when the certifiers arrive.
           <LoadingList rows={PRESET_ORDER.length} />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
