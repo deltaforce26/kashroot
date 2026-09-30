@@ -533,7 +533,6 @@ const he = {
       "העובדות כפי שנרשמו בכל תעודה. הגדירו פרופיל כדי לראות אם מקום מתאים לסטנדרט שלכם.",
   },
 
-  photoPlaceholder: "צילום מנה",
   mockBanner: "נתוני הדגמה — ה־API הציבורי עדיין לא מחובר.",
   units: { km: "ק״מ", m: "מ׳", closesAt: (time: string) => `עד ${time}` },
   // Sunday-first, matching the app's week and the API's `day: 0 = Sunday`.
@@ -1038,7 +1037,6 @@ const en: Strings = {
       "Facts as recorded on each certificate. Set your profile to see whether a place matches your standard.",
   },
 
-  photoPlaceholder: "dish photo",
   mockBanner: "Demo data — the public API is not wired up yet.",
   units: { km: "km", m: "m", closesAt: (time: string) => `until ${time}` },
   weekdays: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as [
