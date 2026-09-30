@@ -89,7 +89,9 @@ describe("demo flow", () => {
     renderApp("/");
     await enterOnboarding(user);
 
-    expect(screen.queryByText(he.presets.custom.title)).toBeNull();
+    // Its title now matches the `badatz` preset ("מותאם אישית"), so the subtitle is the
+    // string that only the hidden preset carries.
+    expect(screen.queryByText(he.presets.custom.subtitle)).toBeNull();
   });
 
   it("walks landing → preset → home list, and persists the profile", async () => {
