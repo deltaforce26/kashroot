@@ -228,9 +228,15 @@ export function RestaurantGridCard({ item, saved, onToggleSave }: CardProps) {
             <span className="tile__credit">{credit ? `${credit} · Google` : "Google"}</span>
           </>
         )}
+        {/* The name sits at the top of the photo area, as on the tile before the
+            photo: white over a loaded photo, ink over the tinted ground otherwise. */}
+        <span
+          className={`card__title tile__name${photoState === "loaded" && showPhoto ? " tile__name--on-photo" : ""}`}
+        >
+          {name}
+        </span>
       </div>
       <div className="tile__body">
-        <span className="card__title tile__name">{name}</span>
         <div className="card__meta on-tint tile__meta">{metaShort}</div>
         {/* The street (or city) on a line of its own, where it can truncate without
             pushing the distance out. It is what tells two branches of one chain
