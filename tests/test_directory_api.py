@@ -141,6 +141,8 @@ def test_directory_groups_by_city_with_counts(client, session) -> None:
     cities_by_name = {city["city_he"]: city for city in body["cities"]}
     assert cities_by_name["ירושלים"]["restaurant_count"] == 2
     assert cities_by_name["תל אביב"]["restaurant_count"] == 1
+    assert cities_by_name["ירושלים"]["city_slug"] == "jerusalem"
+    assert cities_by_name["תל אביב"]["city_slug"] == "jerusalem"
 
 
 def test_directory_orders_cities_by_count_desc_then_name(client, session) -> None:
@@ -228,6 +230,26 @@ def test_directory_city_en_majority_wins_ties_alphabetical_and_null_when_none(
     assert cities_by_name["חיפה"]["city_en"] is None
 
 
+def test_directory_city_slug_majority_wins_ties_alphabetical_and_null_when_none(
+    client, session
+) -> None:
+    make_restaurant(session, city_he="ירושלים", city_slug="jerusalem")
+    make_restaurant(session, city_he="ירושלים", city_slug="jerusalem")
+    make_restaurant(session, city_he="ירושלים", city_slug="yerushalayim")
+    make_restaurant(session, city_he="ירושלים", city_slug=None)
+    make_restaurant(session, city_he="תל אביב", city_slug="tel-aviv")
+    make_restaurant(session, city_he="תל אביב", city_slug="jaffa")
+    make_restaurant(session, city_he="חיפה", city_slug=None)
+    session.commit()
+
+    response = client.get("/v1/directory")
+    cities_by_name = {city["city_he"]: city for city in response.json()["cities"]}
+
+    assert cities_by_name["ירושלים"]["city_slug"] == "jerusalem"
+    assert cities_by_name["תל אביב"]["city_slug"] == "jaffa"
+    assert cities_by_name["חיפה"]["city_slug"] is None
+
+
 def test_directory_null_city_excluded_from_cities_but_counted(client, session) -> None:
     make_restaurant(session, city_he="ירושלים")
     make_restaurant(session, city_he=None)
@@ -273,3 +295,38 @@ def test_directory_cache_control_header(client, session) -> None:
     response = client.get("/v1/directory")
 
     assert response.headers["cache-control"] == "public, max-age=3600"
+
+
+def test_directory_certifier_slugs_parallel_to_names(client, session) -> None:
+    certifier_bet = make_certifier(session, slug="slug_bet", name_he="בד ב")
+    certifier_alef = make_certifier(session, slug="slug_alef", name_he="בד א")
+    inactive = make_certifier(session, slug="slug_old", name_he="א", is_active=False)
+    restaurant = make_restaurant(session, city_he="ירושלים")
+    make_certificate(session, restaurant, certifier_bet)
+    make_certificate(session, restaurant, certifier_bet)
+    make_certificate(session, restaurant, certifier_alef)
+    make_certificate(session, restaurant, inactive)
+    session.commit()
+
+    response = client.get("/v1/directory")
+
+    entry = response.json()["cities"][0]["restaurants"][0]
+    assert entry["certifier_names_he"] == ["בד א", "בד ב"]
+    assert entry["certifier_slugs"] == ["slug_alef", "slug_bet"]
+
+
+@pytest.mark.parametrize(
+    "state", [CertificateState.REVOKED, CertificateState.EXPIRED, CertificateState.PENDING]
+)
+def test_directory_omits_certifier_with_non_active_certificate(client, session, state) -> None:
+    live = make_certifier(session, slug="live", name_he="פעיל")
+    lapsed = make_certifier(session, slug="lapsed", name_he="לא תקף")
+    restaurant = make_restaurant(session, city_he="ירושלים")
+    make_certificate(session, restaurant, live)
+    make_certificate(session, restaurant, lapsed, state=state)
+    session.commit()
+
+    entry = client.get("/v1/directory").json()["cities"][0]["restaurants"][0]
+
+    assert entry["certifier_names_he"] == ["פעיל"]
+    assert entry["certifier_slugs"] == ["live"]

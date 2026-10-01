@@ -29,9 +29,13 @@ import {
   type CertificateAttribute,
   type CertificateEvidenceOut,
   type CertifierChip,
+  type CertifierDirectoryOut,
   type CertifierListItem,
   type CertificationLevel,
+  type CityDirectoryOut,
   type Confidence,
+  type DirectoryCertifierFacetOut,
+  type DirectoryCertifierRestaurantOut,
   type DirectoryOut,
   type DirectoryRestaurantOut,
   type FlagCreatedOut,
@@ -58,6 +62,7 @@ import {
 } from "../types";
 import {
   CERTIFIERS,
+  CERTIFIER_SLUGS,
   RESTAURANTS,
   type FixtureCertificate,
   type FixturePhoto,
@@ -437,6 +442,9 @@ export function mockSearch(request: SearchRequest, now = new Date()): Promise<Se
 
   const items: SearchResultItemOut[] = [];
   for (const restaurant of RESTAURANTS) {
+    // A city scope is the whole city: an exact slug match and nothing else, as
+    // `build_search_statement` does. It carries no point, so no distance either.
+    if (request.city && restaurant.city_slug !== request.city) continue;
     const distanceKm = center ? haversineKm(center, restaurant) : null;
     if (distanceKm !== null && distanceKm > radiusKm) continue;
     if (query && !matchesQuery(restaurant, query)) continue;
@@ -718,10 +726,28 @@ export const DIRECTORY_SAMPLE_PER_CITY = 12;
 
 const byHebrewName = (a: string, b: string): number => a.localeCompare(b, "he");
 
+const slugOf = (certifier: CertifierChip): string => CERTIFIER_SLUGS[certifier.id] ?? certifier.id;
+
+/**
+ * A restaurant's certifiers as the directory counts them, alphabetical by `name_he`:
+ * only those with an `active` certificate on the record, as `active_certifiers`
+ * (app/api/public_directory.py) decides. An expired or revoked certificate does not
+ * make a certifier "the certifier on record" — that is the one state the directory
+ * reads, and it reads it to include, never to judge. Exported so the rule is tested.
+ */
+export function directoryCertifiers(restaurant: FixtureRestaurant): CertifierChip[] {
+  const ids = [
+    ...new Set(
+      restaurant.certificates.filter((cert) => cert.state === "active").map((cert) => cert.certifier_id),
+    ),
+  ];
+  return ids.map(chipById).sort((a, b) => byHebrewName(a.name_he, b.name_he));
+}
+
 function toDirectoryRow(restaurant: FixtureRestaurant): DirectoryRestaurantOut {
   // Identity only, deduplicated by certifier and sorted by name — the same rule the
   // API applies. A certificate's state is deliberately not read here.
-  const certifiers = restaurantChips(restaurant).sort((a, b) => byHebrewName(a.name_he, b.name_he));
+  const certifiers = directoryCertifiers(restaurant);
   return {
     restaurant_id: restaurant.id,
     name_he: restaurant.name_he,
@@ -729,7 +755,27 @@ function toDirectoryRow(restaurant: FixtureRestaurant): DirectoryRestaurantOut {
     address_he: restaurant.address_he,
     certifier_names_he: certifiers.map((certifier) => certifier.name_he),
     certifier_names_en: certifiers.map((certifier) => certifier.name_en),
+    certifier_slugs: certifiers.map(slugOf),
   };
+}
+
+/**
+ * The most common non-null value, ties broken alphabetically, `null` when there is
+ * none — `majority_value` in app/api/public_directory_shared.py.
+ */
+function majorityValue(values: ReadonlyArray<string | null>): string | null {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    if (value !== null) counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  for (const [value, count] of counts) {
+    const bestCount = best === null ? -1 : (counts.get(best) ?? 0);
+    if (count > bestCount || (count === bestCount && best !== null && value < best)) {
+      best = value;
+    }
+  }
+  return best;
 }
 
 /**
@@ -739,20 +785,12 @@ function toDirectoryRow(restaurant: FixtureRestaurant): DirectoryRestaurantOut {
  * `city_he`; this only names the group. Exported so the rule is tested directly.
  */
 export function directoryCityEn(group: ReadonlyArray<{ city_en: string | null }>): string | null {
-  const counts = new Map<string, number>();
-  for (const restaurant of group) {
-    if (restaurant.city_en !== null) {
-      counts.set(restaurant.city_en, (counts.get(restaurant.city_en) ?? 0) + 1);
-    }
-  }
-  let best: string | null = null;
-  for (const [cityEn, count] of counts) {
-    const bestCount = best === null ? -1 : (counts.get(best) ?? 0);
-    if (count > bestCount || (count === bestCount && best !== null && cityEn < best)) {
-      best = cityEn;
-    }
-  }
-  return best;
+  return majorityValue(group.map((restaurant) => restaurant.city_en));
+}
+
+/** The same majority rule over `city_slug` — `_city_slug_for_group` on the API. */
+export function directoryCitySlug(group: ReadonlyArray<{ city_slug: string | null }>): string | null {
+  return majorityValue(group.map((restaurant) => restaurant.city_slug));
 }
 
 /**
@@ -776,6 +814,7 @@ export function mockDirectory(): Promise<DirectoryOut> {
     )
     .map(([city_he, group]) => ({
       city_he,
+      city_slug: directoryCitySlug(group),
       city_en: directoryCityEn(group),
       restaurant_count: group.length,
       restaurants: [...group]
@@ -785,6 +824,112 @@ export function mockDirectory(): Promise<DirectoryOut> {
     }));
 
   return delay({ total_restaurants: RESTAURANTS.length, cities });
+}
+
+/** One certifier's facet within `scope`: identity, slug and how many rows it is on. */
+function facetOf(certifier: CertifierChip, scope: ReadonlyArray<FixtureRestaurant>): DirectoryCertifierFacetOut {
+  return {
+    slug: slugOf(certifier),
+    name_he: certifier.name_he,
+    name_en: certifier.name_en,
+    restaurant_count: scope.filter((restaurant) =>
+      directoryCertifiers(restaurant).some((chip) => chip.id === certifier.id),
+    ).length,
+  };
+}
+
+/** Every distinct certifier on at least one of `scope`'s rows, alphabetical by `name_he`. */
+function certifiersIn(scope: ReadonlyArray<FixtureRestaurant>): CertifierChip[] {
+  const byId = new Map<string, CertifierChip>();
+  for (const restaurant of scope) {
+    for (const chip of directoryCertifiers(restaurant)) byId.set(chip.id, chip);
+  }
+  return [...byId.values()].sort((a, b) => byHebrewName(a.name_he, b.name_he));
+}
+
+const byHebrewRestaurantName = (a: FixtureRestaurant, b: FixtureRestaurant): number =>
+  byHebrewName(a.name_he, b.name_he);
+
+/**
+ * GET /v1/directory/cities/{city_slug}?certifier=…, replayed: every fixture with
+ * that `city_slug`, the certifier facets across the whole city, and the rows
+ * narrowed to the selected certifier when one is asked for. An unknown city, or a
+ * certifier with no row in it, is a 404 — as on the API. Nothing is evaluated.
+ */
+export function mockCityDirectory(citySlug: string, certifierSlug?: string): Promise<CityDirectoryOut> {
+  const city = RESTAURANTS.filter((restaurant) => restaurant.city_slug === citySlug);
+  if (city.length === 0) return delayReject(new ApiError(404, "not_found"));
+
+  const certifiers = certifiersIn(city).map((certifier) => facetOf(certifier, city));
+  let selected: DirectoryCertifierFacetOut | null = null;
+  let rows = city;
+  if (certifierSlug !== undefined) {
+    selected = certifiers.find((facet) => facet.slug === certifierSlug) ?? null;
+    if (!selected || selected.restaurant_count === 0) {
+      return delayReject(new ApiError(404, "not_found"));
+    }
+    rows = city.filter((restaurant) =>
+      directoryCertifiers(restaurant).some((chip) => slugOf(chip) === certifierSlug),
+    );
+  }
+
+  return delay({
+    city_slug: citySlug,
+    city_he: majorityValue(city.map((restaurant) => restaurant.city_he)) ?? citySlug,
+    city_en: directoryCityEn(city),
+    restaurant_count: city.length,
+    certifiers,
+    selected_certifier: selected,
+    restaurants: [...rows].sort(byHebrewRestaurantName).map(toDirectoryRow),
+  });
+}
+
+/**
+ * GET /v1/directory/certifiers/{certifier_slug}, replayed: every fixture holding
+ * a certificate from that certifier, its cities from largest to smallest (ties by
+ * `city_he`), and every row with its city. A slug on no row is a 404.
+ */
+export function mockCertifierDirectory(certifierSlug: string): Promise<CertifierDirectoryOut> {
+  const certifier = CERTIFIERS.find((candidate) => slugOf(candidate) === certifierSlug);
+  const rows = certifier
+    ? RESTAURANTS.filter((restaurant) =>
+        directoryCertifiers(restaurant).some((chip) => chip.id === certifier.id),
+      )
+    : [];
+  if (!certifier || rows.length === 0) return delayReject(new ApiError(404, "not_found"));
+
+  const byCity = new Map<string, FixtureRestaurant[]>();
+  for (const restaurant of rows) {
+    const group = byCity.get(restaurant.city_slug) ?? [];
+    group.push(restaurant);
+    byCity.set(restaurant.city_slug, group);
+  }
+  const cities = [...byCity.entries()]
+    .map(([city_slug, group]) => ({
+      city_slug,
+      city_he: majorityValue(group.map((restaurant) => restaurant.city_he)) ?? city_slug,
+      city_en: directoryCityEn(group),
+      restaurant_count: group.length,
+    }))
+    .sort((a, b) => b.restaurant_count - a.restaurant_count || byHebrewName(a.city_he, b.city_he));
+
+  const restaurants: DirectoryCertifierRestaurantOut[] = [...rows]
+    .sort(byHebrewRestaurantName)
+    .map((restaurant) => ({
+      ...toDirectoryRow(restaurant),
+      city_he: restaurant.city_he,
+      city_en: restaurant.city_en,
+      city_slug: restaurant.city_slug,
+    }));
+
+  return delay({
+    slug: certifierSlug,
+    name_he: certifier.name_he,
+    name_en: certifier.name_en,
+    restaurant_count: rows.length,
+    cities,
+    restaurants,
+  });
 }
 
 /**

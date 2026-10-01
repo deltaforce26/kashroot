@@ -19,12 +19,13 @@
 
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MAX_QUERY_LENGTH, type SearchRequest } from "../api/types";
+import type { SearchRequest } from "../api/types";
 import { hasVerifiedMatch } from "../api/viewmodel";
 import { FilterBar } from "../components/filters/FilterBar";
-import { BellIcon, PinIcon, SearchIcon } from "../components/icons";
+import { BellIcon, PinIcon } from "../components/icons";
 import { LocationSheet } from "../components/LocationSheet";
 import { RestaurantGridCard } from "../components/RestaurantCard";
+import { SearchBar } from "../components/SearchBar";
 import {
   EmptyResults,
   ErrorState,
@@ -40,6 +41,7 @@ import { PAGE_SIZE } from "../config";
 import { toSearchFilters } from "../filters/model";
 import { anyFilterActive, type FilterId } from "../filters/registry";
 import { useFilters } from "../filters/useFilters";
+import { scopeFragment, scopeLabel } from "../location/searchScope";
 import { useOrigin } from "../location/useOrigin";
 import { isNetworkError, usePagedSearch } from "../hooks/useApi";
 import { useI18n } from "../i18n/I18nProvider";
@@ -60,18 +62,21 @@ export function Home() {
   const navigate = useNavigate();
   const { profile } = useProfile();
   const { toggle, isSaved } = useSaveToggle();
-  // Where "near me" is measured from: the device, a typed address, or nowhere —
-  // then the list is the whole database. The sheet sets it; the header only reports it.
-  const { origin, source, addressLabel, resolving } = useOrigin();
+  // Where the list is scoped: measured from the device or a typed address, scoped to
+  // a whole city, or nowhere — then the list is the whole database. The sheet sets
+  // it; the header only reports it.
+  const { origin, source, addressLabel, city, resolving } = useOrigin();
   // The bar and this request read one store, so a chip tapped there re-runs this.
   const { filters, reset: resetFilters } = useFilters();
   const [pickingPlace, setPickingPlace] = useState(false);
   const [query, setQuery] = useState("");
 
-  // What the header says we are searching near. The device names itself, a typed
-  // address is quoted back verbatim, and nothing pinned is said as what it is.
-  const placeLabel =
-    source === "device" ? t.map.youAreHere : (addressLabel ?? t.origin.everywhere);
+  // What the header says we are searching. The device names itself, a typed address
+  // or a chosen city is quoted back verbatim, and nothing pinned is said as what it is.
+  const placeLabel = scopeLabel(
+    { source, addressLabel, city },
+    { youAreHere: t.map.youAreHere, everywhere: t.origin.everywhere },
+  );
 
   // Null while the device is still being asked on first load: "everywhere" is the
   // last resort, so the unscoped list is not fetched until the device has answered.
@@ -80,13 +85,13 @@ export function Home() {
     const facets = toSearchFilters(filters);
     return {
       profile: toPayload(profile),
-      // A centre and a radius only when there is a point to measure from. Never a
-      // city: the app has no such concept, and the server needs neither.
-      ...(origin ? { center: origin, radius_km: filters.radiusKm } : {}),
+      // A centre and a radius when there is a point to measure from, a city when one
+      // was picked, neither when nothing is — never a point and a city together.
+      ...scopeFragment(origin, city, filters.radiusKm),
       page_size: PAGE_SIZE,
       ...(facets ? { filters: facets } : {}),
     };
-  }, [profile, filters, origin, resolving]);
+  }, [profile, filters, origin, city, resolving]);
 
   const { items: results, total, loading, loadingMore, error, reload, hasMore, loadMore } =
     usePagedSearch(request);
@@ -111,7 +116,11 @@ export function Home() {
           onClick={() => setPickingPlace(true)}
         >
           <span style={{ display: "block", fontSize: 11.5, color: "var(--sub)" }}>
-            {origin ? t.home.nearYou : t.origin.searchingEverywhere}
+            {city
+              ? t.origin.searchingInCity
+              : origin
+                ? t.home.nearYou
+                : t.origin.searchingEverywhere}
           </span>
           <span className="header__place">{placeLabel}</span>
         </button>
@@ -121,37 +130,16 @@ export function Home() {
       </header>
 
       {/* Home does not search by name itself — it answers "what is near me". The
-          field hands the query to /search, the screen that can filter by name, address
-          and diet type together. */}
-      <form
-        className="searchbar glass"
-        style={{ margin: "14px var(--gutter) 0" }}
-        role="search"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const trimmed = query.trim();
-          navigate(trimmed ? "/search?q=" + encodeURIComponent(trimmed) : "/search");
-        }}
-      >
-        <span className="searchbar__icon" aria-hidden="true">
-          <SearchIcon size={17} />
-        </span>
-        <input
-          type="search"
-          className="searchbar__input"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t.home.searchPlaceholder}
-          aria-label={t.home.searchPlaceholder}
-          maxLength={MAX_QUERY_LENGTH}
-        />
-        {/* The comp draws no submit control — you press Enter — but a form whose
-            only submit path is a keypress is unusable by anyone driving it another
-            way, so the button exists and is simply not drawn. */}
-        <button type="submit" className="sr-only">
-          {t.nav.search}
-        </button>
-      </form>
+          bar hands the query to /search, the screen that can filter by name, address
+          and diet type together. Picking a city or a place in its dropdown moves the
+          one shared origin instead, and home re-answers in place. */}
+      <SearchBar
+        value={query}
+        onChange={setQuery}
+        onSubmit={(q) => navigate(q ? "/search?q=" + encodeURIComponent(q) : "/search")}
+        placeholder={t.search.placeholder}
+        className="searchbar__wrap--band"
+      />
 
       {/*
         The page heading. The comp draws no headline — the search field takes that
@@ -181,7 +169,7 @@ export function Home() {
           // verdict. Saying "nothing matches your profile" here would blame the
           // product's core promise for a hole in the corpus.
           <NothingHere
-            place={origin ? placeLabel : null}
+            place={origin || city ? placeLabel : null}
             onChangePlace={() => setPickingPlace(true)}
           />
         ) : results.length === 0 ? (

@@ -9,6 +9,11 @@ interface IconProps {
   className?: string;
 }
 
+interface StrokeIconProps extends IconProps {
+  /** For the few icons the design draws heavier than the set's 2. */
+  strokeWidth?: number;
+}
+
 const base = (size: number) => ({
   viewBox: "0 0 24 24",
   width: size,
@@ -27,6 +32,15 @@ export function PinIcon({ size = 18 }: IconProps) {
     <svg {...base(size)}>
       <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
       <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+
+/** Lucide `navigation`: the near-me arrow, drawn at 2.2 on the search bar's button. */
+export function NavigationIcon({ size = 16, strokeWidth = 2.2 }: StrokeIconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth}>
+      <path d="M3 11l19-9-9 19-2-8-8-2z" />
     </svg>
   );
 }
@@ -195,9 +209,9 @@ export function CrosshairIcon({ size = 17 }: IconProps) {
   );
 }
 
-export function CloseIcon({ size = 17 }: IconProps) {
+export function CloseIcon({ size = 17, strokeWidth }: StrokeIconProps) {
   return (
-    <svg {...base(size)}>
+    <svg {...base(size)} {...(strokeWidth === undefined ? {} : { strokeWidth })}>
       <path d="M18 6 6 18" />
       <path d="m6 6 12 12" />
     </svg>

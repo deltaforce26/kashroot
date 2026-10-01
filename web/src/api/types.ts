@@ -116,11 +116,17 @@ export interface SearchFilters {
 /**
  * schemas_public.py :: SearchRequest. `center` is optional: without one the server
  * returns every row, ordered by verdict class then fit score, with `distance_km`
- * null. The client never scopes a search by city.
+ * null.
  */
 export interface SearchRequest {
   profile: ProfileRequest;
   center?: GeoPoint;
+  /**
+   * Exact `Restaurant.city_slug`: scope the search to the whole city — no radius,
+   * no distance, `distance_km` null on every row. The client never sends it together
+   * with `center`: a search is scoped by a point or by a city, not both.
+   */
+  city?: string;
   /**
    * Case-insensitive `ILIKE` substring over `name_he` / `name_en` / `address_he`.
    * Exact substring only — no fuzzy matching, no Hebrew normalization (niqqud,
@@ -380,11 +386,23 @@ export interface DirectoryRestaurantOut {
   certifier_names_he: string[];
   /** Parallel to `certifier_names_he`; `null` where a certifier has no English name. */
   certifier_names_en: (string | null)[];
+  /**
+   * Parallel to `certifier_names_he`: each certifier's unique slug — the key the
+   * `/certifier/<slug>` and `/city/<city_slug>/<slug>` pages are addressed by.
+   */
+  certifier_slugs: string[];
 }
 
 /** schemas_public_seo.py :: DirectoryCityOut */
 export interface DirectoryCityOut {
   city_he: string;
+  /**
+   * The slug of the city's `/city/<slug>` page, and what a search sends as
+   * `SearchRequest.city` to scope itself to this city: from `Restaurant.city_slug`
+   * across its restaurants by the same majority rule as `city_en`; `null` when none
+   * has one — such a city has no page and cannot be searched by name.
+   */
+  city_slug: string | null;
   /**
    * The city's English name, from `Restaurant.city_en` across its restaurants: the
    * most common non-null value (ties alphabetical), or `null` when none has one. A
@@ -406,6 +424,67 @@ export interface DirectoryCityOut {
 export interface DirectoryOut {
   total_restaurants: number;
   cities: DirectoryCityOut[];
+}
+
+/**
+ * schemas_public_seo.py :: DirectoryCertifierFacetOut — one certifier and how many
+ * public restaurants it covers within the response's scope. A count, never a rank:
+ * facets are always sorted by `name_he`.
+ */
+export interface DirectoryCertifierFacetOut {
+  slug: string;
+  name_he: string;
+  name_en: string | null;
+  restaurant_count: number;
+}
+
+/**
+ * `GET /v1/directory/cities/{city_slug}?certifier={certifier_slug}` — every public
+ * restaurant in one city, facts only, with the certifier facets the page filters
+ * by. 404 for an unknown city, or a certifier with no restaurant in it.
+ */
+export interface CityDirectoryOut {
+  city_slug: string;
+  city_he: string;
+  city_en: string | null;
+  /** The whole city's count, independent of the `certifier` filter. */
+  restaurant_count: number;
+  /** Every active certifier in the city, alphabetical by `name_he`; never narrowed. */
+  certifiers: DirectoryCertifierFacetOut[];
+  /** Echo of the `certifier` filter when one was given. */
+  selected_certifier: DirectoryCertifierFacetOut | null;
+  /** All matching rows (not sampled), by `name_he`, narrowed when a certifier is given. */
+  restaurants: DirectoryRestaurantOut[];
+}
+
+/** schemas_public_seo.py :: DirectoryCertifierCityOut */
+export interface DirectoryCertifierCityOut {
+  city_slug: string;
+  city_he: string;
+  city_en: string | null;
+  restaurant_count: number;
+}
+
+/** A directory row plus its city, for the certifier page's cross-city list. */
+export interface DirectoryCertifierRestaurantOut extends DirectoryRestaurantOut {
+  city_he: string | null;
+  city_en: string | null;
+  city_slug: string | null;
+}
+
+/**
+ * `GET /v1/directory/certifiers/{certifier_slug}` — every public restaurant one
+ * active certifier covers, facts only. 404 for an unknown, inactive or empty one.
+ */
+export interface CertifierDirectoryOut {
+  slug: string;
+  name_he: string;
+  name_en: string | null;
+  restaurant_count: number;
+  /** Only cities with a slug; by `restaurant_count` descending, then `city_he`. */
+  cities: DirectoryCertifierCityOut[];
+  /** All rows (not sampled), by `name_he`, including ones with no `city_slug`. */
+  restaurants: DirectoryCertifierRestaurantOut[];
 }
 
 /* ── Google Places enrichment (app/api/schemas_places.py) ────────────────

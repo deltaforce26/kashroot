@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app import __version__
 from app.api.admin import router as admin_router
 from app.api.public import router as public_router
+from app.api.public_directory import router as public_directory_router
 from app.api.public_photos import router as public_photos_router
 from app.api.public_places import router as public_places_router
 from app.api.public_seo import router as public_seo_router
@@ -61,6 +62,7 @@ def create_app() -> FastAPI:
     application.include_router(public_photos_router)
     application.include_router(public_places_router)
     application.include_router(public_seo_router)
+    application.include_router(public_directory_router)
 
     return application
 

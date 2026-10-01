@@ -15,6 +15,18 @@ import type {
   DietType,
 } from "../types";
 
+/**
+ * ISO date (`YYYY-MM-DD`) `days` from today, for the fixtures whose meaning depends on
+ * the calendar: a fixed string here silently rots the day it passes (an "active"
+ * certificate the fail-safe rule then degrades to UNKNOWN, an "expires soon" one
+ * that is simply expired), and the tests built on it fail with it.
+ */
+export function isoDateFromToday(days: number): string {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 export const CERTIFIERS: CertifierChip[] = [
   { id: "cert-eda", name_he: "בד״ץ העדה החרדית", name_en: "Badatz Eda Haredit", type: "badatz" },
   {
@@ -38,6 +50,19 @@ export const CERTIFIERS: CertifierChip[] = [
   },
 ];
 
+/**
+ * `Certifier.slug` for each fixture certifier — the key of its `/certifier/<slug>`
+ * page. Kept beside `CERTIFIERS` rather than on `CertifierChip`, which the search
+ * and detail endpoints send without a slug.
+ */
+export const CERTIFIER_SLUGS: Record<string, string> = {
+  "cert-eda": "badatz-eda-haredit",
+  "cert-rubin": "badatz-mehadrin-rubin",
+  "cert-landa": "badatz-landa",
+  "cert-rab-bb": "rabbanut-bnei-brak",
+  "cert-rab-jlm": "rabbanut-jerusalem",
+};
+
 export interface FixtureCertificate {
   certificate_id: string;
   certifier_id: string;
@@ -59,7 +84,7 @@ export interface FixtureRestaurant {
   city_he: string;
   /** Nullable as on `Restaurant.city_en`; every fixture happens to have one. */
   city_en: string | null;
-  /** `Restaurant.city_slug`, kept for parity with the wire model; never filtered on. */
+  /** `Restaurant.city_slug`, what a city-scoped search matches exactly, and what the directory reports per city. */
   city_slug: string;
   address_he: string;
   address_en: string;
@@ -155,7 +180,8 @@ export const RESTAURANTS: FixtureRestaurant[] = [
         level: "unknown",
         attributes: { chalav_yisrael: true, pas_yisrael: true, bishul_yisrael: true },
         valid_from: "2025-10-01",
-        valid_until: "2026-09-30",
+        // Relative: this certificate must stay in force for the MATCH demo to hold.
+        valid_until: isoDateFromToday(365),
         verified_days_ago: 328,
         verified_by: "pipeline:seed_corpus@1.0.0",
         source: "official_list",
@@ -327,7 +353,7 @@ export const RESTAURANTS: FixtureRestaurant[] = [
         attributes: { pas_yisrael: true, yashan: true, chalav_yisrael: true },
         valid_from: "2025-09-01",
         // Expires inside the 30-day window → informational "expires soon" reason.
-        valid_until: "2026-09-05",
+        valid_until: isoDateFromToday(20),
         verified_days_ago: 4,
         verified_by: "DEMO-SEED (POC 2026-08-20, not a real moderator review)",
         source: "moderator_verified",

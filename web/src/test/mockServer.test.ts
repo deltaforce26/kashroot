@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import {
   DIRECTORY_SAMPLE_PER_CITY,
   directoryCityEn,
+  directoryCitySlug,
   mockDirectory,
   mockRestaurant,
   mockRestaurantPlaces,
@@ -180,6 +181,18 @@ describe("search response", () => {
     if (lastUnknown !== -1 && firstNoMatch !== -1) expect(lastUnknown).toBeLessThan(firstNoMatch);
   });
 
+  it("scopes to a whole city by exact slug: no radius, no distance", async () => {
+    for (const slug of ["jerusalem", "bnei-brak"]) {
+      const expected = RESTAURANTS.filter((restaurant) => restaurant.city_slug === slug);
+      expect(expected.length).toBeGreaterThan(0);
+      const response = await mockSearch({ profile: ALL_CERTIFIERS, city: slug }, NOW);
+      expect(response.items.map((item) => item.restaurant_id).sort()).toEqual(
+        expected.map((restaurant) => restaurant.id).sort(),
+      );
+      for (const item of response.items) expect(item.distance_km).toBeNull();
+    }
+  });
+
   it("does not hide NO_MATCH or UNKNOWN results from the list", async () => {
     const response = await mockSearch({ profile: RUBIN_WITH_ATTRS, radius_km: 50 }, NOW);
     const verdicts = new Set(response.items.map((item) => item.kashrut.verdict));
@@ -212,6 +225,19 @@ describe("directory response", () => {
       const group = RESTAURANTS.filter((restaurant) => restaurant.city_he === city.city_he);
       expect(city.city_en).toBe(directoryCityEn(group));
     }
+  });
+
+  it("gives every city the slug a search scopes itself by: the group's majority `city_slug`", async () => {
+    const response = await mockDirectory();
+    expect(response.cities.map((city) => city.city_slug)).toEqual(["jerusalem", "bnei-brak", "tiberias"]);
+    for (const city of response.cities) {
+      const group = RESTAURANTS.filter((restaurant) => restaurant.city_he === city.city_he);
+      expect(city.city_slug).toBe(directoryCitySlug(group));
+    }
+    // Same rule as `city_en`: majority, ties alphabetical, null when none.
+    expect(directoryCitySlug([{ city_slug: "b" }, { city_slug: null }, { city_slug: "a" }, { city_slug: "b" }])).toBe("b");
+    expect(directoryCitySlug([{ city_slug: "b" }, { city_slug: "a" }])).toBe("a");
+    expect(directoryCitySlug([{ city_slug: null }])).toBeNull();
   });
 
   it("picks a city's `city_en` as the API does: majority, ties alphabetical, null if none", () => {

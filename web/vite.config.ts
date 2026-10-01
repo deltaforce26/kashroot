@@ -11,8 +11,9 @@ import { API_RUNTIME_CACHING } from "./src/pwa/runtimeCaching";
  *
  * The sitemap lives on the API (`GET /v1/sitemap.xml`, reached through the
  * `/sitemap.xml` rewrite in vercel.json) because it needs the database; robots.txt
- * stays a static file in `public/` because the API host suspends when idle and a
- * robots.txt that times out makes Google pause crawling the whole site. The two
+ * stays a static file in `public/` because a robots.txt that fails or times out
+ * makes Google pause crawling the whole site, so it must not depend on the API
+ * answering. The two
  * meet here: when `VITE_SITE_ORIGIN` names the deploy's public origin, the static
  * file is copied into the build output with an absolute `Sitemap:` URL appended —
  * the only form the robots standard accepts. Without the variable the file is
