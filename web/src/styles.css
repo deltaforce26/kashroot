@@ -712,20 +712,21 @@ a {
 .tile__img--in {
   opacity: 1;
 }
-/* Google's required attribution. Physical bottom/right, as the handoff draws it. */
+/* Google's required attribution, kept but quiet: no chip, just small text with a
+   soft shadow so it stays legible on any photo. Google's Places terms require the
+   photographer's name wherever the photo shows, so it is muted, never removed.
+   Physical bottom/right, as the handoff draws it. */
 .tile__credit {
   position: absolute;
-  bottom: 6px;
+  bottom: 4px;
   right: 6px;
   max-width: calc(100% - 12px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  background: rgba(22, 22, 22, 0.55);
-  color: #fff;
-  border-radius: 99px;
-  padding: 2px 7px;
-  font: 500 9.5px Assistant, sans-serif;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+  font: 500 8px Assistant, sans-serif;
   pointer-events: none;
 }
 
