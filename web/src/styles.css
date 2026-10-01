@@ -738,9 +738,39 @@ a {
   flex: 1;
   min-width: 0;
 }
+/* Top of the photo area, at the start edge (right, in RTL); the end edge is kept
+   clear of the save button (8 + 34 + a 4px breath). */
 .tile__name {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: 46px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   font: 700 15px Assistant, sans-serif;
+  line-height: 1.25;
   color: var(--ink);
+}
+.tile__name--on-photo {
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+/* Darkens the top of a loaded photo so the white name always has contrast,
+   whatever the photo. Painted after the image and before the name (source
+   order, no z-index). */
+.tile__scrim {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 80px;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.6),
+    rgba(0, 0, 0, 0.3) 55%,
+    rgba(0, 0, 0, 0)
+  );
+  pointer-events: none;
 }
 .card--grid .tile__meta {
   margin-top: 0;

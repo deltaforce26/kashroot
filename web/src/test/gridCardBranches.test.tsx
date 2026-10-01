@@ -185,8 +185,13 @@ describe("RestaurantGridCard photo", () => {
     expect(img?.getAttribute("src")).toBe("/v1/restaurants/r1/photos/0?w=680");
     // Transparent until it loads, so the tinted ground shows instead of a spinner.
     expect(img?.classList.contains("tile__img--in")).toBe(false);
+    const title = container.querySelector(".tile__photo .tile__name");
+    // Ink over the tinted ground until the photo is in, then white over the photo.
+    expect(title?.classList.contains("tile__name--on-photo")).toBe(false);
     fireEvent.load(img as HTMLImageElement);
     expect(img?.classList.contains("tile__img--in")).toBe(true);
+    expect(title?.classList.contains("tile__name--on-photo")).toBe(true);
+    expect(container.querySelector(".tile__scrim")).not.toBeNull();
   });
 
   it("drops the image, not the area, when the image fails to load", async () => {
