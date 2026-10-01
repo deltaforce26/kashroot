@@ -33,6 +33,18 @@
   --tint-sweet: linear-gradient(160deg, rgba(250, 242, 200, 0.9), rgba(240, 220, 145, 0.7));
   --tint-neutral: linear-gradient(160deg, rgba(238, 235, 228, 0.92), rgba(220, 214, 202, 0.75));
 
+  /* The browse grid tile's ground and meta ink (handoff 1c): opaque, so a tile
+     reads as a card while its photo loads. */
+  --tile-dairy: linear-gradient(160deg, rgb(215, 240, 215), rgb(165, 210, 175));
+  --tile-meat: linear-gradient(160deg, rgb(250, 225, 205), rgb(240, 185, 150));
+  --tile-sweet: linear-gradient(160deg, rgb(250, 242, 200), rgb(240, 220, 145));
+  --tile-neutral: linear-gradient(160deg, rgb(238, 235, 228), rgb(220, 214, 202));
+  --tile-meta-dairy: #3d4a3f;
+  --tile-meta-meat: #5a4232;
+  --tile-meta-sweet: #5a4a1e;
+  --tile-meta-neutral: #4a473f;
+  --tile-pill: rgba(255, 255, 255, 0.85);
+
   --stripe: repeating-linear-gradient(
     45deg,
     rgba(255, 255, 255, 0.65),
@@ -101,6 +113,17 @@
   --tint-meat: linear-gradient(160deg, rgba(134, 86, 54, 0.5), rgba(86, 50, 30, 0.55));
   --tint-sweet: linear-gradient(160deg, rgba(132, 116, 46, 0.48), rgba(84, 70, 24, 0.55));
   --tint-neutral: linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.045));
+
+  /* The handoff draws the tile in light mode only; dark keeps the shared tints. */
+  --tile-dairy: var(--tint-dairy);
+  --tile-meat: var(--tint-meat);
+  --tile-sweet: var(--tint-sweet);
+  --tile-neutral: var(--tint-neutral);
+  --tile-meta-dairy: var(--on-tint);
+  --tile-meta-meat: var(--on-tint);
+  --tile-meta-sweet: var(--on-tint);
+  --tile-meta-neutral: var(--on-tint);
+  --tile-pill: var(--pill);
 
   --stripe: repeating-linear-gradient(
     45deg,
@@ -609,10 +632,11 @@ a {
   z-index: 3;
 }
 
-/* Search grid card (3e) */
+/* The 2-up browse grid (home and search). `minmax(0, 1fr)`, not `1fr`: a long
+   unbroken name must truncate inside its tile, not widen its column. */
 .grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
   align-content: start;
 }
@@ -625,44 +649,172 @@ a {
 }
 
 /*
- * Home grid card (2-up). Also used by search. Tinted ground,
- * a short body: one meta line, then the verdict pill alone on the foot
- * row — the whole card is the link, so it carries no go button. No `.fit-row`
- * appears here — see `RestaurantGridCard`.
+ * Browse grid tile (handoff 1c), home and search: the Google photo on top, then
+ * name, facts, street and the verdict pill. The whole tile is the link, so it
+ * carries no go button, and no `.fit-row` appears here — see `RestaurantGridCard`.
+ *
+ * Its ground is the handoff's opaque category gradient rather than the shared
+ * translucent `--tint-*`, because it has to read as a solid card under a photo
+ * that is still loading. Scoped to `.card--grid`, so the row card, the hero and
+ * the map card keep their tints. Dark mode falls back to the shared dark tints.
  */
 .card--grid {
-  padding: 13px 14px;
-  min-height: 188px;
   display: flex;
   flex-direction: column;
+  padding: 0;
+  border: 0;
+  border-radius: 22px;
+  transition: transform 120ms ease-out;
+}
+.card--grid.tint-dairy {
+  background: var(--tile-dairy);
+}
+.card--grid.tint-meat {
+  background: var(--tile-meat);
+}
+.card--grid.tint-sweet {
+  background: var(--tile-sweet);
+}
+.card--grid.tint-neutral {
+  background: var(--tile-neutral);
 }
 
-/* `position: relative` with no z-index: no stacking context is opened, so the save
-   button's `.card__above` still resolves against the card and stays above the
-   stretched `.card__link`. Giving this a z-index would trap the button underneath
-   the link and make it unclickable. */
-.card--grid .card__head {
+/* Pressed: the link was pressed, not the heart — pressing the save button must not
+   look like opening the restaurant. Engines without :has() just skip the effect. */
+.card--grid:has(> .card__link:active) {
+  transform: scale(0.98);
+}
+@media (prefers-reduced-motion: reduce) {
+  .card--grid {
+    transition: none;
+  }
+}
+
+/* No z-index on the photo or the body: neither opens a stacking context, so the
+   stretched `.card__link` (z 2) lies over both and the heart's `.card__above` (z 3)
+   over that. */
+.tile__photo {
   position: relative;
+  height: 138px;
+  flex: none;
+}
+/* Transparent until loaded, so the tinted ground is what shows while it loads —
+   no spinner, no grey box. */
+.tile__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+.tile__img--in {
+  opacity: 1;
+}
+/* Google's required attribution. Physical bottom/right, as the handoff draws it. */
+.tile__credit {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  max-width: calc(100% - 12px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgba(22, 22, 22, 0.55);
+  color: #fff;
+  border-radius: 99px;
+  padding: 2px 7px;
+  font: 500 9.5px Assistant, sans-serif;
+  pointer-events: none;
 }
 
-.card--grid .card__foot {
-  position: relative;
-  z-index: 1;
-}
-
-.card__head {
+.tile__body {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px 12px;
+  flex: 1;
+  min-width: 0;
+}
+/* No photo: the heart moves onto the body's top-left corner, so the body keeps
+   its first lines clear of it (8 + 34 + a 4px breath). */
+.card--bare .tile__body {
+  padding-left: 46px;
+  min-height: 50px;
 }
 
-/* The foot is pinned to the bottom of the tile, so cards of differing text length
-   still line their pills up across the row. */
+.tile__name {
+  font: 700 15px Assistant, sans-serif;
+  color: var(--ink);
+}
+.card--grid .tile__meta {
+  margin-top: 0;
+  font-size: 11px;
+  font-weight: 400;
+}
+.card--grid.tint-dairy .tile__meta {
+  color: var(--tile-meta-dairy);
+}
+.card--grid.tint-meat .tile__meta {
+  color: var(--tile-meta-meat);
+}
+.card--grid.tint-sweet .tile__meta {
+  color: var(--tile-meta-sweet);
+}
+.card--grid.tint-neutral .tile__meta {
+  color: var(--tile-meta-neutral);
+}
+.card--grid .card__where {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The foot is pushed to the bottom of the body, so tiles of differing text length
+   still line their pills up across a row; the 8px padding is the handoff's
+   margin-top, kept as a minimum. Pill at the start edge. */
 .card--grid .card__foot {
   margin-top: auto;
+  padding-top: 8px;
   flex-wrap: nowrap;
   gap: 6px;
+}
+.card--grid .verdict {
+  background: var(--tile-pill);
+}
+
+/*
+ * The save toggle, drawn as the handoff's glass heart. Physical top/left, as
+ * drawn: in RTL that is the tile's end edge, away from the name. 34px to the eye,
+ * 44px to the finger — the ::before ring is part of the button's hit area.
+ */
+.card--grid .tile__heart {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.6);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  color: #161616;
+  cursor: pointer;
+}
+.card--grid .tile__heart::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 99px;
+}
+.card--grid .tile__heart:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
 /* ── Chips / tabs ──────────────────────────────────────────────────────── */

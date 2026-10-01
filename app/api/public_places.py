@@ -1,10 +1,11 @@
-"""Google Places (New) enrichment for one restaurant's detail page — ``/v1/*``.
+"""Google Places (New) enrichment for one restaurant at a time — ``/v1/*``.
 
 Split out of ``app.api.public`` (already at STANDARDS.md's file-size limit): two
 read-only endpoints, both degrading rather than erroring on any Google/network
 failure so a restaurant's own kashrut verdict is never blocked on this router.
-Neither endpoint is ever called from a search/list response — only from a single
-restaurant's own detail page.
+Neither is ever folded into a search/list response. Callers are a restaurant's
+own detail page and the web app's browse-grid tiles, which call them lazily —
+one request per tile, only once that tile scrolls near the viewport.
 """
 
 from __future__ import annotations
@@ -75,8 +76,9 @@ def get_restaurant_places(
 ) -> PlacesEnrichmentOut:
     """Google Places photos + opening hours for one restaurant.
 
-    Never kashrut evidence, never persisted, never called for a list of
-    restaurants — one restaurant's own detail page only. 404 when the restaurant
+    Never kashrut evidence, never persisted, never batched for a list of
+    restaurants — one restaurant per call, from its detail page or lazily from
+    its grid tile once that tile nears the viewport. 404 when the restaurant
     itself is unknown; a restaurant with no ``google_place_id``, or any Google/
     network failure, still returns 200 with a degraded body
     (``place_id_known=False`` or ``photos=[]``/``hours=null``).
