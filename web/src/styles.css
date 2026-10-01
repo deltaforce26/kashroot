@@ -755,7 +755,22 @@ a {
 }
 .tile__name--on-photo {
   color: #fff;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+/* Darkens the top of a loaded photo so the white name always has contrast,
+   whatever the photo. Painted after the image and before the name (source
+   order, no z-index). */
+.tile__scrim {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 80px;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.6),
+    rgba(0, 0, 0, 0.3) 55%,
+    rgba(0, 0, 0, 0)
+  );
+  pointer-events: none;
 }
 .card--grid .tile__meta {
   margin-top: 0;
