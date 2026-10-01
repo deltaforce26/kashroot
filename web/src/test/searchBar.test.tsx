@@ -267,6 +267,32 @@ describe("search bar", () => {
     expect(JSON.parse(localStorage.getItem(ORIGIN_KEY) ?? "null")).toEqual({ source: "none" });
   });
 
+  it("keeps a pinned city when a locating tap is cancelled, and ignores the late fix", async () => {
+    seedEverywhere();
+    stubGeolocation("hold");
+    const user = userEvent.setup();
+    await reachHome(user);
+    await user.type(field(), "טבר");
+    await user.click(await screen.findByRole("button", { name: /טבריה/ }));
+    expect(header().getByText("טבריה")).toBeInTheDocument();
+
+    await user.click(nearMe());
+    await user.click(locatingButton());
+    expect(nearMe()).toHaveAttribute("data-state", "idle");
+    expect(screen.queryByText(he.origin.nearMeRefused)).toBeNull();
+
+    answer!();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(nearMe()).toHaveAttribute("data-state", "idle");
+    expect(header().getByText("טבריה")).toBeInTheDocument();
+    expect(header().getByText(he.origin.searchingInCity)).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem(ORIGIN_KEY) ?? "null")).toMatchObject({
+      source: "city",
+      slug: "tiberias",
+    });
+    expect(screen.queryByText(he.origin.nearMeRefused)).toBeNull();
+  });
+
   it("labels the active button with the filter bar's radius", async () => {
     seedEverywhere();
     localStorage.setItem(

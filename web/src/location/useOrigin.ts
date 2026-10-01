@@ -121,6 +121,9 @@ let geoState: GeoState = "idle";
  */
 let requestGen = 0;
 
+/** What `geoState` was when the request in flight began, so a cancel can put it back. */
+let stateBeforeRequest: GeoState = "idle";
+
 function publish(nextOverride: Override | null, nextState: GeoState): void {
   override = nextOverride;
   geoState = nextState;
@@ -187,6 +190,7 @@ function requestDevice(): void {
     publish(override, override ? geoState : "unavailable");
     return;
   }
+  if (geoState !== "requesting") stateBeforeRequest = geoState;
   publish(override, "requesting");
   navigator.geolocation.getCurrentPosition(
     (position) => {
@@ -313,6 +317,7 @@ export function resetOriginState(): void {
   requestGen += 1;
   override = null;
   geoState = "idle";
+  stateBeforeRequest = "idle";
   restored = false;
 }
 
@@ -350,6 +355,13 @@ export function useOrigin(): {
   /** Scope the search to a whole city, by `Restaurant.city_slug`. Replaces any point. */
   setCityOrigin: (slug: string, label: string) => void;
   /**
+   * Call off a device request still in flight and leave everything else as it was: the
+   * origin in force and storage are untouched, and the state returns to what it was
+   * before the request (a refusal on record reads as idle — cancelling is not one). A
+   * no-op when nothing is being asked.
+   */
+  cancelRequest: () => void;
+  /**
    * Drop whatever is in force and search everywhere, and call off a device request still
    * in flight. Stored as the explicit choice "all of Israel", so a reload honours it and
    * does not ask the device again; clearing storage instead would make the next load a
@@ -386,6 +398,12 @@ export function useOrigin(): {
     publish({ source: "city", city: { slug, label } }, "idle");
   }, []);
 
+  const cancelRequest = useCallback(() => {
+    if (geoState !== "requesting") return;
+    requestGen += 1;
+    publish(override, stateBeforeRequest === "unavailable" ? "idle" : stateBeforeRequest);
+  }, []);
+
   const clearToEverywhere = useCallback(() => {
     requestGen += 1;
     persist({ source: "none" });
@@ -402,6 +420,7 @@ export function useOrigin(): {
     requestDeviceLocation,
     setAddressOrigin,
     setCityOrigin,
+    cancelRequest,
     clearToEverywhere,
   };
 }

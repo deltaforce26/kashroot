@@ -99,6 +99,7 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
     requestDeviceLocation,
     setAddressOrigin,
     setCityOrigin,
+    cancelRequest,
     clearToEverywhere,
   } = useOrigin();
   const { filters } = useFilters();
@@ -218,9 +219,11 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
       requestDeviceLocation();
       return;
     }
-    // Locating or active: back to idle with no location filter. Not a refusal, so no hint.
+    // Not a refusal, so no hint. Locating is called off and whatever was in force stays;
+    // active is the way out and searches all of Israel.
     askedRef.current = false;
-    clearToEverywhere();
+    if (mode === "locating") cancelRequest();
+    else clearToEverywhere();
   }
 
   function pickCity(city: CityOption) {

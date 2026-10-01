@@ -284,6 +284,37 @@ describe("a city as the search origin", () => {
     expect(localStorage.getItem(ORIGIN_KEY)).toBe('{"source":"none"}');
   });
 
+  it("cancels a request without touching the origin or storage, and drops its answer", () => {
+    const { result } = renderHook(() => useOrigin());
+    const { pending, fix } = holdGeolocation();
+    act(() => result.current.setCityOrigin("jerusalem", "ירושלים"));
+
+    act(() => result.current.requestDeviceLocation());
+    expect(result.current.state).toBe("requesting");
+    act(() => result.current.cancelRequest());
+    expect(result.current.state).toBe("idle");
+    expect(result.current.city?.slug).toBe("jerusalem");
+
+    act(() => pending[0]!.ok(fix(32.08, 34.78)));
+    expect(result.current.source).toBe("city");
+    expect(result.current.state).toBe("idle");
+    expect(JSON.parse(localStorage.getItem(ORIGIN_KEY) ?? "null")).toMatchObject({ source: "city" });
+
+    // A refusal on record is not restored: cancelling is not one.
+    stubGeolocation("refuse");
+    act(() => result.current.requestDeviceLocation());
+    expect(result.current.state).toBe("unavailable");
+    const held = holdGeolocation();
+    act(() => result.current.requestDeviceLocation());
+    act(() => result.current.cancelRequest());
+    expect(result.current.state).toBe("idle");
+    // Nothing in flight: a no-op.
+    act(() => result.current.cancelRequest());
+    expect(result.current.state).toBe("idle");
+    act(() => held.pending[0]!.fail({ code: 1 } as GeolocationPositionError));
+    expect(result.current.state).toBe("idle");
+  });
+
   it("ignores a device answer that arrives after a later pick, or after a newer request", () => {
     const { result } = renderHook(() => useOrigin());
     const { pending, fix } = holdGeolocation();
