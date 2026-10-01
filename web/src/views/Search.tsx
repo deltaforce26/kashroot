@@ -12,9 +12,10 @@
  * normalization. The UI is careful not to imply otherwise: there is no "did you
  * mean", and a miss is explained as a spelling difference rather than an absence.
  *
- * Where it searches is the same origin home uses: the device, a pinned address, or
- * — with neither — every place in the database, paged. There is no city scope. The
- * bar's radius is offered only when there is a centre to measure it from.
+ * Where it searches is the same origin home uses: the device, a pinned address, a
+ * whole city picked by name, or — with none of them — every place in the database,
+ * paged. The bar's radius is offered only when there is a centre to measure it from;
+ * a city is the whole city, so it has no radius.
  */
 
 import { useDeferredValue, useMemo, useState } from "react";
@@ -37,6 +38,7 @@ import {
 import { SaveToListHost } from "../components/SaveToListSheet";
 import { TabBar } from "../components/TabBar";
 import { PAGE_SIZE } from "../config";
+import { scopeFragment, scopeLabel } from "../location/searchScope";
 import { useOrigin } from "../location/useOrigin";
 import { toSearchFilters } from "../filters/model";
 import { useDocumentHead } from "../seo/useDocumentHead";
@@ -70,22 +72,25 @@ export function Search() {
   const trimmedQuery = deferredQuery.trim();
 
   // The one origin, shared with home and the map: measured from the pin when there
-  // is one, and from nowhere — the whole database — when there is not.
-  const { origin, source, addressLabel, resolving } = useOrigin();
-  const placeLabel =
-    source === "device" ? t.map.youAreHere : (addressLabel ?? t.origin.everywhere);
+  // is one, scoped to the city when one was picked, and from nowhere — the whole
+  // database — when neither.
+  const { origin, source, addressLabel, city, resolving } = useOrigin();
+  const placeLabel = scopeLabel(
+    { source, addressLabel, city },
+    { youAreHere: t.map.youAreHere, everywhere: t.origin.everywhere },
+  );
 
   const request = useMemo<SearchRequest | null>(() => {
     if (resolving) return null;
     const facets = toSearchFilters(filters);
     return {
       profile: toPayload(profile),
-      ...(origin ? { center: origin, radius_km: filters.radiusKm } : {}),
+      ...scopeFragment(origin, city, filters.radiusKm),
       page_size: PAGE_SIZE,
       ...(trimmedQuery ? { query: trimmedQuery.slice(0, MAX_QUERY_LENGTH) } : {}),
       ...(facets ? { filters: facets } : {}),
     };
-  }, [profile, origin, resolving, filters, trimmedQuery]);
+  }, [profile, origin, city, resolving, filters, trimmedQuery]);
 
   const { items: results, total, loading, loadingMore, error, reload, hasMore, loadMore } =
     usePagedSearch(request);
@@ -111,7 +116,11 @@ export function Search() {
           onClick={() => setPickingPlace(true)}
         >
           <span style={{ display: "block", fontSize: 11.5, color: "var(--sub)" }}>
-            {origin ? t.search.searchingNear : t.origin.searchingEverywhere}
+            {city
+              ? t.origin.searchingInCity
+              : origin
+                ? t.search.searchingNear
+                : t.origin.searchingEverywhere}
           </span>
           <span className="header__place">{placeLabel}</span>
         </button>
@@ -146,7 +155,7 @@ export function Search() {
         ) : total === 0 && !anyFilterActive(filters) ? (
           // No rows at all, before the profile was applied — a data gap, not a
           // verdict, and a different statement from "nothing meets your profile".
-          <NothingHere place={origin ? placeLabel : null} onChangePlace={() => setPickingPlace(true)} />
+          <NothingHere place={origin || city ? placeLabel : null} onChangePlace={() => setPickingPlace(true)} />
         ) : results.length === 0 ? (
           <EmptyResults
             onWidenProfile={() => navigate("/profile")}

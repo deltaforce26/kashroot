@@ -62,6 +62,7 @@ import { useFilters } from "../filters/useFilters";
 import { isNetworkError, useSearch } from "../hooks/useApi";
 import { formatDistance, pickName, useI18n } from "../i18n/I18nProvider";
 import { googleMapsUrl, wazeUrl } from "../location/directions";
+import { scopeFragment, scopeLabel } from "../location/searchScope";
 import { useOrigin } from "../location/useOrigin";
 import { createPin, createPopupAnchor, SELECTED_PIN_HEIGHT, type Pin } from "../map/pins";
 import { MAP_ID, useGoogleMaps } from "../map/useGoogleMaps";
@@ -190,11 +191,20 @@ export function MapView() {
   // The one filter store, shared with home and search, so a chip tapped here is the
   // chip tapped there and the map cannot become a third, differently-filtered answer.
   const { filters } = useFilters();
-  const { origin, source, state: originState, requestDeviceLocation, addressLabel, resolving } =
-    useOrigin();
-  // What the placeholder and the empty state call the place we search from.
-  const placeLabel =
-    source === "device" ? t.map.youAreHere : (addressLabel ?? t.origin.everywhere);
+  const {
+    origin,
+    source,
+    state: originState,
+    requestDeviceLocation,
+    addressLabel,
+    city,
+    resolving,
+  } = useOrigin();
+  // What the placeholder and the empty state call the place we search.
+  const placeLabel = scopeLabel(
+    { source, addressLabel, city },
+    { youAreHere: t.map.youAreHere, everywhere: t.origin.everywhere },
+  );
   const { status: mapsStatus, libs } = useGoogleMaps(lang);
 
   // The open card, by restaurant id. Nothing is open on arrival.
@@ -226,7 +236,7 @@ export function MapView() {
       // distance search and reaches exactly as far as home reaches. Without one
       // neither goes out and the server answers with everything. `toSearchFilters`
       // leaves the radius out on purpose — it is top-level, not a facet.
-      ...(origin ? { center: origin, radius_km: filters.radiusKm } : {}),
+      ...scopeFragment(origin, city, filters.radiusKm),
       // Deliberately larger than home's PAGE_SIZE. A map is read at a glance rather
       // than paged, so it plots the whole radius where home shows its first page of
       // it — which makes the map a superset of home's cards by distance, never a
@@ -235,7 +245,7 @@ export function MapView() {
       ...(trimmedQuery ? { query: trimmedQuery.slice(0, MAX_QUERY_LENGTH) } : {}),
       ...(facets ? { filters: facets } : {}),
     };
-  }, [profile, origin, resolving, filters, trimmedQuery]);
+  }, [profile, origin, city, resolving, filters, trimmedQuery]);
   const { data, loading: searching, error, reload } = useSearch(request);
   // `useSearch(null)` answers at once with nothing; the device is still the question.
   const loading = resolving || searching;
@@ -499,7 +509,7 @@ export function MapView() {
           ) : trimmedQuery ? (
             <EmptyQuery query={trimmedQuery} onClear={() => setQuery("")} />
           ) : (data?.total ?? 0) === 0 && !anyFilterActive(filters) ? (
-            <NothingHere place={origin ? placeLabel : null} onChangePlace={() => navigate("/")} />
+            <NothingHere place={origin || city ? placeLabel : null} onChangePlace={() => navigate("/")} />
           ) : (
             <EmptyResults onWidenProfile={() => navigate("/profile")} />
           )}

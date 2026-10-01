@@ -361,6 +361,8 @@ const he = {
     // header names the scope; the second line explains it where there is room.
     everywhere: "כל הארץ",
     searchingEverywhere: "מציגים את כל המקומות במאגר",
+    // The header's small line when a whole city is the scope; the city is the place line.
+    searchingInCity: "מחפשים בעיר",
     privacy: "המיקום נשלח רק לשרת שלנו, לא נשמר במכשיר ולא משותף.",
     title: "מאיפה לחפש?",
     close: "סגירה",
@@ -884,6 +886,7 @@ const en: Strings = {
     locating: "Locating…",
     everywhere: "All of Israel",
     searchingEverywhere: "Showing every place in our records",
+    searchingInCity: "Searching in",
     privacy: "Your location goes only to our own server. It is never stored or shared.",
     title: "Where should we search from?",
     close: "Close",
