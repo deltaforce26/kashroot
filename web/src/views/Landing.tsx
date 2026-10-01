@@ -24,6 +24,7 @@
 
 import { useId, type MouseEvent } from "react";
 import { Link } from "react-router-dom";
+import { trackCtaClick } from "../analytics";
 import type { DirectoryCityView, DirectoryRestaurantView } from "../api/viewmodel";
 import { ErrorState, LoadingList, OfflineBanner } from "../components/states";
 import { isNetworkError, useDirectory } from "../hooks/useApi";
@@ -144,7 +145,7 @@ export function Landing() {
           </p>
           <h1 className="landing__title">{t.landing.tagline}</h1>
           <p className="landing__body">{t.landing.body}</p>
-          <Link className="cta" to="/onboarding/preset">
+          <Link className="cta" to="/onboarding/preset" onClick={() => trackCtaClick("landing")}>
             {t.landing.cta}
           </Link>
           <a className="landing__browse" href={`#${CITIES_ID}`} onClick={browse}>

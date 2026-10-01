@@ -11,6 +11,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { trackRestaurantSaved } from "../analytics";
 import {
   addPlace,
   createList,
@@ -64,8 +65,12 @@ export function SavedProvider({ children }: { children: ReactNode }) {
           list = madeList;
         }
         commit(addPlace(next, list.id, place));
+        trackRestaurantSaved();
       },
-      addToList: (listId, place) => commit(addPlace(state, listId, place)),
+      addToList: (listId, place) => {
+        commit(addPlace(state, listId, place));
+        trackRestaurantSaved();
+      },
       unsave: (restaurantId) => commit(removePlace(state, restaurantId)),
       addList: (name, places = []) => {
         const [next, list] = createList(state, name, places);

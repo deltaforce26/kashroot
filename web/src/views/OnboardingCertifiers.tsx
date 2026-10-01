@@ -11,6 +11,7 @@
  */
 
 import { useState } from "react";
+import { trackOnboardingComplete } from "../analytics";
 import { useNavigate } from "react-router-dom";
 import { ROOTLESS, useReturnTo } from "../hooks/useReturnTo";
 import { useI18n } from "../i18n/I18nProvider";
@@ -40,6 +41,12 @@ export function OnboardingCertifiers({ standalone = false }: { standalone?: bool
 
   const finish = () => {
     setProfile({ ...draft, completedOnboarding: true });
+    trackOnboardingComplete({
+      path: "certifiers",
+      preset: draft.presetId ?? "custom",
+      certifiers: draft.whitelist.length,
+      first: !profile.completedOnboarding,
+    });
     navigate(returnTo, { replace: true, state: ROOTLESS });
   };
 

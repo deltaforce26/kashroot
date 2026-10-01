@@ -21,6 +21,7 @@
 
 import { useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { trackCtaClick } from "../analytics";
 import type { PublicCertificateView, PublicRestaurantView } from "../api/viewmodel";
 import { tintClass } from "../components/RestaurantCard";
 import { DetailActionBar } from "../components/restaurant/DetailActionBar";
@@ -182,7 +183,12 @@ export function RestaurantPublic() {
           <p style={{ fontSize: 13.5, lineHeight: 1.5, margin: "6px 0 12px" }}>
             {t.publicRestaurant.ctaBody}
           </p>
-          <Link className="cta" to="/onboarding/preset" state={{ from: here }}>
+          <Link
+            className="cta"
+            to="/onboarding/preset"
+            state={{ from: here }}
+            onClick={() => trackCtaClick("restaurant_public")}
+          >
             {t.publicRestaurant.cta}
           </Link>
         </section>

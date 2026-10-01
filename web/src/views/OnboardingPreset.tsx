@@ -11,6 +11,7 @@
  */
 
 import { useNavigate } from "react-router-dom";
+import { trackOnboardingComplete } from "../analytics";
 import { ROOTLESS, useReturnTo } from "../hooks/useReturnTo";
 import { useI18n } from "../i18n/I18nProvider";
 import { useProfile } from "../profile/ProfileProvider";
@@ -39,7 +40,14 @@ export function OnboardingPreset() {
 
   const skip = () => {
     // Skipping still needs a usable profile, so it lands on the widest one.
-    setProfile({ ...profileFromPreset("any", certifiers), completedOnboarding: true });
+    const next = profileFromPreset("any", certifiers);
+    setProfile({ ...next, completedOnboarding: true });
+    trackOnboardingComplete({
+      path: "skip",
+      preset: "any",
+      certifiers: next.whitelist.length,
+      first: !profile.completedOnboarding,
+    });
     navigate(returnTo, { replace: true, state: ROOTLESS });
   };
 
@@ -52,6 +60,12 @@ export function OnboardingPreset() {
       return;
     }
     setProfile({ ...next, completedOnboarding: true });
+    trackOnboardingComplete({
+      path: "preset",
+      preset: selected,
+      certifiers: next.whitelist.length,
+      first: !profile.completedOnboarding,
+    });
     navigate(returnTo, { replace: true, state: ROOTLESS });
   };
 
