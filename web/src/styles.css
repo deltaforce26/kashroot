@@ -864,6 +864,8 @@ a {
  * the map card keep their tints. Dark mode falls back to the shared dark tints.
  */
 .card--grid {
+  /* How far the photo runs on past its box, fading out over the tinted ground. */
+  --tile-photo-bleed: 28px;
   display: flex;
   flex-direction: column;
   padding: 0;
@@ -900,19 +902,26 @@ a {
    over that. */
 .tile__photo {
   position: relative;
-  height: 138px;
+  /* The photo's faded bleed runs into the body, so the box gives that much back:
+     photo plus fade still span the original 138px and the body keeps its size. */
+  height: calc(138px - var(--tile-photo-bleed));
   flex: none;
 }
 /* Transparent until loaded, so the tinted ground is what shows while it loads —
    no spinner, no grey box. */
 .tile__img {
   position: absolute;
-  inset: 0;
+  inset: 0 0 auto;
   width: 100%;
-  height: 100%;
   object-fit: cover;
   opacity: 0;
   transition: opacity 200ms ease-out;
+  /* The photo runs on past the photo area, under the top of the body, and fades
+     out there: the image dissolves over the tinted ground instead of the ground
+     washing over the image, and the photo area itself stays at full strength. */
+  height: calc(100% + var(--tile-photo-bleed));
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--tile-photo-bleed) - 12px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--tile-photo-bleed) - 12px), transparent);
 }
 .tile__img--in {
   opacity: 1;
@@ -935,11 +944,14 @@ a {
   pointer-events: none;
 }
 
+/* Positioned (no z-index) so it paints over the photo's faded bleed. */
 .tile__body {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 10px 12px 12px;
+  /* The 10px top padding sits below the photo's fade, as before the bleed. */
+  padding: calc(10px + var(--tile-photo-bleed)) 12px 12px;
   flex: 1;
   min-width: 0;
 }
