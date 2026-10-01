@@ -899,6 +899,7 @@ a {
    stretched `.card__link` (z 2) lies over both and the save button's `.card__above` (z 3)
    over that. */
 .tile__photo {
+  --tile-photo-bleed: 28px;
   position: relative;
   height: 138px;
   flex: none;
@@ -907,17 +908,17 @@ a {
    no spinner, no grey box. */
 .tile__img {
   position: absolute;
-  inset: 0;
+  inset: 0 0 auto;
   width: 100%;
-  height: 100%;
   object-fit: cover;
   opacity: 0;
   transition: opacity 200ms ease-out;
-  /* Fades the photo's bottom edge into the tile's tinted ground, so the photo and
-     the body meet softly instead of at a hard line. A mask rather than an overlay
-     gradient, so it works on every category tint in both themes. */
-  -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent);
-  mask-image: linear-gradient(to bottom, #000 60%, transparent);
+  /* The photo runs on past the photo area, under the top of the body, and fades
+     out there: the image dissolves over the tinted ground instead of the ground
+     washing over the image, and the photo area itself stays at full strength. */
+  height: calc(100% + var(--tile-photo-bleed));
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--tile-photo-bleed) - 12px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--tile-photo-bleed) - 12px), transparent);
 }
 .tile__img--in {
   opacity: 1;
@@ -940,7 +941,9 @@ a {
   pointer-events: none;
 }
 
+/* Positioned (no z-index) so it paints over the photo's faded bleed. */
 .tile__body {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 3px;
