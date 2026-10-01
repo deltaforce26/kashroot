@@ -70,9 +70,10 @@ describe("restaurant hero and Google Places sections", () => {
 
     await screen.findByRole("heading", { level: 1, name: "נוגטין" });
 
-    const hero = document.querySelector(".detail-hero");
-    expect(hero).not.toBeNull();
-    expect(hero?.querySelector("img.detail-hero__img")).not.toBeNull();
+    // The place facts arrive on their own request, after the restaurant itself.
+    await waitFor(() =>
+      expect(document.querySelector(".detail-hero img.detail-hero__img")).not.toBeNull(),
+    );
 
     // The gallery keeps its Google caption and per-photo attribution links.
     expect(await screen.findByText(he.restaurant.gallery.caption)).toBeInTheDocument();

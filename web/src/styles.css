@@ -76,8 +76,11 @@
   --icon-grey: #8a8a8a;
   --bar-glass: rgba(255, 255, 255, 0.6);
   --bar-line: rgba(255, 255, 255, 0.75);
-  --near-idle-bg: linear-gradient(135deg, var(--lime), #2f7a4d);
-  --near-idle-ink: #fff;
+  /* Idle is "glassy lime": a translucent lime wash blurred over the page, dark green
+     ink, a white hairline inside the top edge and a soft green drop. */
+  --near-idle-bg: linear-gradient(180deg, rgba(226, 242, 200, 0.75), rgba(196, 226, 160, 0.55));
+  --near-idle-ink: #24603c;
+  --near-idle-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 4px 12px rgba(47, 122, 77, 0.14);
   --near-busy-bg: var(--neutral);
   --near-busy-ink: #161616;
   --near-spin-track: rgba(22, 22, 22, 0.2);
@@ -159,14 +162,15 @@
   --cta-ink: #161616;
   --green: #84d5a4;
   --green-soft: rgba(132, 213, 164, 0.16);
-  /* Dark counterparts for the search bar. White ink needs a darker ground than the light
-     theme's lime, so the idle gradient is pulled down to stay legible (>= 4:1 at its
-     lightest stop); locating is a dark neutral with the light ink; active keeps the
-     brand green, which already carries white at 5:1. */
+  /* Dark counterparts for the search bar. The idle glass is a faint lime wash over the
+     dark page with pale green ink; locating is a dark neutral with the light ink; active
+     keeps the brand green, which already carries white at 5:1. */
   --neutral: #2b2c25;
   --bar-glass: rgba(255, 255, 255, 0.07);
   --bar-line: rgba(255, 255, 255, 0.14);
-  --near-idle-bg: linear-gradient(135deg, #5c8f2e, #24603c);
+  --near-idle-bg: linear-gradient(180deg, rgba(156, 203, 86, 0.28), rgba(47, 122, 77, 0.22));
+  --near-idle-ink: #cfe8b0;
+  --near-idle-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 4px 12px rgba(0, 0, 0, 0.3);
   --near-busy-bg: var(--neutral);
   --near-busy-ink: #f2f1ea;
   --near-spin-track: rgba(242, 241, 234, 0.25);
@@ -652,8 +656,24 @@ a {
   font: 700 13px Assistant, sans-serif;
   white-space: nowrap;
   border-radius: var(--radius-pill);
+  border: 0;
   color: var(--near-idle-ink);
   background: var(--near-idle-bg);
+  box-shadow: var(--near-idle-shadow);
+}
+
+/* The blur is what makes the idle pill read as glass rather than paint; the other two
+   states are opaque, so they drop it along with the idle shadow. */
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .searchbar__near[data-state="idle"] {
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
+}
+
+.searchbar__near[data-state="locating"],
+.searchbar__near[data-state="active"] {
+  box-shadow: none;
 }
 
 .searchbar__near[data-state="locating"] {
@@ -1768,6 +1788,103 @@ a {
   align-items: center;
   gap: 12px;
   padding: 8px 0 16px;
+}
+
+/* A city heading that is a link reads as the heading, not as a link: the panel's
+   "show all" line below carries the affordance. */
+.landing__cityName a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.landing__cityName a:hover,
+.landing__cityName a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.landing__showAll {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── Directory pages (city, city + certifier, certifier) ─────────────────── */
+
+.directory__crumbs {
+  font-size: 12.5px;
+  color: var(--sub);
+}
+
+.directory__crumbs ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.directory__crumbs li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.directory__crumbs a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.directory__crumbs [aria-current="page"] {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.directory__head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* The facet list: one row per certifier (or city) with its count at the far end.
+   Inline-end margins and padding so it mirrors itself under `dir="rtl"`. */
+.directory__facets {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.directory__facet {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--hair);
+  font-size: 14px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.directory__facet:hover,
+.directory__facet:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.directory__facet--current {
+  font-weight: 700;
+  padding-inline-start: 10px;
+  border-inline-start: 2.5px solid var(--ink);
 }
 
 /* ── Tab bar ───────────────────────────────────────────────────────────── */

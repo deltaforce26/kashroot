@@ -14,6 +14,11 @@
  * directory of links to those facts pages (`Landing`). With a profile they are the
  * verdict screen and Home, as they always were. The gate is not weakened: no
  * verdict is shown without a profile, because neither profile-free page has one.
+ *
+ * The directory pages — `/city/:citySlug`, `/city/:citySlug/:certifierSlug` and
+ * `/certifier/:certifierSlug` — sit outside the gate for the same reason, and
+ * unlike `/r/:id` they do not change with a profile: a page addressed by a city or
+ * a certifier is a list of facts whoever reads it, and renders no verdict either way.
  */
 
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
@@ -24,6 +29,8 @@ import { useI18n } from "./i18n/I18nProvider";
 import { isProfileUsable } from "./profile/profile";
 import { SaveTargetProvider } from "./saved/SaveTargetProvider";
 import { useProfile } from "./profile/ProfileProvider";
+import { CertifierDirectory } from "./views/CertifierDirectory";
+import { CityDirectory } from "./views/CityDirectory";
 import { Home } from "./views/Home";
 import { Landing } from "./views/Landing";
 import { MapView } from "./views/MapView";
@@ -97,6 +104,10 @@ export default function App() {
           />
           {/* Deliberately not behind RequireProfile — see the header comment. */}
           <Route path="/r/:id" element={<RestaurantRoute />} />
+          {/* The directory pages: public facts whether or not a profile exists. */}
+          <Route path="/city/:citySlug" element={<CityDirectory />} />
+          <Route path="/city/:citySlug/:certifierSlug" element={<CityDirectory />} />
+          <Route path="/certifier/:certifierSlug" element={<CertifierDirectory />} />
           <Route
             path="/saved"
             element={

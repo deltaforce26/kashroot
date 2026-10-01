@@ -295,3 +295,38 @@ def test_directory_cache_control_header(client, session) -> None:
     response = client.get("/v1/directory")
 
     assert response.headers["cache-control"] == "public, max-age=3600"
+
+
+def test_directory_certifier_slugs_parallel_to_names(client, session) -> None:
+    certifier_bet = make_certifier(session, slug="slug_bet", name_he="בד ב")
+    certifier_alef = make_certifier(session, slug="slug_alef", name_he="בד א")
+    inactive = make_certifier(session, slug="slug_old", name_he="א", is_active=False)
+    restaurant = make_restaurant(session, city_he="ירושלים")
+    make_certificate(session, restaurant, certifier_bet)
+    make_certificate(session, restaurant, certifier_bet)
+    make_certificate(session, restaurant, certifier_alef)
+    make_certificate(session, restaurant, inactive)
+    session.commit()
+
+    response = client.get("/v1/directory")
+
+    entry = response.json()["cities"][0]["restaurants"][0]
+    assert entry["certifier_names_he"] == ["בד א", "בד ב"]
+    assert entry["certifier_slugs"] == ["slug_alef", "slug_bet"]
+
+
+@pytest.mark.parametrize(
+    "state", [CertificateState.REVOKED, CertificateState.EXPIRED, CertificateState.PENDING]
+)
+def test_directory_omits_certifier_with_non_active_certificate(client, session, state) -> None:
+    live = make_certifier(session, slug="live", name_he="פעיל")
+    lapsed = make_certifier(session, slug="lapsed", name_he="לא תקף")
+    restaurant = make_restaurant(session, city_he="ירושלים")
+    make_certificate(session, restaurant, live)
+    make_certificate(session, restaurant, lapsed, state=state)
+    session.commit()
+
+    entry = client.get("/v1/directory").json()["cities"][0]["restaurants"][0]
+
+    assert entry["certifier_names_he"] == ["פעיל"]
+    assert entry["certifier_slugs"] == ["live"]

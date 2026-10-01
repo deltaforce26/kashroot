@@ -173,8 +173,8 @@ describe("the landing page", () => {
               nameEn: null,
               addressHe: "רחוב 1",
               certifiers: [
-                { nameHe: "בד״ץ א", nameEn: null },
-                { nameHe: "בד״ץ ב", nameEn: null },
+                { slug: "a", nameHe: "בד״ץ א", nameEn: null },
+                { slug: "b", nameHe: "בד״ץ ב", nameEn: null },
               ],
             },
           ],
@@ -313,7 +313,8 @@ describe("the landing page", () => {
         { cityHe: "ירושלים", cityEn: "Yerushalayim", citySlug: "jerusalem", restaurantCount: 1, restaurants: [{ ...row, id: "r-1" }] },
         // No `city_en`, but a launch city: the table's fallback.
         { cityHe: "חיפה", cityEn: null, citySlug: "haifa", restaurantCount: 1, restaurants: [{ ...row, id: "r-2" }] },
-        // No `city_en` and not a launch city: as the records spell it.
+        // No `city_en` and not a launch city: as the records spell it — and no slug,
+        // so no city page to link to.
         { cityHe: "טבריה", cityEn: null, citySlug: null, restaurantCount: 1, restaurants: [{ ...row, id: "r-3" }] },
       ],
     });

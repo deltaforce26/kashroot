@@ -14,7 +14,8 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 import App from "../App";
-import { I18nProvider } from "../i18n/I18nProvider";
+import { isoDateFromToday } from "../api/mock/fixtures";
+import { formatDate, I18nProvider } from "../i18n/I18nProvider";
 import { STRINGS } from "../i18n/strings";
 import { ProfileProvider } from "../profile/ProfileProvider";
 import { PROFILE_SCHEMA_VERSION } from "../profile/storage";
@@ -86,7 +87,9 @@ describe("the public restaurant page", () => {
     expect(
       within(card).getByText(`${he.publicRestaurant.status}: ${he.publicRestaurant.states.active}`),
     ).toBeInTheDocument();
-    expect(within(card).getByText(he.restaurant.validUntil("30/09/26"))).toBeInTheDocument();
+    const validUntil = formatDate(isoDateFromToday(365));
+    expect(validUntil).not.toBeNull();
+    expect(within(card).getByText(he.restaurant.validUntil(validUntil ?? ""))).toBeInTheDocument();
     // The attributes the certificate lists, as listed — labelled, not evaluated.
     expect(within(card).getByText(new RegExp(he.attributes.chalav_yisrael))).toBeInTheDocument();
     expect(within(card).getByText(new RegExp(he.attributes.pas_yisrael))).toBeInTheDocument();
