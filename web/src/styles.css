@@ -864,6 +864,8 @@ a {
  * the map card keep their tints. Dark mode falls back to the shared dark tints.
  */
 .card--grid {
+  /* How far the photo runs on past its box, fading out over the tinted ground. */
+  --tile-photo-bleed: 28px;
   display: flex;
   flex-direction: column;
   padding: 0;
@@ -899,9 +901,10 @@ a {
    stretched `.card__link` (z 2) lies over both and the save button's `.card__above` (z 3)
    over that. */
 .tile__photo {
-  --tile-photo-bleed: 28px;
   position: relative;
-  height: 138px;
+  /* The photo's faded bleed runs into the body, so the box gives that much back:
+     photo plus fade still span the original 138px and the body keeps its size. */
+  height: calc(138px - var(--tile-photo-bleed));
   flex: none;
 }
 /* Transparent until loaded, so the tinted ground is what shows while it loads —
@@ -947,7 +950,8 @@ a {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 10px 12px 12px;
+  /* The 10px top padding sits below the photo's fade, as before the bleed. */
+  padding: calc(10px + var(--tile-photo-bleed)) 12px 12px;
   flex: 1;
   min-width: 0;
 }
