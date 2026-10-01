@@ -68,6 +68,22 @@
      because a mark that changes colour is a different mark. */
   --mark-from: #9ccb56;
   --mark-to: #2f7a4d;
+  /* The search bar (design_handoff_search_near_me). `--lime` is the logo's first stop and
+     `--neutral` the locating button's warm grey; the rest are the bar's own surfaces and
+     the near-me button's three states, each a background and the ink that sits on it. */
+  --lime: #9ccb56;
+  --neutral: #ece9e1;
+  --icon-grey: #8a8a8a;
+  --bar-glass: rgba(255, 255, 255, 0.6);
+  --bar-line: rgba(255, 255, 255, 0.75);
+  --near-idle-bg: linear-gradient(135deg, var(--lime), #2f7a4d);
+  --near-idle-ink: #fff;
+  --near-busy-bg: var(--neutral);
+  --near-busy-ink: #161616;
+  --near-spin-track: rgba(22, 22, 22, 0.2);
+  --near-spin-head: #2f7a4d;
+  --near-on-bg: #2f7a4d;
+  --near-on-ink: #fff;
   --amber: #96721c;
   --amber-soft: rgba(150, 114, 28, 0.12);
   /* Added by Track C: the design has no NO_MATCH visual. Same family, negative side. */
@@ -143,6 +159,18 @@
   --cta-ink: #161616;
   --green: #84d5a4;
   --green-soft: rgba(132, 213, 164, 0.16);
+  /* Dark counterparts for the search bar. White ink needs a darker ground than the light
+     theme's lime, so the idle gradient is pulled down to stay legible (>= 4:1 at its
+     lightest stop); locating is a dark neutral with the light ink; active keeps the
+     brand green, which already carries white at 5:1. */
+  --neutral: #2b2c25;
+  --bar-glass: rgba(255, 255, 255, 0.07);
+  --bar-line: rgba(255, 255, 255, 0.14);
+  --near-idle-bg: linear-gradient(135deg, #5c8f2e, #24603c);
+  --near-busy-bg: var(--neutral);
+  --near-busy-ink: #f2f1ea;
+  --near-spin-track: rgba(242, 241, 234, 0.25);
+  --near-spin-head: #84d5a4;
   --amber: #e6bd5e;
   --amber-soft: rgba(230, 189, 94, 0.16);
   --red: #f0a396;
@@ -542,6 +570,163 @@ a {
 
 .searchbar__input::placeholder {
   color: var(--sub);
+}
+
+/*
+ * The unified bar (components/SearchBar.tsx) on home, search and the map: the pill
+ * above, wrapped in the box that owns its dropdown.
+ *
+ * `.fbar` is `position: relative; z-index: 20` and follows the bar in the DOM, so the
+ * wrapper must out-stack it (30) or the menu would drop *under* the filter chips. It
+ * is also a stacking context of its own, which is what lets the transparent scrim sit
+ * at the bottom of it: the pill is lifted above the scrim so a tap in the field keeps
+ * its focus instead of being swallowed as "tap outside", and the menu, later in the
+ * DOM, paints over the scrim.
+ *
+ * The near-me button sits at the inline end, so in RTL it is on the left and the field
+ * starts at the right edge where Hebrew starts. It has three states (idle, locating,
+ * active) drawn from `data-state`, whose colours are tokens at the top of this file.
+ * Logical properties only. Below 340px the label is visually hidden (clipped, as in
+ * `.sr-only`, never `display: none`) and the icon alone is left, so the button keeps its
+ * accessible name from the label, which is merely not drawn.
+ */
+.searchbar__wrap {
+  position: relative;
+  z-index: 30;
+  flex: none;
+}
+
+.searchbar__wrap--band {
+  margin: 14px var(--gutter) 0;
+}
+
+.searchbar__wrap > .searchbar {
+  position: relative;
+  z-index: 1;
+}
+
+/*
+ * Scoped to `.searchbar__wrap > .searchbar`: the location sheet's address field shares
+ * `.searchbar` and ends in a bare icon button, which wants the padding and the glass it
+ * already has. Sizes are the handoff's, final: 52px tall, 16px on the icon side and 6px
+ * on the button's, so the 40px button sits 6px inside the pill's curve.
+ */
+.searchbar__wrap > .searchbar {
+  box-sizing: border-box;
+  height: 52px;
+  padding: 0;
+  padding-inline-start: 16px;
+  padding-inline-end: 6px;
+  gap: 10px;
+  background: var(--glass-solid);
+  border: 1px solid var(--bar-line);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.06);
+}
+
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .searchbar__wrap > .searchbar {
+    background: var(--bar-glass);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
+}
+
+.searchbar__wrap > .searchbar > .searchbar__icon {
+  color: var(--icon-grey);
+}
+
+.searchbar__wrap > .searchbar > .searchbar__input {
+  font: 400 14.5px Assistant, sans-serif;
+  color: var(--ink);
+}
+
+.searchbar__near {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  height: 40px;
+  padding: 0;
+  padding-inline-start: 12px;
+  padding-inline-end: 14px;
+  font: 700 13px Assistant, sans-serif;
+  white-space: nowrap;
+  border-radius: var(--radius-pill);
+  color: var(--near-idle-ink);
+  background: var(--near-idle-bg);
+}
+
+.searchbar__near[data-state="locating"] {
+  color: var(--near-busy-ink);
+  background: var(--near-busy-bg);
+}
+
+.searchbar__near[data-state="active"] {
+  color: var(--near-on-ink);
+  background: var(--near-on-bg);
+}
+
+/* The ring is drawn with borders, so it needs no asset and takes the theme's tokens. */
+.searchbar__spinner {
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid var(--near-spin-track);
+  border-top-color: var(--near-spin-head);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* A turning ring is the one thing here that moves; without it the label still says
+   "locating", so reduced motion loses nothing but the motion. */
+@media (prefers-reduced-motion: reduce) {
+  .searchbar__spinner {
+    animation: none;
+  }
+}
+
+/* Two classes, not one: `.fpop` is declared further down with the same specificity and
+   would win, leaving the menu inset by its filter-popover gutter and padding. */
+.searchbar__wrap .searchbar__menu {
+  inset-inline: 0;
+  top: calc(100% + 6px);
+  padding: 8px;
+  gap: 6px;
+}
+
+.searchbar__menu-title {
+  margin: 6px 10px 2px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--sub);
+}
+
+/* A sibling after the wrapper, so it needs its own place above the map (see `.map__search`). */
+.searchbar__hint {
+  position: relative;
+  z-index: 30;
+  margin: 6px var(--gutter) 0;
+}
+
+@media (max-width: 340px) {
+  .searchbar__near-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
 }
 
 /* ── Cards ─────────────────────────────────────────────────────────────── */
@@ -2596,10 +2781,13 @@ a {
  *
  * The gutter is the 20px `.fbar` and `.shell__scroll` use, and the 22px top is what the
  * map's old overlay row sat at — so the controls landed where the header used to.
+ *
+ * It is the class on the search bar's wrapper now, not on the pill: the wrapper is the
+ * positioned box that owns the dropdown, and 30 puts it over `.fbar` (20) and the map.
  */
 .map__search {
   position: relative;
-  z-index: 4;
+  z-index: 30;
   margin: 22px 20px 0;
 }
 

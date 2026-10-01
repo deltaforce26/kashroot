@@ -59,7 +59,7 @@ export interface FixtureRestaurant {
   city_he: string;
   /** Nullable as on `Restaurant.city_en`; every fixture happens to have one. */
   city_en: string | null;
-  /** `Restaurant.city_slug`, kept for parity with the wire model; never filtered on. */
+  /** `Restaurant.city_slug`, what a city-scoped search matches exactly, and what the directory reports per city. */
   city_slug: string;
   address_he: string;
   address_en: string;

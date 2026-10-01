@@ -46,7 +46,6 @@ const he = {
   home: {
     nearYou: "מחפשים ליד",
     changeLocation: "שינוי מיקום החיפוש",
-    searchPlaceholder: "חיפוש מקום, עיר או מסעדה…",
     openFilters: "סינון תוצאות",
     filtersActive: "סינון פעיל",
     resultsTitle: (n: number) => `${n} מסעדות נבדקו עבורך`,
@@ -79,7 +78,16 @@ const he = {
 
   search: {
     searchingNear: "מחפשים ליד",
-    placeholder: "חיפוש לפי שם או רחוב…",
+    placeholder: "חיפוש מקום, עיר או מסעדה…",
+    // With the device as the origin the field says what it is now searching around.
+    nearPlaceholder: (name: string) => `מסעדות ליד ${name}…`,
+    // The search bar's dropdown (components/SearchBar.tsx). Cities scope the whole
+    // search, places are points to measure from, and the first row searches by name.
+    cities: "ערים",
+    places: "כתובות ומקומות",
+    searchNames: (q: string) => `חיפוש מסעדות בשם "${q}"`,
+    cityCount: (n: number) => `${n} מקומות`,
+    suggestionsLabel: "הצעות חיפוש",
     resultCount: (n: number) => `${n} תוצאות`,
   },
 
@@ -356,11 +364,19 @@ const he = {
   origin: {
     fromDevice: "מהמיקום שלך",
     useMyLocation: "השתמשו במיקום שלי",
-    locating: "מאתרים…",
+    // The search bar's own button: short, because it shares a line with the field.
+    nearMe: "קרוב אליי",
+    nearMeRefused: "לא הצלחנו לקבל את המיקום שלך. אפשר להקליד עיר או כתובת.",
+    // The bar's button while the device is being asked, and — pressed again — the way out.
+    locating: "מאתר…",
+    // The bar's button once the device is the origin: the reach, and an X to drop it.
+    withinKm: (n: number) => `עד ${n} ק״מ`,
     // No pin and no device position: every place in the database, paginated. The
     // header names the scope; the second line explains it where there is room.
     everywhere: "כל הארץ",
     searchingEverywhere: "מציגים את כל המקומות במאגר",
+    // The header's small line when a whole city is the scope; the city is the place line.
+    searchingInCity: "מחפשים בעיר",
     privacy: "המיקום נשלח רק לשרת שלנו, לא נשמר במכשיר ולא משותף.",
     title: "מאיפה לחפש?",
     close: "סגירה",
@@ -584,7 +600,6 @@ const en: Strings = {
   home: {
     nearYou: "Searching near",
     changeLocation: "Change where we search from",
-    searchPlaceholder: "Search a place, city or restaurant…",
     openFilters: "Filter results",
     filtersActive: "Filters on",
     resultsTitle: (n: number) => `${n} restaurants checked for you`,
@@ -610,7 +625,13 @@ const en: Strings = {
 
   search: {
     searchingNear: "Searching near",
-    placeholder: "Search by name or street…",
+    placeholder: "Search a place, city or restaurant…",
+    nearPlaceholder: (name: string) => `Restaurants near ${name}…`,
+    cities: "Cities",
+    places: "Addresses and places",
+    searchNames: (q: string) => `Search restaurants named "${q}"`,
+    cityCount: (n: number) => `${n} places`,
+    suggestionsLabel: "Search suggestions",
     resultCount: (n: number) => `${n} results`,
   },
 
@@ -881,9 +902,13 @@ const en: Strings = {
   origin: {
     fromDevice: "from your location",
     useMyLocation: "Use my location",
+    nearMe: "Near me",
+    nearMeRefused: "We couldn't get your location. Type a city or an address instead.",
     locating: "Locating…",
+    withinKm: (n: number) => `Within ${n} km`,
     everywhere: "All of Israel",
     searchingEverywhere: "Showing every place in our records",
+    searchingInCity: "Searching in",
     privacy: "Your location goes only to our own server. It is never stored or shared.",
     title: "Where should we search from?",
     close: "Close",

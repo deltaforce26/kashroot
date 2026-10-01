@@ -5,7 +5,8 @@
  * same control. It offers the two origins a person names for themselves, in the order
  * they cost effort: the device position (one tap) and a typed address — and the way
  * out of both, "all of Israel", which drops the pin and shows every place we hold.
- * There is no city to pick: the app has no such concept.
+ * It does not offer cities: the search bar on home, search and the map does, in its
+ * dropdown, and the sheet stays the second path for the two origins that are a point.
  *
  * Every branch says something true. Address lookup needs the Google geocoder, so
  * without a browser key the field is not drawn at all rather than drawn dead — and

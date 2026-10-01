@@ -437,6 +437,9 @@ export function mockSearch(request: SearchRequest, now = new Date()): Promise<Se
 
   const items: SearchResultItemOut[] = [];
   for (const restaurant of RESTAURANTS) {
+    // A city scope is the whole city: an exact slug match and nothing else, as
+    // `build_search_statement` does. It carries no point, so no distance either.
+    if (request.city && restaurant.city_slug !== request.city) continue;
     const distanceKm = center ? haversineKm(center, restaurant) : null;
     if (distanceKm !== null && distanceKm > radiusKm) continue;
     if (query && !matchesQuery(restaurant, query)) continue;
@@ -733,26 +736,43 @@ function toDirectoryRow(restaurant: FixtureRestaurant): DirectoryRestaurantOut {
 }
 
 /**
+ * The most common non-null value, ties broken alphabetically, `null` when there is
+ * none. The one rule behind both of a directory city's per-group labels (English
+ * name and slug), so they cannot drift apart.
+ */
+function majority(values: ReadonlyArray<string | null>): string | null {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    if (value !== null) counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  for (const [candidate, count] of counts) {
+    const bestCount = best === null ? -1 : (counts.get(best) ?? 0);
+    if (count > bestCount || (count === bestCount && best !== null && candidate < best)) {
+      best = candidate;
+    }
+  }
+  return best;
+}
+
+/**
  * A city group's English label, as `_city_en_for_group` (app/api/public_seo.py)
  * picks it: the most common non-null `city_en` among the group's restaurants, ties
  * broken alphabetically, `null` when none has one. Grouping stays keyed by
  * `city_he`; this only names the group. Exported so the rule is tested directly.
  */
 export function directoryCityEn(group: ReadonlyArray<{ city_en: string | null }>): string | null {
-  const counts = new Map<string, number>();
-  for (const restaurant of group) {
-    if (restaurant.city_en !== null) {
-      counts.set(restaurant.city_en, (counts.get(restaurant.city_en) ?? 0) + 1);
-    }
-  }
-  let best: string | null = null;
-  for (const [cityEn, count] of counts) {
-    const bestCount = best === null ? -1 : (counts.get(best) ?? 0);
-    if (count > bestCount || (count === bestCount && best !== null && cityEn < best)) {
-      best = cityEn;
-    }
-  }
-  return best;
+  return majority(group.map((restaurant) => restaurant.city_en));
+}
+
+/**
+ * A city group's search slug: the same majority rule over `city_slug`. This is the
+ * value a search sends as `SearchRequest.city` to scope itself to the whole group.
+ */
+export function directoryCitySlug(
+  group: ReadonlyArray<{ city_slug: string | null }>,
+): string | null {
+  return majority(group.map((restaurant) => restaurant.city_slug));
 }
 
 /**
@@ -777,6 +797,7 @@ export function mockDirectory(): Promise<DirectoryOut> {
     .map(([city_he, group]) => ({
       city_he,
       city_en: directoryCityEn(group),
+      city_slug: directoryCitySlug(group),
       restaurant_count: group.length,
       restaurants: [...group]
         .sort((a, b) => byHebrewName(a.name_he, b.name_he))

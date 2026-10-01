@@ -116,11 +116,17 @@ export interface SearchFilters {
 /**
  * schemas_public.py :: SearchRequest. `center` is optional: without one the server
  * returns every row, ordered by verdict class then fit score, with `distance_km`
- * null. The client never scopes a search by city.
+ * null.
  */
 export interface SearchRequest {
   profile: ProfileRequest;
   center?: GeoPoint;
+  /**
+   * Exact `Restaurant.city_slug`: scope the search to the whole city — no radius,
+   * no distance, `distance_km` null on every row. The client never sends it together
+   * with `center`: a search is scoped by a point or by a city, not both.
+   */
+  city?: string;
   /**
    * Case-insensitive `ILIKE` substring over `name_he` / `name_en` / `address_he`.
    * Exact substring only — no fuzzy matching, no Hebrew normalization (niqqud,
@@ -391,6 +397,13 @@ export interface DirectoryCityOut {
    * display label only — grouping is keyed by `city_he`.
    */
   city_en: string | null;
+  /**
+   * The slug a search sends as `SearchRequest.city` to scope itself to this city: the
+   * most common non-null `Restaurant.city_slug` across its restaurants (ties
+   * alphabetical), or `null` when none has one — such a city cannot be searched by
+   * name and the client offers no scope for it.
+   */
+  city_slug: string | null;
   /** The full count for the city, however many rows `restaurants` samples. */
   restaurant_count: number;
   /** A sample of at most twelve, alphabetical by `name_he`. */

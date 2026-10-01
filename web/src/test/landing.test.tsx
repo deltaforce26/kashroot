@@ -164,6 +164,7 @@ describe("the landing page", () => {
         {
           cityHe: "ירושלים",
           cityEn: "Jerusalem",
+          citySlug: "jerusalem",
           restaurantCount: 1,
           restaurants: [
             {
@@ -306,11 +307,11 @@ describe("the landing page", () => {
       totalRestaurants: 3,
       cities: [
         // The records' own name wins over the table's spelling.
-        { cityHe: "ירושלים", cityEn: "Yerushalayim", restaurantCount: 1, restaurants: [{ ...row, id: "r-1" }] },
+        { cityHe: "ירושלים", cityEn: "Yerushalayim", citySlug: "jerusalem", restaurantCount: 1, restaurants: [{ ...row, id: "r-1" }] },
         // No `city_en`, but a launch city: the table's fallback.
-        { cityHe: "חיפה", cityEn: null, restaurantCount: 1, restaurants: [{ ...row, id: "r-2" }] },
+        { cityHe: "חיפה", cityEn: null, citySlug: "haifa", restaurantCount: 1, restaurants: [{ ...row, id: "r-2" }] },
         // No `city_en` and not a launch city: as the records spell it.
-        { cityHe: "טבריה", cityEn: null, restaurantCount: 1, restaurants: [{ ...row, id: "r-3" }] },
+        { cityHe: "טבריה", cityEn: null, citySlug: null, restaurantCount: 1, restaurants: [{ ...row, id: "r-3" }] },
       ],
     });
     renderApp("/");
