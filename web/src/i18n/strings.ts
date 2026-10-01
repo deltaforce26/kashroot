@@ -78,7 +78,9 @@ const he = {
 
   search: {
     searchingNear: "מחפשים ליד",
-    placeholder: "חיפוש מסעדה, רחוב או עיר…",
+    placeholder: "חיפוש מקום, עיר או מסעדה…",
+    // With the device as the origin the field says what it is now searching around.
+    nearPlaceholder: (name: string) => `מסעדות ליד ${name}…`,
     // The search bar's dropdown (components/SearchBar.tsx). Cities scope the whole
     // search, places are points to measure from, and the first row searches by name.
     cities: "ערים",
@@ -365,7 +367,10 @@ const he = {
     // The search bar's own button: short, because it shares a line with the field.
     nearMe: "קרוב אליי",
     nearMeRefused: "לא הצלחנו לקבל את המיקום שלך. אפשר להקליד עיר או כתובת.",
-    locating: "מאתרים…",
+    // The bar's button while the device is being asked, and — pressed again — the way out.
+    locating: "מאתר…",
+    // The bar's button once the device is the origin: the reach, and an X to drop it.
+    withinKm: (n: number) => `עד ${n} ק״מ`,
     // No pin and no device position: every place in the database, paginated. The
     // header names the scope; the second line explains it where there is room.
     everywhere: "כל הארץ",
@@ -620,7 +625,8 @@ const en: Strings = {
 
   search: {
     searchingNear: "Searching near",
-    placeholder: "Search a restaurant, street or city…",
+    placeholder: "Search a place, city or restaurant…",
+    nearPlaceholder: (name: string) => `Restaurants near ${name}…`,
     cities: "Cities",
     places: "Addresses and places",
     searchNames: (q: string) => `Search restaurants named "${q}"`,
@@ -899,6 +905,7 @@ const en: Strings = {
     nearMe: "Near me",
     nearMeRefused: "We couldn't get your location. Type a city or an address instead.",
     locating: "Locating…",
+    withinKm: (n: number) => `Within ${n} km`,
     everywhere: "All of Israel",
     searchingEverywhere: "Showing every place in our records",
     searchingInCity: "Searching in",

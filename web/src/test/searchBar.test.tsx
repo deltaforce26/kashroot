@@ -25,6 +25,7 @@ import { SavedProvider } from "../saved/SavedProvider";
 import { STRINGS } from "../i18n/strings";
 import { ThemeProvider } from "../theme/ThemeProvider";
 import { resetCityIndex } from "../location/useCityIndex";
+import { DEFAULT_FILTERS } from "../filters/model";
 import { clearOrigin, resetOriginState } from "../location/useOrigin";
 
 type Candidate = { label: string; point: { lat: number; lon: number } };
@@ -34,12 +35,20 @@ type Suggestions = Array<{ id: string; label: string; resolve: () => Promise<Can
 const suggestCalls: string[] = [];
 let suggestImpl: (query: string) => Promise<Suggestions> = async () => [];
 
+/** The device's area name; refuses by default, as with no key or a failed lookup. */
+const areaCalls: Array<{ lat: number; lon: number }> = [];
+let areaImpl: () => Promise<string | null> = () => Promise.reject(new Error("No maps key"));
+
 vi.mock("../map/useGoogleMaps", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../map/useGoogleMaps")>()),
   hasMapsKey: () => true,
   suggestAddresses: (query: string) => {
     suggestCalls.push(query);
     return suggestImpl(query);
+  },
+  reverseGeocodeArea: (point: { lat: number; lon: number }) => {
+    areaCalls.push(point);
+    return areaImpl();
   },
 }));
 
@@ -86,6 +95,11 @@ async function reachHome(user: User) {
 
 const field = () => screen.getByRole("searchbox", { name: he.search.placeholder });
 const nearMe = () => screen.getByRole("button", { name: he.origin.nearMe });
+const locatingButton = () => screen.getByRole("button", { name: he.origin.locating });
+const withinButton = () => screen.getByRole("button", { name: he.origin.withinKm(5) });
+const ORIGIN_KEY = "kashroot.origin.v1";
+/** The lucide `navigation` arrow, by its path: the idle button's icon. */
+const NAVIGATION_PATH = "M3 11l19-9-9 19-2-8-8-2z";
 const header = () => within(document.querySelector<HTMLElement>(".shell__header")!);
 const menu = () => screen.queryByLabelText(he.search.suggestionsLabel);
 
@@ -122,6 +136,8 @@ describe("search bar", () => {
   afterEach(() => {
     suggestCalls.length = 0;
     suggestImpl = async () => [];
+    areaCalls.length = 0;
+    areaImpl = () => Promise.reject(new Error("No maps key"));
     positionRequests = 0;
     answer = null;
     cleanup();
@@ -131,24 +147,139 @@ describe("search bar", () => {
     Reflect.deleteProperty(navigator, "geolocation");
   });
 
-  it("asks the device once on a tap, shows pending state, then pins it", async () => {
+  it("is idle at first: the near-me label and the navigation arrow, on the gradient pill", async () => {
+    seedEverywhere();
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    const button = nearMe();
+    expect(button).toHaveAttribute("data-state", "idle");
+    expect(button).toHaveAttribute("aria-pressed", "false");
+    expect(button.querySelector(`svg path[d="${NAVIGATION_PATH}"]`)).not.toBeNull();
+    expect(button.querySelector(".searchbar__spinner")).toBeNull();
+    expect(field()).toHaveAttribute("placeholder", he.search.placeholder);
+    // The divider the handoff does not have.
+    expect(document.querySelector(".searchbar__divider")).toBeNull();
+  });
+
+  it("asks the device once on a tap, shows the locating state, then goes active", async () => {
     seedEverywhere();
     stubGeolocation("hold");
     const user = userEvent.setup();
     await reachHome(user);
-    expect(nearMe()).toHaveAttribute("aria-pressed", "false");
 
     await user.click(nearMe());
-    const pending = screen.getByRole("button", { name: he.origin.locating });
-    expect(pending).toBeDisabled();
+    const pending = locatingButton();
+    // Enabled on purpose: pressing it again cancels.
+    expect(pending).toBeEnabled();
+    expect(pending).toHaveAttribute("data-state", "locating");
     expect(pending).toHaveAttribute("aria-busy", "true");
+    expect(pending.querySelector(".searchbar__spinner")).not.toBeNull();
+    expect(pending.querySelector("svg")).toBeNull();
     expect(positionRequests).toBe(1);
 
     answer!();
-    await waitFor(() => expect(nearMe()).toHaveAttribute("aria-pressed", "true"));
-    expect(nearMe()).toBeEnabled();
+    await waitFor(() => expect(withinButton()).toHaveAttribute("aria-pressed", "true"));
+    expect(withinButton()).toHaveAttribute("data-state", "active");
+    expect(withinButton()).toBeEnabled();
+    expect(withinButton()).toHaveAttribute("aria-busy", "false");
     expect(header().getByText(he.map.youAreHere)).toBeInTheDocument();
     expect(positionRequests).toBe(1);
+    // No key in the app and no area answer: the generic name stands in for the area.
+    expect(field()).toHaveAttribute("placeholder", he.search.nearPlaceholder(he.map.youAreHere));
+    // The accessible name of the field does not move with its placeholder.
+    expect(field()).toBeInTheDocument();
+  });
+
+  it("names the area in the placeholder once the reverse geocode answers, once per fix", async () => {
+    seedEverywhere();
+    stubGeolocation("grant");
+    areaImpl = async () => "פלורנטין";
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    await user.click(nearMe());
+    await waitFor(() =>
+      expect(field()).toHaveAttribute("placeholder", he.search.nearPlaceholder("פלורנטין")),
+    );
+    expect(he.search.nearPlaceholder("פלורנטין")).toBe("מסעדות ליד פלורנטין…");
+    // The fix goes to the one lookup and is asked about once, however often the bar renders.
+    await user.type(field(), "א");
+    expect(areaCalls).toEqual([{ lat: 31.78, lon: 35.21 }]);
+  });
+
+  it("falls back to the generic name when the area has none, and drops a stale answer", async () => {
+    seedEverywhere();
+    stubGeolocation("grant");
+    let name!: (value: string | null) => void;
+    areaImpl = () => new Promise<string | null>((resolve) => (name = resolve));
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    await user.click(nearMe());
+    await waitFor(() => expect(withinButton()).toBeInTheDocument());
+    // Dropped before Google answered: the late name must not reach the idle field.
+    await user.click(withinButton());
+    name("פלורנטין");
+    await waitFor(() => expect(nearMe()).toBeInTheDocument());
+    expect(field()).toHaveAttribute("placeholder", he.search.placeholder);
+  });
+
+  it("returns to idle on a tap while active: all of Israel, and the choice is stored", async () => {
+    seedEverywhere();
+    stubGeolocation("grant");
+    const user = userEvent.setup();
+    await reachHome(user);
+    await user.click(nearMe());
+    await waitFor(() => expect(withinButton()).toBeInTheDocument());
+    expect(header().getByText(he.map.youAreHere)).toBeInTheDocument();
+
+    await user.click(withinButton());
+
+    expect(nearMe()).toHaveAttribute("aria-pressed", "false");
+    expect(nearMe()).toHaveAttribute("data-state", "idle");
+    expect(field()).toHaveAttribute("placeholder", he.search.placeholder);
+    expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem(ORIGIN_KEY) ?? "null")).toEqual({ source: "none" });
+    // Leaving is not a refusal.
+    expect(screen.queryByText(he.origin.nearMeRefused)).toBeNull();
+  });
+
+  it("cancels on a tap while locating, without a hint, and ignores the late answer", async () => {
+    seedEverywhere();
+    stubGeolocation("hold");
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    await user.click(nearMe());
+    expect(locatingButton()).toBeInTheDocument();
+    await user.click(locatingButton());
+    expect(nearMe()).toHaveAttribute("data-state", "idle");
+    expect(screen.queryByText(he.origin.nearMeRefused)).toBeNull();
+
+    // The device answers after all: nobody is waiting for it.
+    answer!();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(nearMe()).toHaveAttribute("data-state", "idle");
+    expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
+    expect(field()).toHaveAttribute("placeholder", he.search.placeholder);
+    expect(screen.queryByText(he.origin.nearMeRefused)).toBeNull();
+    expect(JSON.parse(localStorage.getItem(ORIGIN_KEY) ?? "null")).toEqual({ source: "none" });
+  });
+
+  it("labels the active button with the filter bar's radius", async () => {
+    seedEverywhere();
+    localStorage.setItem(
+      "kashroot.filters.v2",
+      JSON.stringify({ ...DEFAULT_FILTERS, radiusKm: 2 }),
+    );
+    stubGeolocation("grant");
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    await user.click(nearMe());
+    expect(await screen.findByRole("button", { name: he.origin.withinKm(2) })).toBeInTheDocument();
+    expect(he.origin.withinKm(2)).toBe("עד 2 ק״מ");
   });
 
   it("says a refusal once, keeps searching all of Israel, and not for an earlier refusal", async () => {

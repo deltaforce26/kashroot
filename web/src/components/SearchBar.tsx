@@ -1,10 +1,21 @@
 /**
  * Search bar — the one field on home, search and the map, Google-Maps style.
  *
- * It is a glass pill with a field and, at the inline end behind a thin divider, a
- * "near me" button. That button is the quick path to the device position; the pin and
- * address in the header, and the sheet behind them, stay as the second path to the
- * same origin. Both go through `useOrigin`, so the bar adds no origin of its own.
+ * It is a glass pill with a field and, at the inline end, a "near me" button (the
+ * handoff in design_handoff_search_near_me; sizes and colours are in styles.css). That
+ * button is the quick path to the device position; the pin and address in the header,
+ * and the sheet behind them, stay as the second path to the same origin. Both go
+ * through `useOrigin`, so the bar adds no origin of its own.
+ *
+ * The button is a three-state toggle read straight off the origin hook. Idle (a gradient
+ * pill, "near me") asks the device. Locating (a spinner, "locating") stays pressable:
+ * a second tap calls the request off. Active (the device is the origin; "within N km",
+ * an X) is the way out: a tap drops the position and searches all of Israel. Both exits
+ * are `clearToEverywhere`, which also makes any answer still on its way irrelevant.
+ * While the device is the origin the field's placeholder names the area ("restaurants
+ * near Florentin"), looked up once per fix from Google and only when a browser key
+ * exists; until it answers, or with no key, it says "near your location" instead. The
+ * coordinates go to that one call and nowhere else.
  *
  * Typing never moves the origin. What is typed is a text query — on search and the
  * map it filters the list in place, on home it is handed to /search on submit — and
@@ -38,7 +49,10 @@
  * "Near me" says out loud only the one thing the user cannot see: a refusal. The hint
  * is shown only for a request made from this bar during this mount — a refusal recorded
  * on an earlier screen is not news here — and it goes when the device answers, the
- * button is pressed again or a city or place is picked. Refusing is a legitimate choice,
+ * button is pressed again or a city or place is picked. The handoff wants a toast for it,
+ * but the app has no toast component, so the existing hint line under the bar stays; it
+ * is raised only by a tap made from this bar, so a cancel (locating -> idle) never shows
+ * it. Refusing is a legitimate choice,
  * and what a failed request leaves behind depends on what was already in use (nothing,
  * an address, a city, an earlier fix), so the hint claims none of it: it says only that
  * the position did not come, and what to do instead. It never blocks.
@@ -46,11 +60,17 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { MAX_QUERY_LENGTH } from "../api/types";
+import { useFilters } from "../filters/useFilters";
 import { useI18n } from "../i18n/I18nProvider";
 import { matchCities, useCityIndex, type CityOption } from "../location/useCityIndex";
 import { useOrigin } from "../location/useOrigin";
-import { hasMapsKey, suggestAddresses, type AddressSuggestion } from "../map/useGoogleMaps";
-import { PinIcon, SearchIcon } from "./icons";
+import {
+  hasMapsKey,
+  reverseGeocodeArea,
+  suggestAddresses,
+  type AddressSuggestion,
+} from "../map/useGoogleMaps";
+import { CloseIcon, NavigationIcon, PinIcon, SearchIcon } from "./icons";
 
 /** Long enough that a word typed at speed is one request, short enough to feel live. */
 const SUGGEST_DEBOUNCE_MS = 250;
@@ -72,7 +92,16 @@ export interface SearchBarProps {
 
 export function SearchBar({ value, onChange, onSubmit, placeholder, className }: SearchBarProps) {
   const { t, lang } = useI18n();
-  const { source, state, requestDeviceLocation, setAddressOrigin, setCityOrigin } = useOrigin();
+  const {
+    origin,
+    source,
+    state,
+    requestDeviceLocation,
+    setAddressOrigin,
+    setCityOrigin,
+    clearToEverywhere,
+  } = useOrigin();
+  const { filters } = useFilters();
   const menuId = useId();
 
   const trimmed = value.trim();
@@ -154,6 +183,45 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
   }, [state, asks]);
 
   const locating = state === "requesting";
+  const active = !locating && source === "device";
+  const mode = locating ? "locating" : active ? "active" : "idle";
+
+  // The area the device is in, for the placeholder. `origin` is the very object the hook
+  // published for this fix, so the effect runs once per fix; a fix replaced (or dropped)
+  // before Google answers finds its flag cleared and says nothing. Any failure, and no
+  // key, leave the name null and the placeholder on its generic wording.
+  const [areaName, setAreaName] = useState<string | null>(null);
+  const deviceFix = source === "device" ? origin : null;
+  useEffect(() => {
+    setAreaName(null);
+    if (!deviceFix) return;
+    let current = true;
+    reverseGeocodeArea(deviceFix, lang).then(
+      (name) => {
+        if (current) setAreaName(name);
+      },
+      () => {},
+    );
+    return () => {
+      current = false;
+    };
+  }, [deviceFix, lang]);
+
+  const fieldPlaceholder = active ? t.search.nearPlaceholder(areaName ?? t.map.youAreHere) : placeholder;
+
+  function onNearMe() {
+    close();
+    setHint(false);
+    if (mode === "idle") {
+      askedRef.current = true;
+      setAsks((n) => n + 1);
+      requestDeviceLocation();
+      return;
+    }
+    // Locating or active: back to idle with no location filter. Not a refusal, so no hint.
+    askedRef.current = false;
+    clearToEverywhere();
+  }
 
   function pickCity(city: CityOption) {
     requestRef.current += 1;
@@ -196,7 +264,7 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
           }}
         >
           <span className="searchbar__icon" aria-hidden="true">
-            <SearchIcon size={17} />
+            <SearchIcon size={18} />
           </span>
           <input
             type="search"
@@ -204,31 +272,30 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
             autoComplete="off"
             maxLength={MAX_QUERY_LENGTH}
             value={value}
-            placeholder={placeholder}
+            placeholder={fieldPlaceholder}
             aria-label={placeholder}
             onChange={(event) => {
               setDismissed(false);
               onChange(event.target.value);
             }}
           />
-          <span className="searchbar__divider" aria-hidden="true" />
           <button
             type="button"
             className="searchbar__near"
-            aria-pressed={source === "device"}
+            data-state={mode}
+            aria-pressed={active}
             aria-busy={locating}
-            disabled={locating}
-            onClick={() => {
-              askedRef.current = true;
-              setHint(false);
-              setAsks((n) => n + 1);
-              close();
-              requestDeviceLocation();
-            }}
+            onClick={onNearMe}
           >
-            <PinIcon size={15} />
+            {mode === "idle" && <NavigationIcon size={16} strokeWidth={2.2} />}
+            {mode === "locating" && <span className="searchbar__spinner" aria-hidden="true" />}
+            {mode === "active" && <CloseIcon size={16} strokeWidth={2.2} />}
             <span className="searchbar__near-label">
-              {locating ? t.origin.locating : t.origin.nearMe}
+              {mode === "locating"
+                ? t.origin.locating
+                : mode === "active"
+                  ? t.origin.withinKm(filters.radiusKm)
+                  : t.origin.nearMe}
             </span>
           </button>
           {onSubmit && (

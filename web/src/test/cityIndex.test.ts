@@ -227,6 +227,83 @@ describe("a city as the search origin", () => {
     expect(result.current.city?.slug).toBe("haifa");
   });
 
+  /** A geolocation whose answers are held until the test releases them, in any order. */
+  function holdGeolocation() {
+    const pending: Array<{
+      ok: (position: GeolocationPosition) => void;
+      fail: (error: GeolocationPositionError) => void;
+    }> = [];
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: (
+          ok: (position: GeolocationPosition) => void,
+          fail: (error: GeolocationPositionError) => void,
+        ) => {
+          pending.push({ ok, fail });
+        },
+      },
+    });
+    const fix = (lat: number, lon: number) =>
+      ({ coords: { latitude: lat, longitude: lon } }) as GeolocationPosition;
+    return { pending, fix };
+  }
+
+  it("clears to everywhere: publishes no origin, idle, and stores the explicit choice", () => {
+    const { result } = renderHook(() => useOrigin());
+    act(() => result.current.setCityOrigin("jerusalem", "ירושלים"));
+    act(() => result.current.clearToEverywhere());
+
+    expect(result.current.source).toBe("none");
+    expect(result.current.city).toBeNull();
+    expect(result.current.origin).toBeNull();
+    expect(result.current.state).toBe("idle");
+    // Stored as a choice, not removed: a reload must not prompt the device again.
+    expect(localStorage.getItem(ORIGIN_KEY)).toBe('{"source":"none"}');
+  });
+
+  it("ignores a fix and a refusal that arrive after clearToEverywhere", () => {
+    const { result } = renderHook(() => useOrigin());
+    const { pending, fix } = holdGeolocation();
+
+    act(() => result.current.requestDeviceLocation());
+    expect(result.current.state).toBe("requesting");
+    act(() => result.current.clearToEverywhere());
+    expect(result.current.state).toBe("idle");
+
+    act(() => pending[0]!.ok(fix(32.08, 34.78)));
+    expect(result.current.source).toBe("none");
+    expect(result.current.origin).toBeNull();
+    expect(result.current.state).toBe("idle");
+    expect(localStorage.getItem(ORIGIN_KEY)).toBe('{"source":"none"}');
+
+    act(() => result.current.requestDeviceLocation());
+    act(() => result.current.clearToEverywhere());
+    act(() => pending[1]!.fail({ code: 1 } as GeolocationPositionError));
+    expect(result.current.state).toBe("idle");
+    expect(localStorage.getItem(ORIGIN_KEY)).toBe('{"source":"none"}');
+  });
+
+  it("ignores a device answer that arrives after a later pick, or after a newer request", () => {
+    const { result } = renderHook(() => useOrigin());
+    const { pending, fix } = holdGeolocation();
+
+    act(() => result.current.requestDeviceLocation());
+    act(() => result.current.setCityOrigin("haifa", "חיפה"));
+    act(() => pending[0]!.ok(fix(32.08, 34.78)));
+    expect(result.current.city?.slug).toBe("haifa");
+    expect(result.current.origin).toBeNull();
+    expect(localStorage.getItem(ORIGIN_KEY)).toMatch(/"city"/);
+
+    // Two requests: only the newer one is awaited, however the answers are ordered.
+    act(() => result.current.requestDeviceLocation());
+    act(() => result.current.requestDeviceLocation());
+    act(() => pending[2]!.ok(fix(31.78, 35.21)));
+    expect(result.current.origin).toEqual({ lat: 31.78, lon: 35.21 });
+    act(() => pending[1]!.ok(fix(32.08, 34.78)));
+    expect(result.current.origin).toEqual({ lat: 31.78, lon: 35.21 });
+  });
+
   /**
    * The reload path re-acquires a remembered device position in the background. It is
    * not the user's request, so a city picked while it is still in flight must stand:

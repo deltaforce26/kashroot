@@ -111,6 +111,16 @@ const CHANGED = "kashroot:origin-changed";
 let override: Override | null = null;
 let geoState: GeoState = "idle";
 
+/**
+ * Which device request is the current one. `getCurrentPosition` cannot be aborted, so a
+ * request the user has since cancelled (the near-me button pressed again while locating)
+ * or overtaken (a city or address picked, a newer request) still answers — and must find
+ * that it is no longer awaited. Every request takes the next number, and every choice
+ * that supersedes one bumps it; an answer whose number is not the current one is dropped,
+ * a fix and a refusal alike.
+ */
+let requestGen = 0;
+
 function publish(nextOverride: Override | null, nextState: GeoState): void {
   override = nextOverride;
   geoState = nextState;
@@ -172,6 +182,7 @@ function devicePoint(position: GeolocationPosition): Override {
  * control and the first load, so every path handles a refusal the same way.
  */
 function requestDevice(): void {
+  const gen = ++requestGen;
   if (typeof navigator === "undefined" || !navigator.geolocation) {
     publish(override, override ? geoState : "unavailable");
     return;
@@ -179,11 +190,13 @@ function requestDevice(): void {
   publish(override, "requesting");
   navigator.geolocation.getCurrentPosition(
     (position) => {
+      if (gen !== requestGen) return;
       // Only the choice is remembered, never the coordinates.
       persist({ source: "device" });
       publish(devicePoint(position), "granted");
     },
     () => {
+      if (gen !== requestGen) return;
       // Denied, dismissed, position unavailable, or timed out — one outcome, and
       // never a reason to discard an origin the user already has. Keeping the last
       // device fix is the difference between a retry that quietly does nothing and
@@ -213,35 +226,39 @@ function requestDevice(): void {
  * It is a background answer to a question the user did not ask this session, so it
  * must never overrule one they did. The origin in force is captured when it starts,
  * and every point after an `await` or inside a callback checks it is still the one:
- * if the user has picked a city or an address in the meantime, the late answer —
+ * if the user has picked a city or an address in the meantime (or pressed "near me" or
+ * cleared the scope, which bump the request generation), the late answer —
  * a fix, a refusal or a permission that is not granted — is dropped, neither
  * published nor allowed to wipe the choice from storage.
  */
 async function reacquireDevice(): Promise<void> {
   const started = override;
+  const gen = requestGen;
+  // Superseded by a pick, or by a request or a clear made since it began.
+  const superseded = () => override !== started || gen !== requestGen;
   if (typeof navigator === "undefined" || !navigator.geolocation || !navigator.permissions) {
     persist(null);
     return;
   }
   try {
     const status = await navigator.permissions.query({ name: "geolocation" });
-    if (override !== started) return;
+    if (superseded()) return;
     if (status.state !== "granted") {
       persist(null);
       return;
     }
   } catch {
-    if (override !== started) return;
+    if (superseded()) return;
     persist(null);
     return;
   }
   navigator.geolocation.getCurrentPosition(
     (position) => {
-      if (override !== started) return;
+      if (superseded()) return;
       publish(devicePoint(position), "granted");
     },
     () => {
-      if (override !== started) return;
+      if (superseded()) return;
       // Nobody asked for this, so nobody is told it failed: no "denied" note for a
       // request the user did not make. We just search everywhere.
       persist(null);
@@ -293,6 +310,7 @@ export function restoreOrigin(): void {
  * state that a real refresh would have thrown away. Not used by the app.
  */
 export function resetOriginState(): void {
+  requestGen += 1;
   override = null;
   geoState = "idle";
   restored = false;
@@ -300,6 +318,7 @@ export function resetOriginState(): void {
 
 /** Drop any pinned origin, in memory and in storage. Test seam and reset path. */
 export function clearOrigin(): void {
+  requestGen += 1;
   persist(null);
   publish(null, "idle");
 }
@@ -330,6 +349,13 @@ export function useOrigin(): {
   setAddressOrigin: (label: string, point: GeoPoint) => void;
   /** Scope the search to a whole city, by `Restaurant.city_slug`. Replaces any point. */
   setCityOrigin: (slug: string, label: string) => void;
+  /**
+   * Drop whatever is in force and search everywhere, and call off a device request still
+   * in flight. Stored as the explicit choice "all of Israel", so a reload honours it and
+   * does not ask the device again; clearing storage instead would make the next load a
+   * first visit.
+   */
+  clearToEverywhere: () => void;
 } {
   // Restored in the initialiser, not an effect: the first render must already be
   // measuring from the stored origin, or the list paints once unscoped and then
@@ -349,13 +375,21 @@ export function useOrigin(): {
   const requestDeviceLocation = useCallback(() => requestDevice(), []);
 
   const setAddressOrigin = useCallback((label: string, point: GeoPoint) => {
+    requestGen += 1;
     persist({ source: "address", label, lat: point.lat, lon: point.lon });
     publish({ source: "address", point, label }, "idle");
   }, []);
 
   const setCityOrigin = useCallback((slug: string, label: string) => {
+    requestGen += 1;
     persist({ source: "city", slug, label });
     publish({ source: "city", city: { slug, label } }, "idle");
+  }, []);
+
+  const clearToEverywhere = useCallback(() => {
+    requestGen += 1;
+    persist({ source: "none" });
+    publish(null, "idle");
   }, []);
 
   return {
@@ -368,5 +402,6 @@ export function useOrigin(): {
     requestDeviceLocation,
     setAddressOrigin,
     setCityOrigin,
+    clearToEverywhere,
   };
 }
