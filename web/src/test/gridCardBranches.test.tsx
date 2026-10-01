@@ -1,6 +1,6 @@
 /**
  * The browse grid tile (handoff 1c): branch disambiguation, the lazily fetched
- * Google photo with its credit, and the heart save toggle.
+ * Google photo with its credit, and the bookmark save toggle.
  *
  * Two branches of one chain must not read as a duplicate on the home grid.
  *
@@ -225,7 +225,7 @@ describe("RestaurantGridCard photo", () => {
   });
 });
 
-describe("RestaurantGridCard heart", () => {
+describe("RestaurantGridCard save button", () => {
   function renderRouted(node: ReactNode) {
     return render(
       <I18nProvider>
@@ -245,21 +245,21 @@ describe("RestaurantGridCard heart", () => {
     const item = view({});
     renderRouted(<RestaurantGridCard item={item} saved={false} onToggleSave={onToggleSave} />);
 
-    const heart = screen.getByRole("button", { name: he.restaurant.save });
+    const saveButton = screen.getByRole("button", { name: he.restaurant.save });
     // A real sibling of the stretched link, never a descendant of it.
-    expect(heart.closest("a")).toBeNull();
-    await user.click(heart);
+    expect(saveButton.closest("a")).toBeNull();
+    await user.click(saveButton);
     expect(onToggleSave).toHaveBeenCalledWith(item);
     expect(screen.queryByText("detail page")).toBeNull();
   });
 
-  it("reports the saved state through aria-pressed and a filled heart", () => {
+  it("reports the saved state through aria-pressed and a filled bookmark", () => {
     const { rerender } = renderRouted(
       <RestaurantGridCard item={view({})} saved={false} onToggleSave={noop} />,
     );
-    const heart = screen.getByRole("button", { name: he.restaurant.save });
-    expect(heart).toHaveAttribute("aria-pressed", "false");
-    expect(heart.querySelector("svg")?.getAttribute("fill")).toBe("none");
+    const saveButton = screen.getByRole("button", { name: he.restaurant.save });
+    expect(saveButton).toHaveAttribute("aria-pressed", "false");
+    expect(saveButton.querySelector("svg")?.getAttribute("fill")).toBe("none");
 
     rerender(
       <I18nProvider>

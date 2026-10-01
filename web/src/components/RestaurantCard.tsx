@@ -20,7 +20,7 @@ import { certifierLabel, type ResultView } from "../api/viewmodel";
 import { formatDate, formatDistance, pickName, useI18n } from "../i18n/I18nProvider";
 import { primaryReason, reasonText } from "../i18n/reasons";
 import { useTileRestaurantPlaces } from "../hooks/useApi";
-import { ArrowIcon, BookmarkIcon, HeartIcon } from "./icons";
+import { ArrowIcon, BookmarkIcon } from "./icons";
 import { FitScoreBar } from "./FitScoreBar";
 import { VerdictPill } from "./VerdictPill";
 
@@ -244,12 +244,12 @@ export function RestaurantGridCard({ item, saved, onToggleSave }: CardProps) {
           top-left corner, or the body's when there is no photo. */}
       <button
         type="button"
-        className="card__above tile__heart"
+        className="card__above tile__save"
         aria-label={saved ? t.restaurant.saved : t.restaurant.save}
         aria-pressed={saved}
         onClick={() => onToggleSave(item)}
       >
-        <HeartIcon size={15} filled={saved} />
+        <BookmarkIcon size={15} filled={saved} />
       </button>
     </article>
   );

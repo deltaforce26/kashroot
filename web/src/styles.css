@@ -679,7 +679,7 @@ a {
   background: var(--tile-neutral);
 }
 
-/* Pressed: the link was pressed, not the heart — pressing the save button must not
+/* Pressed: the link was pressed, not the save button — pressing the save button must not
    look like opening the restaurant. Engines without :has() just skip the effect. */
 .card--grid:has(> .card__link:active) {
   transform: scale(0.98);
@@ -691,7 +691,7 @@ a {
 }
 
 /* No z-index on the photo or the body: neither opens a stacking context, so the
-   stretched `.card__link` (z 2) lies over both and the heart's `.card__above` (z 3)
+   stretched `.card__link` (z 2) lies over both and the save button's `.card__above` (z 3)
    over that. */
 .tile__photo {
   position: relative;
@@ -737,7 +737,7 @@ a {
   flex: 1;
   min-width: 0;
 }
-/* No photo: the heart moves onto the body's top-left corner, so the body keeps
+/* No photo: the save button moves onto the body's top-left corner, so the body keeps
    its first lines clear of it (8 + 34 + a 4px breath). */
 .card--bare .tile__body {
   padding-left: 46px;
@@ -785,11 +785,12 @@ a {
 }
 
 /*
- * The save toggle, drawn as the handoff's glass heart. Physical top/left, as
+ * The save toggle: the handoff's glass circle around the app's bookmark (not the
+ * handoff's heart). Physical top/left, as
  * drawn: in RTL that is the tile's end edge, away from the name. 34px to the eye,
  * 44px to the finger — the ::before ring is part of the button's hit area.
  */
-.card--grid .tile__heart {
+.card--grid .tile__save {
   position: absolute;
   top: 8px;
   left: 8px;
@@ -806,13 +807,13 @@ a {
   color: #161616;
   cursor: pointer;
 }
-.card--grid .tile__heart::before {
+.card--grid .tile__save::before {
   content: "";
   position: absolute;
   inset: -6px;
   border-radius: 99px;
 }
-.card--grid .tile__heart:focus-visible {
+.card--grid .tile__save:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
