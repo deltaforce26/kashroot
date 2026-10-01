@@ -738,13 +738,6 @@ a {
   flex: 1;
   min-width: 0;
 }
-/* No photo: the save button moves onto the body's top-left corner, so the body keeps
-   its first lines clear of it (8 + 34 + a 4px breath). */
-.card--bare .tile__body {
-  padding-left: 46px;
-  min-height: 50px;
-}
-
 .tile__name {
   font: 700 15px Assistant, sans-serif;
   color: var(--ink);

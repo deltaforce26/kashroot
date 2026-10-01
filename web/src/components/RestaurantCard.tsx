@@ -180,12 +180,11 @@ function useNearViewport(ref: RefObject<Element>): boolean {
  * button: a card that is itself the target does not need an arrow repeating it.
  *
  * The photo is decoration, fetched lazily per tile once it nears the viewport
- * (`useTileRestaurantPlaces`). The photo area is not drawn until the Places answer
- * says a photo exists — a restaurant without one collapses to the body instead of
- * opening an empty box and then shutting it again. Once drawn, the tinted ground
- * shows through until the image arrives; an image that fails to load takes the
- * area away again. Google's terms require the photographer's credit on every
- * photo shown off a Google map, so the chip goes wherever the photo goes.
+ * (`useTileRestaurantPlaces`). The 138px photo area is always drawn, so every
+ * tile in the grid is the same height: the tinted ground fills it while the
+ * photo loads, and stays when there is no photo or the image fails. Google's
+ * terms require the photographer's credit on every
+ * photo shown off a Google map, so the credit goes wherever the photo goes.
  *
  * Nothing here touches the verdict. The pill renders whatever the API sent, before,
  * during and after the photo request, and a Places failure only ever means "no
@@ -212,22 +211,24 @@ export function RestaurantGridCard({ item, saved, onToggleSave }: CardProps) {
   return (
     <article
       ref={tileRef}
-      className={`card card--grid ${tintClass(item.dietType)}${showPhoto ? "" : " card--bare"}`}
+      className={`card card--grid ${tintClass(item.dietType)}`}
     >
       <Link to={`/r/${item.id}`} className="card__link" aria-label={name} />
-      {showPhoto && photo && (
-        <div className="tile__photo">
-          <img
-            className={`tile__img${photoState === "loaded" ? " tile__img--in" : ""}`}
-            src={atTileWidth(photo.url)}
-            alt=""
-            decoding="async"
-            onLoad={() => setPhotoState("loaded")}
-            onError={() => setPhotoState("failed")}
-          />
-          <span className="tile__credit">{credit ? `${credit} · Google` : "Google"}</span>
-        </div>
-      )}
+      <div className="tile__photo">
+        {showPhoto && photo && (
+          <>
+            <img
+              className={`tile__img${photoState === "loaded" ? " tile__img--in" : ""}`}
+              src={atTileWidth(photo.url)}
+              alt=""
+              decoding="async"
+              onLoad={() => setPhotoState("loaded")}
+              onError={() => setPhotoState("failed")}
+            />
+            <span className="tile__credit">{credit ? `${credit} · Google` : "Google"}</span>
+          </>
+        )}
+      </div>
       <div className="tile__body">
         <span className="card__title tile__name">{name}</span>
         <div className="card__meta on-tint tile__meta">{metaShort}</div>
@@ -240,8 +241,8 @@ export function RestaurantGridCard({ item, saved, onToggleSave }: CardProps) {
         </div>
       </div>
       {/* After the link in source order and raised with `.card__above`, so a tap
-          toggles the save and never follows the tile's link. Over the photo's
-          top-left corner, or the body's when there is no photo. */}
+          toggles the save and never follows the tile's link. Over the photo
+          area's top-left corner. */}
       <button
         type="button"
         className="card__above tile__save"
