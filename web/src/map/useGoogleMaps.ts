@@ -155,8 +155,9 @@ const AREA_COMPONENT_TYPES = ["neighborhood", "sublocality", "locality"] as cons
  * say anything out loud.
  *
  * This sends the point to Google's geocoder. It is the one place the device position
- * leaves the app other than to our own server, it happens once per fix and only for the
- * placeholder's sake, and the point is never persisted or logged here.
+ * leaves the app other than to our own server. It happens once per device fix (also for
+ * one silently restored on load; never again on a language toggle or on another screen)
+ * and only for the placeholder's sake, and the point is never persisted or logged here.
  */
 export async function reverseGeocodeArea(
   point: { lat: number; lon: number },

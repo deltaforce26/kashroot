@@ -13,8 +13,8 @@
  * an X) is the way out: a tap drops the position and searches all of Israel. Both exits
  * are `clearToEverywhere`, which also makes any answer still on its way irrelevant.
  * While the device is the origin the field's placeholder names the area ("restaurants
- * near Florentin"), looked up once per fix from Google and only when a browser key
- * exists; until it answers, or with no key, it says "near your location" instead. The
+ * near Florentin"), looked up from Google once per fix (a silent restore of a stored
+ * device origin is a fix too, and costs one lookup) and only when a browser key exists; until it answers, or with no key, it says "near your location" instead. The
  * coordinates go to that one call and nowhere else.
  *
  * Typing never moves the origin. What is typed is a text query — on search and the
@@ -59,7 +59,7 @@
  */
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { MAX_QUERY_LENGTH } from "../api/types";
+import { MAX_QUERY_LENGTH, type GeoPoint } from "../api/types";
 import { useFilters } from "../filters/useFilters";
 import { useI18n } from "../i18n/I18nProvider";
 import { matchCities, useCityIndex, type CityOption } from "../location/useCityIndex";
@@ -80,6 +80,23 @@ const SUGGEST_MIN_CHARS = 2;
 
 /** How many cities the dropdown offers; the directory's order (largest first) decides which. */
 const CITY_LIMIT = 5;
+
+/**
+ * One reverse geocode per device fix, however many bars, mounts or language toggles ask:
+ * keyed on the fix object the hook published, so a new fix is a new lookup and nothing
+ * else is. The language is the one the first asker had. A failure is cached as "no name"
+ * rather than retried, so the coordinates are never sent twice for the same fix.
+ */
+const areaLookups = new WeakMap<GeoPoint, Promise<string | null>>();
+
+function areaOf(fix: GeoPoint, language: "he" | "en"): Promise<string | null> {
+  let lookup = areaLookups.get(fix);
+  if (!lookup) {
+    lookup = reverseGeocodeArea(fix, language).catch(() => null);
+    areaLookups.set(fix, lookup);
+  }
+  return lookup;
+}
 
 export interface SearchBarProps {
   value: string;
@@ -187,26 +204,26 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
   const active = !locating && source === "device";
   const mode = locating ? "locating" : active ? "active" : "idle";
 
-  // The area the device is in, for the placeholder. `origin` is the very object the hook
-  // published for this fix, so the effect runs once per fix; a fix replaced (or dropped)
-  // before Google answers finds its flag cleared and says nothing. Any failure, and no
-  // key, leave the name null and the placeholder on its generic wording.
-  const [areaName, setAreaName] = useState<string | null>(null);
+  // The area the device is in, for the placeholder. Stored with the fix it answered for,
+  // and used only while that fix is still the device origin, so the first render after a
+  // new fix never shows the previous fix's name. The lookup itself is `areaOf`: one per
+  // fix. A fix replaced (or dropped) before Google answers finds its flag cleared and says
+  // nothing. Any failure, and no key, leave the name null and the placeholder generic.
+  const [area, setArea] = useState<{ fix: GeoPoint; name: string | null } | null>(null);
   const deviceFix = source === "device" ? origin : null;
+  const langRef = useRef(lang);
+  langRef.current = lang;
   useEffect(() => {
-    setAreaName(null);
     if (!deviceFix) return;
     let current = true;
-    reverseGeocodeArea(deviceFix, lang).then(
-      (name) => {
-        if (current) setAreaName(name);
-      },
-      () => {},
-    );
+    void areaOf(deviceFix, langRef.current).then((name) => {
+      if (current) setArea({ fix: deviceFix, name });
+    });
     return () => {
       current = false;
     };
-  }, [deviceFix, lang]);
+  }, [deviceFix]);
+  const areaName = area !== null && area.fix === deviceFix ? area.name : null;
 
   const fieldPlaceholder = active ? t.search.nearPlaceholder(areaName ?? t.map.youAreHere) : placeholder;
 
@@ -286,7 +303,6 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
             type="button"
             className="searchbar__near"
             data-state={mode}
-            aria-pressed={active}
             aria-busy={locating}
             onClick={onNearMe}
           >

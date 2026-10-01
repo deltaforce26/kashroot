@@ -586,8 +586,9 @@ a {
  * The near-me button sits at the inline end, so in RTL it is on the left and the field
  * starts at the right edge where Hebrew starts. It has three states (idle, locating,
  * active) drawn from `data-state`, whose colours are tokens at the top of this file.
- * Logical properties only. Below 340px the label goes and the icon alone is left; the
- * button keeps its accessible name from the label, which is merely not drawn.
+ * Logical properties only. Below 340px the label is visually hidden (clipped, as in
+ * `.sr-only`, never `display: none`) and the icon alone is left, so the button keeps its
+ * accessible name from the label, which is merely not drawn.
  */
 .searchbar__wrap {
   position: relative;
@@ -716,7 +717,15 @@ a {
 
 @media (max-width: 340px) {
   .searchbar__near-label {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
   }
 }
 

@@ -357,7 +357,8 @@ export function useOrigin(): {
   /**
    * Call off a device request still in flight and leave everything else as it was: the
    * origin in force and storage are untouched, and the state returns to what it was
-   * before the request (a refusal on record reads as idle — cancelling is not one). A
+   * before the request, except that "unavailable" (a refusal on record) reads as idle —
+   * cancelling is not one. "stale" is kept: the earlier fix is still the origin. A
    * no-op when nothing is being asked.
    */
   cancelRequest: () => void;

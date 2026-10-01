@@ -154,7 +154,7 @@ describe("search bar", () => {
 
     const button = nearMe();
     expect(button).toHaveAttribute("data-state", "idle");
-    expect(button).toHaveAttribute("aria-pressed", "false");
+    expect(button).not.toHaveAttribute("aria-pressed");
     expect(button.querySelector(`svg path[d="${NAVIGATION_PATH}"]`)).not.toBeNull();
     expect(button.querySelector(".searchbar__spinner")).toBeNull();
     expect(field()).toHaveAttribute("placeholder", he.search.placeholder);
@@ -179,7 +179,7 @@ describe("search bar", () => {
     expect(positionRequests).toBe(1);
 
     answer!();
-    await waitFor(() => expect(withinButton()).toHaveAttribute("aria-pressed", "true"));
+    await waitFor(() => expect(withinButton()).toBeInTheDocument());
     expect(withinButton()).toHaveAttribute("data-state", "active");
     expect(withinButton()).toBeEnabled();
     expect(withinButton()).toHaveAttribute("aria-busy", "false");
@@ -236,7 +236,6 @@ describe("search bar", () => {
 
     await user.click(withinButton());
 
-    expect(nearMe()).toHaveAttribute("aria-pressed", "false");
     expect(nearMe()).toHaveAttribute("data-state", "idle");
     expect(field()).toHaveAttribute("placeholder", he.search.placeholder);
     expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
