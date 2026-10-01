@@ -544,6 +544,96 @@ a {
   color: var(--sub);
 }
 
+/*
+ * The unified bar (components/SearchBar.tsx) on home, search and the map: the pill
+ * above, wrapped in the box that owns its dropdown.
+ *
+ * `.fbar` is `position: relative; z-index: 20` and follows the bar in the DOM, so the
+ * wrapper must out-stack it (30) or the menu would drop *under* the filter chips. It
+ * is also a stacking context of its own, which is what lets the transparent scrim sit
+ * at the bottom of it: the pill is lifted above the scrim so a tap in the field keeps
+ * its focus instead of being swallowed as "tap outside", and the menu, later in the
+ * DOM, paints over the scrim.
+ *
+ * The pin button sits at the inline end behind a hairline, so in RTL it is on the left
+ * and the field starts at the right edge where Hebrew starts. Logical properties only.
+ * Below 340px the label goes and the pin alone is left; the button keeps its accessible
+ * name from the label, which is merely not drawn.
+ */
+.searchbar__wrap {
+  position: relative;
+  z-index: 30;
+  flex: none;
+}
+
+.searchbar__wrap--band {
+  margin: 14px var(--gutter) 0;
+}
+
+.searchbar__wrap > .searchbar {
+  position: relative;
+  z-index: 1;
+}
+
+/* Scoped to the bar: the location sheet's address field shares `.searchbar` and ends
+   in a bare icon button, which wants the full padding. */
+.searchbar__wrap > .searchbar {
+  padding-inline-end: 8px;
+}
+
+.searchbar__divider {
+  width: 1px;
+  align-self: stretch;
+  margin-block: 2px;
+  background: var(--glass-line);
+  flex: none;
+}
+
+.searchbar__near {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  min-height: 32px;
+  padding: 0 8px;
+  font: 700 13px Assistant, sans-serif;
+  color: var(--green);
+  white-space: nowrap;
+  border-radius: var(--radius-pill);
+}
+
+.searchbar__near[aria-pressed="true"] {
+  background: var(--green-soft);
+}
+
+.searchbar__near:disabled {
+  opacity: 0.6;
+}
+
+.searchbar__menu {
+  inset-inline: 0;
+  top: calc(100% + 6px);
+  padding: 8px;
+  gap: 6px;
+}
+
+.searchbar__menu-title {
+  margin: 6px 10px 2px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--sub);
+}
+
+.searchbar__hint {
+  margin: 6px var(--gutter) 0;
+}
+
+@media (max-width: 340px) {
+  .searchbar__near-label {
+    display: none;
+  }
+}
+
 /* ── Cards ─────────────────────────────────────────────────────────────── */
 
 .card {
@@ -2596,10 +2686,13 @@ a {
  *
  * The gutter is the 20px `.fbar` and `.shell__scroll` use, and the 22px top is what the
  * map's old overlay row sat at — so the controls landed where the header used to.
+ *
+ * It is the class on the search bar's wrapper now, not on the pill: the wrapper is the
+ * positioned box that owns the dropdown, and 30 puts it over `.fbar` (20) and the map.
  */
 .map__search {
   position: relative;
-  z-index: 4;
+  z-index: 30;
   margin: 22px 20px 0;
 }
 

@@ -23,9 +23,10 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { MAX_QUERY_LENGTH, type SearchRequest } from "../api/types";
 import { hasVerifiedMatch } from "../api/viewmodel";
 import { FilterBar } from "../components/filters/FilterBar";
-import { PinIcon, SearchIcon } from "../components/icons";
+import { PinIcon } from "../components/icons";
 import { LocationSheet } from "../components/LocationSheet";
 import { RestaurantGridCard } from "../components/RestaurantCard";
+import { SearchBar } from "../components/SearchBar";
 import {
   EmptyQuery,
   EmptyResults,
@@ -126,20 +127,12 @@ export function Search() {
         </button>
       </header>
 
-      <label className="searchbar glass" style={{ margin: "14px var(--gutter) 0" }}>
-        <span className="searchbar__icon" aria-hidden="true">
-          <SearchIcon size={17} />
-        </span>
-        <input
-          type="search"
-          className="searchbar__input"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t.search.placeholder}
-          aria-label={t.search.placeholder}
-          maxLength={MAX_QUERY_LENGTH}
-        />
-      </label>
+      <SearchBar
+        value={query}
+        onChange={setQuery}
+        placeholder={t.search.placeholder}
+        className="searchbar__wrap--band"
+      />
 
       {/* A radius is only a question when there is a centre to measure it from. */}
       <FilterBar exclude={origin ? [] : WITHOUT_ORIGIN} />

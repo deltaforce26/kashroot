@@ -19,12 +19,13 @@
 
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MAX_QUERY_LENGTH, type SearchRequest } from "../api/types";
+import type { SearchRequest } from "../api/types";
 import { hasVerifiedMatch } from "../api/viewmodel";
 import { FilterBar } from "../components/filters/FilterBar";
-import { BellIcon, PinIcon, SearchIcon } from "../components/icons";
+import { BellIcon, PinIcon } from "../components/icons";
 import { LocationSheet } from "../components/LocationSheet";
 import { RestaurantGridCard } from "../components/RestaurantCard";
+import { SearchBar } from "../components/SearchBar";
 import {
   EmptyResults,
   ErrorState,
@@ -129,37 +130,16 @@ export function Home() {
       </header>
 
       {/* Home does not search by name itself — it answers "what is near me". The
-          field hands the query to /search, the screen that can filter by name, address
-          and diet type together. */}
-      <form
-        className="searchbar glass"
-        style={{ margin: "14px var(--gutter) 0" }}
-        role="search"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const trimmed = query.trim();
-          navigate(trimmed ? "/search?q=" + encodeURIComponent(trimmed) : "/search");
-        }}
-      >
-        <span className="searchbar__icon" aria-hidden="true">
-          <SearchIcon size={17} />
-        </span>
-        <input
-          type="search"
-          className="searchbar__input"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t.home.searchPlaceholder}
-          aria-label={t.home.searchPlaceholder}
-          maxLength={MAX_QUERY_LENGTH}
-        />
-        {/* The comp draws no submit control — you press Enter — but a form whose
-            only submit path is a keypress is unusable by anyone driving it another
-            way, so the button exists and is simply not drawn. */}
-        <button type="submit" className="sr-only">
-          {t.nav.search}
-        </button>
-      </form>
+          bar hands the query to /search, the screen that can filter by name, address
+          and diet type together. Picking a city or a place in its dropdown moves the
+          one shared origin instead, and home re-answers in place. */}
+      <SearchBar
+        value={query}
+        onChange={setQuery}
+        onSubmit={(q) => navigate(q ? "/search?q=" + encodeURIComponent(q) : "/search")}
+        placeholder={t.search.placeholder}
+        className="searchbar__wrap--band"
+      />
 
       {/*
         The page heading. The comp draws no headline — the search field takes that

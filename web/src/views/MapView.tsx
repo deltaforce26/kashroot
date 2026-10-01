@@ -41,6 +41,18 @@
  * camera then opens on `MAP_DEFAULT_VIEW` (Jerusalem), a starting viewport and nothing
  * more: it is never sent to the API and never used for a distance, and the pins are
  * not fitted to the whole country. The user pans to where they care about.
+ *
+ * A city is the one scope the camera does fit. Picking one in the search bar sends
+ * `city` and no centre, so there is no origin for the camera to follow and the viewport
+ * would stay wherever it was — over a city whose pins are somewhere else. So once the
+ * city's pins are plotted the map fits their bounds, once per city: later results for
+ * the same city (a filter, a query) are the user's own narrowing and never move the
+ * camera again, and choosing another city, or leaving the city scope and coming back,
+ * fits afresh. A single pin would fit to the maximum zoom, which is a rooftop rather
+ * than a view, so the fit is capped at the street-level zoom a pinned origin gets. The
+ * map asks for `page_size: 100`, so a city with more places than that is fitted to the
+ * first hundred it returned: the viewport can under-cover a large city, and the pins
+ * outside it are still one pan away.
  */
 
 import { LocateFixed } from "lucide-react";
@@ -50,8 +62,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { MAX_QUERY_LENGTH, type SearchRequest, type Verdict } from "../api/types";
 import { certifierLabel, type ResultView } from "../api/viewmodel";
 import { FilterBar } from "../components/filters/FilterBar";
-import { CloseIcon, PinIcon, SearchIcon } from "../components/icons";
+import { CloseIcon, PinIcon } from "../components/icons";
 import { tintClass } from "../components/RestaurantCard";
+import { SearchBar } from "../components/SearchBar";
 import { EmptyQuery, EmptyResults, ErrorState, NothingHere } from "../components/states";
 import { TabBar } from "../components/TabBar";
 import { VERDICT_GLYPH, verdictLabel } from "../components/VerdictPill";
@@ -105,6 +118,9 @@ export function nextOpenId(current: string | null, tapped: string): string | nul
 
 /** Close enough to read a street, which is what a pinned origin is worth looking at. */
 const ORIGIN_ZOOM = 14;
+
+/** Air between the outermost pins and the edge of the screen when a city is fitted. */
+const FIT_PADDING_PX = 48;
 
 /** A radius needs a centre; with nothing pinned the chip would measure from nowhere. */
 const WITHOUT_ORIGIN: readonly FilterId[] = ["radius"];
@@ -215,6 +231,9 @@ export function MapView() {
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<{ id: string; verdict: Verdict; pin: Pin }[]>([]);
   const meMarkerRef = useRef<Pin | null>(null);
+  // The city whose pins the camera was last fitted to, so a refilter of the same city
+  // leaves the viewport alone. Null whenever no city is the scope.
+  const fittedCityRef = useRef<string | null>(null);
   // Read by the marker-building effect, which must not rebuild every pin just because
   // the selection moved — the restyle effect below handles that.
   const openIdRef = useRef<string | null>(null);
@@ -407,6 +426,36 @@ export function MapView() {
     if (zoom !== null) map.setZoom(zoom);
   }, [origin, mapsStatus]);
 
+  // The camera fits a chosen city's pins, once per city. A city has no centre, so the
+  // effect above has nothing to follow and this is the only thing that brings the map
+  // to it. It waits for the pins (`plotted`), not just the scope: the bounds are theirs.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!city) {
+      fittedCityRef.current = null;
+      return;
+    }
+    if (mapsStatus !== "ready" || !libs || !map || plotted.length === 0) return;
+    if (fittedCityRef.current === city.slug) return;
+    fittedCityRef.current = city.slug;
+    // A literal, not a `LatLngBounds`: that class lives in Google's core library, which
+    // `MapsLibs` does not carry, and `fitBounds` takes the plain box just as well.
+    const lats = plotted.map((item) => item.geo!.lat);
+    const lngs = plotted.map((item) => item.geo!.lon);
+    map.fitBounds(
+      {
+        north: Math.max(...lats),
+        south: Math.min(...lats),
+        east: Math.max(...lngs),
+        west: Math.min(...lngs),
+      },
+      FIT_PADDING_PX,
+    );
+    // One pin fits to the deepest zoom the tiles allow; cap it at street level.
+    const zoom = map.getZoom();
+    if (zoom !== undefined && zoom > ORIGIN_ZOOM) map.setZoom(ORIGIN_ZOOM);
+  }, [city, plotted, libs, mapsStatus]);
+
   const mapUnavailable = mapsStatus === "absent" || mapsStatus === "error";
   const locating = originState === "requesting";
 
@@ -434,20 +483,12 @@ export function MapView() {
         They come first so tab order and the accessibility tree read controls-then-map;
         paint order is unaffected, an explicit positive z-index beating the map's `auto`.
       */}
-      <label className="searchbar glass map__search">
-        <span className="searchbar__icon" aria-hidden="true">
-          <SearchIcon size={17} />
-        </span>
-        <input
-          type="search"
-          className="searchbar__input"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t.search.placeholder}
-          aria-label={t.search.placeholder}
-          maxLength={MAX_QUERY_LENGTH}
-        />
-      </label>
+      <SearchBar
+        value={query}
+        onChange={setQuery}
+        placeholder={t.search.placeholder}
+        className="map__search"
+      />
 
       {/* The radius belongs in the sheet only while there is a centre to measure it
           from — the same rule home and search follow. */}
