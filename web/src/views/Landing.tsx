@@ -12,8 +12,9 @@
  *
  * What it never shows is a verdict, for the reason `RestaurantPublic` gives: a
  * verdict is (Certificate × Profile) and there is no profile here. The directory
- * the API hands it carries none either — names, addresses and certifier names, in
- * the API's order, which is alphabetical and not a ranking. The hero and its call to
+ * the API hands it carries none either — names, addresses and certifier names.
+ * Cities are listed alphabetically by the name the reader sees, each city's rows in
+ * the API's alphabetical order: never a ranking. The hero and its call to
  * action do not depend on that request: a landing whose list failed to load still
  * says what the app is and still leads into onboarding.
  *
@@ -90,14 +91,20 @@ function RestaurantRow({ restaurant }: { restaurant: DirectoryRestaurantView }) 
   );
 }
 
+/**
+ * A city's heading in the reader's language. The records spell cities in Hebrew, and
+ * in Hebrew that is the heading. In English: the records' own `city_en` when they
+ * have one, else the string table's fallback for a launch city, else the city as the
+ * records spell it.
+ */
+function cityName(city: DirectoryCityView, lang: "he" | "en", fallbacks: Record<string, string>): string {
+  return lang === "he" ? city.cityHe : (city.cityEn ?? fallbacks[city.cityHe] ?? city.cityHe);
+}
+
 function CityPanel({ city }: { city: DirectoryCityView }) {
   const { t, lang } = useI18n();
   const headingId = useId();
-  // The records spell cities in Hebrew, and in Hebrew that is the heading. In
-  // English: the records' own `city_en` when they have one, else the string table's
-  // fallback for a launch city, else the city as the records spell it.
-  const name =
-    lang === "he" ? city.cityHe : (city.cityEn ?? t.landing.cityNames[city.cityHe] ?? city.cityHe);
+  const name = cityName(city, lang, t.landing.cityNames);
 
   return (
     <section className="panel glass" aria-labelledby={headingId}>
@@ -165,9 +172,15 @@ export function Landing() {
             </>
           ) : (
             <>
-              {data.cities.map((city) => (
-                <CityPanel key={city.cityHe} city={city} />
-              ))}
+              {/* Alphabetical by the heading the reader sees, so the order follows the
+                  language toggle. The API's largest-first order stays for the search bar. */}
+              {[...data.cities]
+                .sort((a, b) =>
+                  cityName(a, lang, t.landing.cityNames).localeCompare(cityName(b, lang, t.landing.cityNames), lang),
+                )
+                .map((city) => (
+                  <CityPanel key={city.cityHe} city={city} />
+                ))}
               {/* A city's count is what we hold, not what the city has. Said here as
                   it is said under Home's list, so a number never reads as coverage. */}
               <p className="hint" style={{ margin: 0 }}>

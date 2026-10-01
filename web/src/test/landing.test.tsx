@@ -109,7 +109,7 @@ describe("the landing page", () => {
     expect(screen.getByText(he.landing.footer)).toBeInTheDocument();
   });
 
-  it("lists every city with its count, in the API's order", async () => {
+  it("lists every city with its count, alphabetically by name", async () => {
     renderApp("/");
 
     expect(await screen.findByRole("heading", { name: "ירושלים" })).toBeInTheDocument();
@@ -119,9 +119,9 @@ describe("the landing page", () => {
     expect(screen.getByRole("heading", { name: "טבריה" })).toBeInTheDocument();
     expect(screen.getByText(he.landing.restaurantCount(1))).toBeInTheDocument();
 
-    // Largest city first, as the API orders them — and nothing here reorders.
+    // Alphabetical, not the API's largest-first order: a city's size is not a ranking.
     const cities = screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
-    expect(cities).toEqual(["ירושלים", "בני ברק", "טבריה"]);
+    expect(cities).toEqual(["בני ברק", "טבריה", "ירושלים"]);
   });
 
   it("links every restaurant with a real anchor to its page: name, address, certifiers", async () => {
@@ -286,6 +286,9 @@ describe("the landing page", () => {
     expect(en.landing.cityNames["טבריה"]).toBeUndefined();
     expect(screen.getByRole("heading", { name: "Tiberias" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "טבריה" })).toBeNull();
+    // The order follows the language: alphabetical by the English names now.
+    const cities = screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
+    expect(cities).toEqual(["Bnei Brak", "Jerusalem", "Tiberias"]);
     expect(screen.getByRole("link", { name: en.landing.cta })).toHaveAttribute(
       "href",
       "/onboarding/preset",
