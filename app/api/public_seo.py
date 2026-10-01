@@ -21,6 +21,8 @@ adds on top.
 from __future__ import annotations
 
 import uuid
+from collections import Counter
+from collections.abc import Iterable
 from xml.sax.saxutils import escape
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -305,6 +307,24 @@ def _directory_restaurant_out(restaurant: Restaurant) -> DirectoryRestaurantOut:
     )
 
 
+def _majority_value(values: Iterable[str | None]) -> str | None:
+    """The most common non-null value in ``values``, ties broken alphabetically.
+
+    Parameters:
+        values (Iterable[str | None]): the candidate values; ``None`` entries are
+            ignored.
+
+    Return:
+        str | None: the majority value, or ``None`` if there is no non-null value.
+    """
+    counts = Counter(value for value in values if value is not None)
+
+    if not counts:
+        return None
+
+    return max(sorted(counts), key=lambda value: counts[value])
+
+
 def _city_en_for_group(city_restaurants: list[Restaurant]) -> str | None:
     """The English display label for one ``city_he`` group: the most common non-null
     ``Restaurant.city_en`` among its restaurants, ties broken alphabetically. Grouping
@@ -317,15 +337,23 @@ def _city_en_for_group(city_restaurants: list[Restaurant]) -> str | None:
     Return:
         str | None: the majority ``city_en``, or ``None`` if none of them has one.
     """
-    counts: dict[str, int] = {}
-    for restaurant in city_restaurants:
-        if restaurant.city_en is not None:
-            counts[restaurant.city_en] = counts.get(restaurant.city_en, 0) + 1
+    return _majority_value(restaurant.city_en for restaurant in city_restaurants)
 
-    if not counts:
-        return None
 
-    return max(sorted(counts), key=lambda city_en: counts[city_en])
+def _city_slug_for_group(city_restaurants: list[Restaurant]) -> str | None:
+    """The search-scoping slug for one ``city_he`` group: the most common non-null
+    ``Restaurant.city_slug`` among its restaurants, ties broken alphabetically. The web
+    app sends it back as ``SearchRequest.city``. Grouping itself stays keyed by
+    ``city_he`` only — this only picks the slug exposed for it.
+
+    Parameters:
+        city_restaurants (list[Restaurant]): every restaurant already grouped under
+            one ``city_he`` value.
+
+    Return:
+        str | None: the majority ``city_slug``, or ``None`` if none of them has one.
+    """
+    return _majority_value(restaurant.city_slug for restaurant in city_restaurants)
 
 
 @router.get("/directory", response_model=DirectoryResponse)
@@ -386,6 +414,7 @@ def get_directory(response: Response, session: Session = Depends(get_session)) -
             DirectoryCityOut(
                 city_he=city_he,
                 city_en=_city_en_for_group(city_restaurants),
+                city_slug=_city_slug_for_group(city_restaurants),
                 restaurant_count=len(city_restaurants),
                 restaurants=[
                     _directory_restaurant_out(restaurant)

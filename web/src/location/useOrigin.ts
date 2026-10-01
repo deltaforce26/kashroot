@@ -1,14 +1,18 @@
 /**
- * Where a search is measured from — or the fact that it is not.
+ * Where a search is scoped to — or the fact that it is not.
  *
- * The app has no notion of a "current city" and no default centre. A search comes
- * from exactly one of three places: the device's real position, an address the user
- * typed, or nowhere at all — in which case the API is asked for every place in the
- * database, paginated, and the header says so ("כל הארץ"). Whichever point is in use
- * is sent to the API as `center`, so distance and the Layer 2 fit score are computed
- * server-side from one source — the client never calculates a distance, which is what
- * keeps list, map and detail agreeing. With no point, no `center` goes out and the
- * server returns `distance_km: null`.
+ * The app has no notion of a default "current city" and no default centre. A search
+ * comes from exactly one of four places: the device's real position, an address the
+ * user typed, a city the user picked by name, or nowhere at all — in which case the
+ * API is asked for every place in the database, paginated, and the header says so
+ * ("כל הארץ"). Whichever point is in use (device or address) is sent to the API as
+ * `center`, so distance and the Layer 2 fit score are computed server-side from one
+ * source — the client never calculates a distance, which is what keeps list, map and
+ * detail agreeing. A city is different in kind: it is a scope, not a place to measure
+ * from. It is sent as `city` (the whole city, no radius), it is never turned into a
+ * centre, and it never yields a distance — so with a city, like with nothing, the
+ * server returns `distance_km: null`. The header shows the city's name. A point and a
+ * city are mutually exclusive (see `searchScope.ts`): choosing one replaces the other.
  *
  * "Everywhere" is the last resort, not the opening position. A first load with no
  * stored origin asks the device straight away — a permission prompt is acceptable
@@ -38,6 +42,8 @@
  * - An address is stored whole (label and point). The user typed it, it is already
  *   on screen in the header, and it is not where they are — it is where they asked
  *   to search from.
+ * - A city is stored whole too (slug and label), for the same reason: the user picked
+ *   it by name, it is on screen in the header, and it carries no coordinates at all.
  * - The device position is *never* written to storage. Only the fact that the device
  *   was the chosen origin is, and on load it is re-acquired **only** if the browser
  *   already reports the geolocation permission as granted. No stored coordinates and
@@ -55,7 +61,16 @@
 import { useCallback, useEffect, useState } from "react";
 import type { GeoPoint } from "../api/types";
 
-export type OriginSource = "device" | "address" | "none";
+export type OriginSource = "device" | "address" | "city" | "none";
+
+/**
+ * A city chosen by name. `slug` is what the API filters on (`Restaurant.city_slug`);
+ * `label` is what the header prints, in the language the user picked it in.
+ */
+export interface CityScope {
+  slug: string;
+  label: string;
+}
 
 /**
  * How the last device request ended.
@@ -68,12 +83,15 @@ export type GeoState = "idle" | "requesting" | "granted" | "stale" | "unavailabl
 
 const TIMEOUT_MS = 8000;
 
-interface Override {
-  source: "device" | "address";
-  point: GeoPoint;
-  /** What to call it in the header. Empty for the device, which names itself. */
-  label: string;
-}
+/**
+ * What is in force. A city has no point on purpose — it is a scope, never a centre —
+ * and its `CityScope` object is kept as published, so a consumer that keys an effect
+ * on it sees one stable reference until the user picks again.
+ */
+type Override =
+  | { source: "device"; point: GeoPoint; /** The device names itself. */ label: "" }
+  | { source: "address"; point: GeoPoint; /** What to call it in the header. */ label: string }
+  | { source: "city"; city: CityScope };
 
 /**
  * What gets written to storage. The device variant carries no point on purpose —
@@ -82,7 +100,8 @@ interface Override {
 type StoredOrigin =
   | { source: "device" }
   | { source: "none" }
-  | { source: "address"; label: string; lat: number; lon: number };
+  | { source: "address"; label: string; lat: number; lon: number }
+  | { source: "city"; slug: string; label: string };
 
 const KEY = "kashroot.origin.v1";
 
@@ -126,6 +145,12 @@ function readStored(): StoredOrigin | null {
   const record = parsed as Record<string, unknown>;
   if (record["source"] === "device") return { source: "device" };
   if (record["source"] === "none") return { source: "none" };
+  if (record["source"] === "city") {
+    const { slug, label } = record;
+    if (typeof slug !== "string" || slug.length === 0) return null;
+    if (typeof label !== "string" || label.length === 0) return null;
+    return { source: "city", slug, label };
+  }
   if (record["source"] !== "address") return null;
   const { label, lat, lon } = record;
   if (typeof label !== "string" || label.length === 0) return null;
@@ -162,8 +187,8 @@ function requestDevice(): void {
       // Denied, dismissed, position unavailable, or timed out — one outcome, and
       // never a reason to discard an origin the user already has. Keeping the last
       // device fix is the difference between a retry that quietly does nothing and
-      // a retry that throws the map somewhere else; keeping a pinned address is the
-      // same courtesy for someone who only tried the shortcut.
+      // a retry that throws the map somewhere else; keeping a pinned address or a
+      // chosen city is the same courtesy for someone who only tried the shortcut.
       //
       // Storage is left alone with it, so the kept origin also survives a reload.
       if (override) {
@@ -230,6 +255,13 @@ export function restoreOrigin(): void {
     return;
   }
   if (stored.source === "none") return;
+  if (stored.source === "city") {
+    publish(
+      { source: "city", city: { slug: stored.slug, label: stored.label } },
+      "idle",
+    );
+    return;
+  }
   if (stored.source === "address") {
     publish(
       { source: "address", point: { lat: stored.lat, lon: stored.lon }, label: stored.label },
@@ -259,11 +291,19 @@ export function clearOrigin(): void {
 }
 
 export function useOrigin(): {
-  /** The point searches are measured from, or null to search everywhere. */
+  /**
+   * The point searches are measured from (device or address), or null — for a city
+   * and for "everywhere" alike, neither of which has a point.
+   */
   origin: GeoPoint | null;
   source: OriginSource;
   /** The typed address, when that is what we are measuring from; otherwise null. */
   addressLabel: string | null;
+  /**
+   * The city the search is scoped to, or null. The very object that was published, so
+   * it is reference-stable until the next choice and safe to key an effect on.
+   */
+  city: CityScope | null;
   state: GeoState;
   /**
    * True while the device is being asked and nothing else is pinned: the answer is
@@ -274,7 +314,8 @@ export function useOrigin(): {
   requestDeviceLocation: () => void;
   /** Measure from a point the user chose by name. */
   setAddressOrigin: (label: string, point: GeoPoint) => void;
-  /** Drop the pin and show every place in the database. Remembered across reloads. */
+  /** Scope the search to a whole city, by `Restaurant.city_slug`. Replaces any point. */
+  setCityOrigin: (slug: string, label: string) => void;
 } {
   // Restored in the initialiser, not an effect: the first render must already be
   // measuring from the stored origin, or the list paints once unscoped and then
@@ -298,13 +339,20 @@ export function useOrigin(): {
     publish({ source: "address", point, label }, "idle");
   }, []);
 
+  const setCityOrigin = useCallback((slug: string, label: string) => {
+    persist({ source: "city", slug, label });
+    publish({ source: "city", city: { slug, label } }, "idle");
+  }, []);
+
   return {
-    origin: override?.point ?? null,
+    origin: override && override.source !== "city" ? override.point : null,
     source: override?.source ?? "none",
     addressLabel: override?.source === "address" ? override.label : null,
+    city: override?.source === "city" ? override.city : null,
     state: geoState,
     resolving: override === null && geoState === "requesting",
     requestDeviceLocation,
     setAddressOrigin,
+    setCityOrigin,
   };
 }

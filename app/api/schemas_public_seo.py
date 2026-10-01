@@ -109,6 +109,11 @@ class DirectoryCityOut(BaseModel):
     #: ``None`` when none of them has one. Grouping itself stays keyed by ``city_he``
     #: only; this is a display label, never a second grouping key.
     city_en: str | None
+    #: The ``Restaurant.city_slug`` the web app sends back as ``SearchRequest.city``
+    #: to scope a search to this city — the most common non-null slug among the
+    #: group's restaurants (ties broken alphabetically), or ``None`` when none of them
+    #: has one. Grouping itself stays keyed by ``city_he`` only.
+    city_slug: str | None
     #: The full count of public restaurants in this city — independent of how many
     #: of them ``restaurants`` samples.
     restaurant_count: int

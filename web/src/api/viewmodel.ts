@@ -225,6 +225,8 @@ export interface DirectoryCityView {
   cityHe: string;
   /** The records' own English name for the city, when they have one. */
   cityEn: string | null;
+  /** What a search sends to scope itself to this city; null when it has no slug. */
+  citySlug: string | null;
   restaurantCount: number;
   restaurants: DirectoryRestaurantView[];
 }
@@ -253,6 +255,7 @@ function toDirectoryCityView(city: DirectoryCityOut): DirectoryCityView {
   return {
     cityHe: city.city_he,
     cityEn: city.city_en,
+    citySlug: city.city_slug,
     restaurantCount: city.restaurant_count,
     restaurants: city.restaurants.map(toDirectoryRestaurantView),
   };
