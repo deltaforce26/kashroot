@@ -227,6 +227,78 @@ describe("a city as the search origin", () => {
     expect(result.current.city?.slug).toBe("haifa");
   });
 
+  /**
+   * The reload path re-acquires a remembered device position in the background. It is
+   * not the user's request, so a city picked while it is still in flight must stand:
+   * not replaced by a late fix, and not erased from storage by a late refusal. The
+   * pick can land at either of its two waits — the permission query, or the position.
+   */
+  it.each([
+    ["the permission query", "grant"],
+    ["the position", "grant"],
+    ["the position", "refuse"],
+  ] as const)(
+    "is not overruled by a background device re-acquire that comes back late (during %s, %s)",
+    async (during, outcome) => {
+      localStorage.setItem(ORIGIN_KEY, JSON.stringify({ source: "device" }));
+      let allow!: () => void;
+      const permission = new Promise<PermissionStatus>((resolve) => {
+        allow = () => resolve({ state: "granted" } as PermissionStatus);
+      });
+      let ok: ((position: GeolocationPosition) => void) | null = null;
+      let fail: ((error: GeolocationPositionError) => void) | null = null;
+      Object.defineProperty(navigator, "permissions", {
+        configurable: true,
+        value: { query: () => permission },
+      });
+      Object.defineProperty(navigator, "geolocation", {
+        configurable: true,
+        value: {
+          getCurrentPosition: (
+            onOk: (position: GeolocationPosition) => void,
+            onFail: (error: GeolocationPositionError) => void,
+          ) => {
+            ok = onOk;
+            fail = onFail;
+          },
+        },
+      });
+      try {
+        const { result } = renderHook(() => useOrigin());
+        const pickCity = () => act(() => result.current.setCityOrigin("haifa", "חיפה"));
+        if (during === "the permission query") pickCity();
+        await act(async () => {
+          allow();
+          await permission;
+        });
+        if (during === "the position") {
+          expect(ok).not.toBeNull();
+          pickCity();
+          act(() => {
+            if (outcome === "grant") {
+              ok!({ coords: { latitude: 32.08, longitude: 34.78 } } as GeolocationPosition);
+            } else {
+              fail!({ code: 1 } as GeolocationPositionError);
+            }
+          });
+        } else {
+          // The answer was dropped before the device was ever asked.
+          expect(ok).toBeNull();
+        }
+
+        expect(result.current.source).toBe("city");
+        expect(result.current.city?.slug).toBe("haifa");
+        expect(result.current.origin).toBeNull();
+        expect(JSON.parse(localStorage.getItem(ORIGIN_KEY) ?? "null")).toMatchObject({
+          source: "city",
+          slug: "haifa",
+        });
+      } finally {
+        Reflect.deleteProperty(navigator, "permissions");
+      }
+    },
+  );
+
   it("discards a half-written city blob and falls back to asking the device", () => {
     for (const blob of [
       { source: "city", slug: "", label: "ירושלים" },

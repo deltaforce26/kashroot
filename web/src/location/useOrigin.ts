@@ -209,25 +209,39 @@ function requestDevice(): void {
  * raising a prompt. Anything other than an outright "granted" — prompt, denied, no
  * Permissions API, no geolocation — drops the marker and leaves us searching
  * everywhere.
+ *
+ * It is a background answer to a question the user did not ask this session, so it
+ * must never overrule one they did. The origin in force is captured when it starts,
+ * and every point after an `await` or inside a callback checks it is still the one:
+ * if the user has picked a city or an address in the meantime, the late answer —
+ * a fix, a refusal or a permission that is not granted — is dropped, neither
+ * published nor allowed to wipe the choice from storage.
  */
 async function reacquireDevice(): Promise<void> {
+  const started = override;
   if (typeof navigator === "undefined" || !navigator.geolocation || !navigator.permissions) {
     persist(null);
     return;
   }
   try {
     const status = await navigator.permissions.query({ name: "geolocation" });
+    if (override !== started) return;
     if (status.state !== "granted") {
       persist(null);
       return;
     }
   } catch {
+    if (override !== started) return;
     persist(null);
     return;
   }
   navigator.geolocation.getCurrentPosition(
-    (position) => publish(devicePoint(position), "granted"),
+    (position) => {
+      if (override !== started) return;
+      publish(devicePoint(position), "granted");
+    },
     () => {
+      if (override !== started) return;
       // Nobody asked for this, so nobody is told it failed: no "denied" note for a
       // request the user did not make. We just search everywhere.
       persist(null);

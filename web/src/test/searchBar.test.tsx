@@ -160,7 +160,11 @@ describe("search bar", () => {
 
     await user.click(nearMe());
     expect(await screen.findByText(he.origin.nearMeRefused)).toBeInTheDocument();
-    expect(screen.getByText(he.origin.nearMeRefused)).toHaveAttribute("role", "status");
+    const hint = screen.getByText(he.origin.nearMeRefused);
+    expect(hint).toHaveAttribute("role", "status");
+    // Outside the wrapper that anchors the menu, so a menu opening later is not pushed
+    // below it.
+    expect(hint.closest(".searchbar__wrap")).toBeNull();
     expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
 
     // A fresh mount, the refusal still recorded in the module: nobody asked this time.
@@ -179,6 +183,13 @@ describe("search bar", () => {
     const row = await screen.findByRole("button", {
       name: `טבריה · ${he.search.cityCount(1)}`,
     });
+    // Plain input, plain group: not a combobox, so no combobox attributes either.
+    expect(field()).not.toHaveAttribute("aria-expanded");
+    expect(field()).not.toHaveAttribute("aria-controls");
+    // The class that places the menu is on it, and it hangs off the wrapper that owns it.
+    const group = screen.getByRole("group", { name: he.search.suggestionsLabel });
+    expect(group).toHaveClass("searchbar__menu");
+    expect(group.parentElement).toHaveClass("searchbar__wrap");
     // Typing offered; it did not move anything.
     expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
 
@@ -215,6 +226,43 @@ describe("search bar", () => {
     // A point has a radius to offer, which the city scope did not.
     expect(await radiusOffered(user)).toBe(true);
     expect(suggestCalls.length).toBeGreaterThan(0);
+  });
+
+  it("clears the refusal hint when a city is picked", async () => {
+    seedEverywhere();
+    stubGeolocation("deny");
+    const user = userEvent.setup();
+    await reachHome(user);
+    await user.click(nearMe());
+    await screen.findByText(he.origin.nearMeRefused);
+
+    await user.type(field(), "טבר");
+    await user.click(await screen.findByRole("button", { name: /טבריה/ }));
+    expect(screen.queryByText(he.origin.nearMeRefused)).toBeNull();
+  });
+
+  it("lets a later pick win over a place whose lookup is still in flight", async () => {
+    seedEverywhere();
+    let finish!: () => void;
+    const late = new Promise<Candidate>((resolve) => {
+      finish = () => resolve(PLACE);
+    });
+    suggestImpl = async () => [{ id: "p1", label: "ירושלים, ישראל", resolve: () => late }];
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    await user.type(field(), "ירוש");
+    await user.click(await screen.findByRole("button", { name: "ירושלים, ישראל" }));
+    // The place is still resolving; the user picks the city instead.
+    await user.click(await screen.findByRole("button", { name: /^ירושלים ·/ }));
+    expect(header().getByText(he.origin.searchingInCity)).toBeInTheDocument();
+
+    finish();
+    await late;
+    // The late answer finds it was superseded: the city stands.
+    await waitFor(() => expect(header().getByText("ירושלים")).toBeInTheDocument());
+    expect(header().queryByText(PLACE.label)).toBeNull();
+    expect(header().getByText(he.origin.searchingInCity)).toBeInTheDocument();
   });
 
   it("closes on Escape and on the scrim, and reopens when typing resumes", async () => {

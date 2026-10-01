@@ -364,7 +364,7 @@ const he = {
     useMyLocation: "השתמשו במיקום שלי",
     // The search bar's own button: short, because it shares a line with the field.
     nearMe: "קרוב אליי",
-    nearMeRefused: "אין גישה למיקום, ממשיכים לחפש בלי מיקום. אפשר להקליד עיר או כתובת.",
+    nearMeRefused: "לא הצלחנו לקבל את המיקום שלך. אפשר להקליד עיר או כתובת.",
     locating: "מאתרים…",
     // No pin and no device position: every place in the database, paginated. The
     // header names the scope; the second line explains it where there is room.
@@ -897,7 +897,7 @@ const en: Strings = {
     fromDevice: "from your location",
     useMyLocation: "Use my location",
     nearMe: "Near me",
-    nearMeRefused: "Location unavailable, so we search without one. Type a city or an address instead.",
+    nearMeRefused: "We couldn't get your location. Type a city or an address instead.",
     locating: "Locating…",
     everywhere: "All of Israel",
     searchingEverywhere: "Showing every place in our records",

@@ -37,9 +37,11 @@
  *
  * "Near me" says out loud only the one thing the user cannot see: a refusal. The hint
  * is shown only for a request made from this bar during this mount — a refusal recorded
- * on an earlier screen is not news here — and it goes when the device answers or the
- * button is pressed again. Refusing is a legitimate choice, so the hint says what
- * happens (we search without a position) and what to do instead, and never blocks.
+ * on an earlier screen is not news here — and it goes when the device answers, the
+ * button is pressed again or a city or place is picked. Refusing is a legitimate choice,
+ * and what a failed request leaves behind depends on what was already in use (nothing,
+ * an address, a city, an earlier fix), so the hint claims none of it: it says only that
+ * the position did not come, and what to do instead. It never blocks.
  */
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
@@ -88,6 +90,10 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
   // pause takes a number, and anything that supersedes it — more typing, a pick —
   // takes the next, so a late answer finds it is no longer the one awaited.
   const requestRef = useRef(0);
+  // A pick is a different race from typing: `resolve()` of a place can come back after
+  // the user has picked something else, and must not overwrite that. Each pick takes a
+  // ticket, and a pick that finds its ticket superseded after the await does nothing.
+  const pickRef = useRef(0);
 
   useEffect(() => {
     if (!hasMapsKey()) return;
@@ -116,7 +122,8 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
     return () => window.clearTimeout(timer);
   }, [trimmed, lang]);
 
-  const open = searchable && !dismissed && (Boolean(onSubmit) || cities.length > 0 || places.length > 0);
+  const open =
+    searchable && !dismissed && (Boolean(onSubmit) || cities.length > 0 || places.length > 0);
 
   useEffect(() => {
     if (!open) return;
@@ -150,6 +157,8 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
 
   function pickCity(city: CityOption) {
     requestRef.current += 1;
+    pickRef.current += 1;
+    setHint(false);
     setCityOrigin(city.slug, lang === "he" ? city.labelHe : (city.labelEn ?? city.labelHe));
     onChange("");
     close();
@@ -157,8 +166,11 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
 
   async function pickPlace(item: AddressSuggestion) {
     requestRef.current += 1;
+    const ticket = ++pickRef.current;
     try {
       const resolved = await item.resolve();
+      if (pickRef.current !== ticket) return;
+      setHint(false);
       setAddressOrigin(resolved.label, resolved.point);
       onChange("");
       close();
@@ -173,116 +185,135 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
   }
 
   return (
-    <div className={"searchbar__wrap" + (className ? " " + className : "")}>
-      <form
-        className="searchbar glass"
-        role="search"
-        onSubmit={(event) => {
-          event.preventDefault();
-          submit(trimmed);
-        }}
-      >
-        <span className="searchbar__icon" aria-hidden="true">
-          <SearchIcon size={17} />
-        </span>
-        <input
-          type="search"
-          className="searchbar__input"
-          autoComplete="off"
-          maxLength={MAX_QUERY_LENGTH}
-          value={value}
-          placeholder={placeholder}
-          aria-label={placeholder}
-          aria-expanded={open}
-          aria-controls={menuId}
-          onChange={(event) => {
-            setDismissed(false);
-            onChange(event.target.value);
-          }}
-        />
-        <span className="searchbar__divider" aria-hidden="true" />
-        <button
-          type="button"
-          className="searchbar__near"
-          aria-pressed={source === "device"}
-          aria-busy={locating}
-          disabled={locating}
-          onClick={() => {
-            askedRef.current = true;
-            setHint(false);
-            setAsks((n) => n + 1);
-            close();
-            requestDeviceLocation();
+    <>
+      <div className={"searchbar__wrap" + (className ? " " + className : "")}>
+        <form
+          className="searchbar glass"
+          role="search"
+          onSubmit={(event) => {
+            event.preventDefault();
+            submit(trimmed);
           }}
         >
-          <PinIcon size={15} />
-          <span className="searchbar__near-label">
-            {locating ? t.origin.locating : t.origin.nearMe}
+          <span className="searchbar__icon" aria-hidden="true">
+            <SearchIcon size={17} />
           </span>
-        </button>
-        {onSubmit && (
-          <button type="submit" className="sr-only">
-            {t.nav.search}
+          <input
+            type="search"
+            className="searchbar__input"
+            autoComplete="off"
+            maxLength={MAX_QUERY_LENGTH}
+            value={value}
+            placeholder={placeholder}
+            aria-label={placeholder}
+            onChange={(event) => {
+              setDismissed(false);
+              onChange(event.target.value);
+            }}
+          />
+          <span className="searchbar__divider" aria-hidden="true" />
+          <button
+            type="button"
+            className="searchbar__near"
+            aria-pressed={source === "device"}
+            aria-busy={locating}
+            disabled={locating}
+            onClick={() => {
+              askedRef.current = true;
+              setHint(false);
+              setAsks((n) => n + 1);
+              close();
+              requestDeviceLocation();
+            }}
+          >
+            <PinIcon size={15} />
+            <span className="searchbar__near-label">
+              {locating ? t.origin.locating : t.origin.nearMe}
+            </span>
           </button>
-        )}
-      </form>
+          {onSubmit && (
+            <button type="submit" className="sr-only">
+              {t.nav.search}
+            </button>
+          )}
+        </form>
 
+        {open && (
+          <>
+            <button
+              type="button"
+              className="fpop__scrim"
+              aria-label={t.origin.close}
+              onClick={close}
+            />
+            <div
+              id={menuId}
+              className="fpop searchbar__menu"
+              role="group"
+              aria-label={t.search.suggestionsLabel}
+            >
+              {onSubmit && (
+                <button type="button" className="sheet__result" onClick={() => submit(trimmed)}>
+                  <span className="sheet__result-icon" aria-hidden="true">
+                    <SearchIcon size={15} />
+                  </span>
+                  {t.search.searchNames(trimmed)}
+                </button>
+              )}
+              {cities.length > 0 && (
+                <section>
+                  <h3 className="searchbar__menu-title">{t.search.cities}</h3>
+                  <ul className="sheet__results">
+                    {cities.map((city) => (
+                      <li key={city.slug}>
+                        <button
+                          type="button"
+                          className="sheet__result"
+                          onClick={() => pickCity(city)}
+                        >
+                          <span className="sheet__result-icon" aria-hidden="true">
+                            <PinIcon size={15} />
+                          </span>
+                          {lang === "he" ? city.labelHe : (city.labelEn ?? city.labelHe)} ·{" "}
+                          {t.search.cityCount(city.count)}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {places.length > 0 && (
+                <section>
+                  <h3 className="searchbar__menu-title">{t.search.places}</h3>
+                  <ul className="sheet__results">
+                    {places.map((item) => (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          className="sheet__result"
+                          onClick={() => void pickPlace(item)}
+                        >
+                          <span className="sheet__result-icon" aria-hidden="true">
+                            <PinIcon size={15} />
+                          </span>
+                          {item.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+      {/* After the wrapper, not inside it: the menu anchors to the pill's own box, and a
+          hint in between would push the menu down below it. */}
       {hint && (
         <p className="hint searchbar__hint" role="status">
           {t.origin.nearMeRefused}
         </p>
       )}
-
-      {open && (
-        <>
-          <button type="button" className="fpop__scrim" aria-label={t.origin.close} onClick={close} />
-          <div id={menuId} className="fpop searchbar__menu" aria-label={t.search.suggestionsLabel}>
-            {onSubmit && (
-              <button type="button" className="sheet__result" onClick={() => submit(trimmed)}>
-                <span className="sheet__result-icon" aria-hidden="true">
-                  <SearchIcon size={15} />
-                </span>
-                {t.search.searchNames(trimmed)}
-              </button>
-            )}
-            {cities.length > 0 && (
-              <section>
-                <h3 className="searchbar__menu-title">{t.search.cities}</h3>
-                <ul className="sheet__results">
-                  {cities.map((city) => (
-                    <li key={city.slug}>
-                      <button type="button" className="sheet__result" onClick={() => pickCity(city)}>
-                        <span className="sheet__result-icon" aria-hidden="true">
-                          <PinIcon size={15} />
-                        </span>
-                        {lang === "he" ? city.labelHe : (city.labelEn ?? city.labelHe)} ·{" "}
-                        {t.search.cityCount(city.count)}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            {places.length > 0 && (
-              <section>
-                <h3 className="searchbar__menu-title">{t.search.places}</h3>
-                <ul className="sheet__results">
-                  {places.map((item) => (
-                    <li key={item.id}>
-                      <button type="button" className="sheet__result" onClick={() => void pickPlace(item)}>
-                        <span className="sheet__result-icon" aria-hidden="true">
-                          <PinIcon size={15} />
-                        </span>
-                        {item.label}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-          </div>
-        </>
-      )}
-    </div>
+    </>
   );
 }
