@@ -913,6 +913,11 @@ a {
   object-fit: cover;
   opacity: 0;
   transition: opacity 200ms ease-out;
+  /* Fades the photo's bottom edge into the tile's tinted ground, so the photo and
+     the body meet softly instead of at a hard line. A mask rather than an overlay
+     gradient, so it works on every category tint in both themes. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent);
+  mask-image: linear-gradient(to bottom, #000 60%, transparent);
 }
 .tile__img--in {
   opacity: 1;
