@@ -11,6 +11,12 @@ export type Lang = "he" | "en";
 
 export const DIR: Record<Lang, "rtl" | "ltr"> = { he: "rtl", en: "ltr" };
 
+/* Counted nouns for the directory copy, so "1 restaurants" can never be printed. */
+const restaurantsHe = (n: number): string => (n === 1 ? "מסעדה אחת" : `${n} מסעדות`);
+const citiesHe = (n: number): string => (n === 1 ? "עיר אחת" : `${n} ערים`);
+const restaurantsEn = (n: number): string => (n === 1 ? "1 restaurant" : `${n} restaurants`);
+const citiesEn = (n: number): string => (n === 1 ? "1 city" : `${n} cities`);
+
 const he = {
   appName: "Kashroot",
   nav: { home: "בית", search: "חיפוש", map: "מפה", saved: "שמורים", profile: "פרופיל" },
@@ -382,7 +388,7 @@ const he = {
 
   states: {
     loading: "בודקים מול הפרופיל שלך…",
-    wakingUp: "השרת מתעורר - הטעינה הראשונה עשויה לקחת עד כדקה.",
+    wakingUp: "עדיין טוענים — זה לוקח יותר זמן מהרגיל.",
     loadingShort: "טוען…",
     errorTitle: "לא הצלחנו להביא תשובה",
     errorNetwork: "אין חיבור לשרת. בדקו את החיבור ונסו שוב.",
@@ -489,6 +495,16 @@ const he = {
       [name, city, certifiers ? `כשרות: ${certifiers}` : "לא רשומה אצלנו תעודת כשרות"]
         .filter(Boolean)
         .join(" · ") + " · עובדות התעודה כפי שפורסמו, ובדיקה מול פרופיל הכשרות שלכם ב־Kashroot.",
+    // The directory pages (views/CityDirectory.tsx, views/CertifierDirectory.tsx):
+    // a count of what is on record and nothing about what it is worth.
+    // A certifier is named as what the records list beside a restaurant — never as
+    // a present-tense claim that the restaurant holds its certificate today.
+    cityDescription: (city: string, n: number) =>
+      `${restaurantsHe(n)} ב${city} עם תעודת כשרות רשומה במאגר, לפי גוף הכשרות — עובדות התעודה כפי שפורסמו, ב־Kashroot.`,
+    cityCertifierDescription: (city: string, certifier: string, n: number) =>
+      `${restaurantsHe(n)} ב${city} שבמאגר רשום לצידן ${certifier} כגוף הכשרות — שם, כתובת ועובדות התעודה כפי שפורסמו, ב־Kashroot.`,
+    certifierDescription: (certifier: string, n: number, cities: number) =>
+      `${restaurantsHe(n)} ב${citiesHe(cities)} שבמאגר רשום לצידן ${certifier} כגוף הכשרות — שם, כתובת ועיר כפי שנרשמו, ב־Kashroot.`,
   },
 
   // The profile-free restaurant page (views/RestaurantPublic.tsx): the facts on
@@ -529,8 +545,34 @@ const he = {
     cityNames: {} as Record<string, string>,
     noCertificate: "לא רשומה תעודת כשרות",
     loading: "טוענים את רשימת המסעדות…",
+    // No count here: the landing's count groups by `city_he`, the city page's by
+    // `city_slug`, and the two need not agree.
+    showAll: "לכל המסעדות בעיר",
     footer:
       "העובדות כפי שנרשמו בכל תעודה. הגדירו פרופיל כדי לראות אם מקום מתאים לסטנדרט שלכם.",
+  },
+
+  // The city and certifier directory pages (views/CityDirectory.tsx,
+  // views/CertifierDirectory.tsx): what is on record, counted and listed. A
+  // certifier is named as a fact on the certificate, never described.
+  directory: {
+    breadcrumbs: "ניווט",
+    home: "ראשי",
+    cityCertifierTitle: (city: string, certifier: string) => `${city} · ${certifier}`,
+    cityIntro: (city: string, n: number) =>
+      `במאגר שלנו ${n === 1 ? "רשומה" : "רשומות"} ${restaurantsHe(n)} ב${city}.`,
+    cityCertifierIntro: (city: string, certifier: string, n: number) =>
+      `במאגר שלנו ${n === 1 ? "רשומה" : "רשומות"} ${restaurantsHe(n)} ב${city} ש${certifier} רשום לצידן כגוף הכשרות.`,
+    certifierIntro: (certifier: string, n: number, cities: number) =>
+      `במאגר שלנו ${n === 1 ? "רשומה" : "רשומות"} ${restaurantsHe(n)} ש${certifier} רשום לצידן כגוף הכשרות, ב${citiesHe(cities)}.`,
+    facetsTitle: "לפי גוף כשרות",
+    allInCity: (city: string) => `כל המסעדות ב${city}`,
+    citiesTitle: "לפי עיר",
+    restaurantsTitle: "המסעדות",
+    notFoundTitle: "אין דף כזה במאגר",
+    notFoundBody:
+      "העיר או גוף הכשרות שביקשתם אינם רשומים אצלנו, או שאין להם עדיין מסעדות במאגר. זה חסר בנתונים שלנו — לא אמירה על שום מקום.",
+    notFoundHome: "חזרה לעמוד הראשי",
   },
 
   mockBanner: "נתוני הדגמה — ה־API הציבורי עדיין לא מחובר.",
@@ -903,7 +945,7 @@ const en: Strings = {
 
   states: {
     loading: "Checking against your profile…",
-    wakingUp: "The server is waking up — the first load can take up to a minute.",
+    wakingUp: "Still loading — this is taking longer than usual.",
     loadingShort: "Loading…",
     errorTitle: "We couldn't get an answer",
     errorNetwork: "No connection to the server. Check your connection and try again.",
@@ -993,6 +1035,12 @@ const en: Strings = {
         .filter(Boolean)
         .join(" · ") +
       " · Certificate facts as published, checked against your own kashrut profile on Kashroot.",
+    cityDescription: (city: string, n: number) =>
+      `${restaurantsEn(n)} in ${city} with a kashrut certificate on record, by certifier — certificate facts as published, on Kashroot.`,
+    cityCertifierDescription: (city: string, certifier: string, n: number) =>
+      `${restaurantsEn(n)} in ${city} listed on record with ${certifier} as the certifier — name, address and certificate facts as published, on Kashroot.`,
+    certifierDescription: (certifier: string, n: number, cities: number) =>
+      `${restaurantsEn(n)} in ${citiesEn(cities)} listed on record with ${certifier} as the certifier — name, address and city as recorded, on Kashroot.`,
   },
 
   publicRestaurant: {
@@ -1033,8 +1081,28 @@ const en: Strings = {
     },
     noCertificate: "No kashrut certificate on record",
     loading: "Loading the restaurant list…",
+    showAll: "Show all in this city",
     footer:
       "Facts as recorded on each certificate. Set your profile to see whether a place matches your standard.",
+  },
+
+  directory: {
+    breadcrumbs: "Breadcrumb",
+    home: "Home",
+    cityCertifierTitle: (city: string, certifier: string) => `${city} · ${certifier}`,
+    cityIntro: (city: string, n: number) => `Our records hold ${restaurantsEn(n)} in ${city}.`,
+    cityCertifierIntro: (city: string, certifier: string, n: number) =>
+      `Our records list ${restaurantsEn(n)} in ${city} with ${certifier} as the certifier on record.`,
+    certifierIntro: (certifier: string, n: number, cities: number) =>
+      `Our records list ${restaurantsEn(n)} with ${certifier} as the certifier on record, in ${citiesEn(cities)}.`,
+    facetsTitle: "By certifier",
+    allInCity: (city: string) => `All restaurants in ${city}`,
+    citiesTitle: "By city",
+    restaurantsTitle: "Restaurants",
+    notFoundTitle: "No such page in our records",
+    notFoundBody:
+      "The city or certifier you asked for is not in our records, or has no restaurants in them yet. That is a gap in our data — not a statement about any place.",
+    notFoundHome: "Back to the front page",
   },
 
   mockBanner: "Demo data — the public API is not wired up yet.",

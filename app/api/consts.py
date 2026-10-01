@@ -58,6 +58,8 @@ MAX_RATING = 5.0
 
 ERROR_DUPLICATE_WHITELIST_CERTIFIER = "duplicate whitelist entry for certifier_id {certifier_id}"
 ERROR_RESTAURANT_NOT_FOUND = "restaurant not found"
+ERROR_CITY_NOT_FOUND = "city not found"
+ERROR_CERTIFIER_NOT_FOUND = "certifier not found"
 
 #: ``CertificateEvidenceOut.photo_status`` — the public detail response's tri-state
 #: view of ``CertificateEvidencePhoto``: an accepted photo (``evidence_photo_key`` set
@@ -120,6 +122,9 @@ DIRECTORY_SAMPLE_PER_CITY = 12
 #: API's paths.
 WEB_ROUTE_HOME = "/"
 WEB_ROUTE_RESTAURANT_TEMPLATE = "/r/{restaurant_id}"
+WEB_ROUTE_CITY_TEMPLATE = "/city/{city_slug}"
+WEB_ROUTE_CITY_CERTIFIER_TEMPLATE = "/city/{city_slug}/{certifier_slug}"
+WEB_ROUTE_CERTIFIER_TEMPLATE = "/certifier/{certifier_slug}"
 
 #: Vercel sets these on an external rewrite — how the web app proxies /v1/* to this
 #: API — used to recover the web app's own origin for absolute sitemap URLs when

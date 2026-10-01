@@ -11,7 +11,9 @@
 
 import { ApiError, api, postForm } from "./client";
 import {
+  mockCertifierDirectory,
   mockCertifiers,
+  mockCityDirectory,
   mockDirectory,
   mockReportRestaurant,
   mockRestaurant,
@@ -21,7 +23,9 @@ import {
   mockUploadCertificatePhoto,
 } from "./mock/server";
 import type {
+  CertifierDirectoryOut,
   CertifierListItem,
+  CityDirectoryOut,
   DirectoryOut,
   FlagCreatedOut,
   FlagRequest,
@@ -35,13 +39,17 @@ import type {
   SearchResponseOut,
 } from "./types";
 import {
+  toCertifierDirectoryView,
   toCertifierView,
+  toCityDirectoryView,
   toDetailView,
   toDirectoryView,
   toPlacesView,
   toPublicView,
   toSearchView,
+  type CertifierDirectoryView,
   type CertifierView,
+  type CityDirectoryView,
   type DetailView,
   type DirectoryView,
   type PlacesView,
@@ -82,6 +90,22 @@ export interface KashrootApi {
    * sets `Cache-Control`, and there is nothing to invalidate on this side.
    */
   getDirectory(signal?: AbortSignal): Promise<DirectoryView>;
+  /**
+   * One city's full facts list for `/city/<slug>`, narrowed to one certifier for
+   * `/city/<slug>/<certifier>`. Same facts-only contract as `getDirectory`: no
+   * profile out, no verdict back. Rejects with a 404 `ApiError` for an unknown
+   * city, or a certifier with no restaurant in it.
+   */
+  getCityDirectory(
+    citySlug: string,
+    certifierSlug?: string,
+    signal?: AbortSignal,
+  ): Promise<CityDirectoryView>;
+  /**
+   * Every restaurant one certifier covers, for `/certifier/<slug>`, with its
+   * cities. Facts only; 404 for an unknown, inactive or empty certifier.
+   */
+  getCertifierDirectory(slug: string, signal?: AbortSignal): Promise<CertifierDirectoryView>;
   /**
    * Anonymous certificate photo upload for the specific certificate card the user is
    * looking at (chosen by their own profile on the client — the server only checks
@@ -128,6 +152,17 @@ const liveApi: KashrootApi = {
     }).then(toPlacesView),
   getDirectory: (signal) =>
     api<DirectoryOut>("/v1/directory", { ...(signal ? { signal } : {}) }).then(toDirectoryView),
+  getCityDirectory: (citySlug, certifierSlug, signal) =>
+    api<CityDirectoryOut>(
+      `/v1/directory/cities/${encodeURIComponent(citySlug)}${
+        certifierSlug ? `?certifier=${encodeURIComponent(certifierSlug)}` : ""
+      }`,
+      { ...(signal ? { signal } : {}) },
+    ).then(toCityDirectoryView),
+  getCertifierDirectory: (slug, signal) =>
+    api<CertifierDirectoryOut>(`/v1/directory/certifiers/${encodeURIComponent(slug)}`, {
+      ...(signal ? { signal } : {}),
+    }).then(toCertifierDirectoryView),
   uploadCertificatePhoto: (restaurantId, certificateId, file) => {
     const form = new FormData();
     form.append("certificate_id", certificateId);
@@ -152,6 +187,9 @@ const mockApi: KashrootApi = {
   getRestaurantPublic: (id) => mockRestaurantPublic(id).then(toPublicView),
   getRestaurantPlaces: (id) => mockRestaurantPlaces(id).then(toPlacesView),
   getDirectory: () => mockDirectory().then(toDirectoryView),
+  getCityDirectory: (citySlug, certifierSlug) =>
+    mockCityDirectory(citySlug, certifierSlug).then(toCityDirectoryView),
+  getCertifierDirectory: (slug) => mockCertifierDirectory(slug).then(toCertifierDirectoryView),
   uploadCertificatePhoto: (restaurantId, certificateId, file) =>
     mockUploadCertificatePhoto(restaurantId, certificateId, file),
   reportRestaurant: (restaurantId, body) => mockReportRestaurant(restaurantId, body),
@@ -184,8 +222,14 @@ export { ApiError } from "./client";
 export { FLAG_MESSAGE_MAX, FLAG_TYPES, PHOTO_MAX_BYTES, PHOTO_MIME_TYPES } from "./types";
 export type * from "./types";
 export type {
+  CertifierCityView,
+  CertifierDirectoryRestaurantView,
+  CertifierDirectoryView,
   CertifierView,
+  CityDirectoryView,
   DetailView,
+  DirectoryCertifierFacetView,
+  DirectoryCertifierView,
   DirectoryCityView,
   DirectoryRestaurantView,
   DirectoryView,

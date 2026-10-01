@@ -24,10 +24,12 @@
 
 import { useId, type MouseEvent } from "react";
 import { Link } from "react-router-dom";
-import type { DirectoryCityView, DirectoryRestaurantView } from "../api/viewmodel";
+import type { DirectoryCityView } from "../api/viewmodel";
+import { DirectoryRow } from "../components/directory";
 import { ErrorState, LoadingList, OfflineBanner } from "../components/states";
 import { isNetworkError, useDirectory } from "../hooks/useApi";
-import { pickName, useI18n } from "../i18n/I18nProvider";
+import { useI18n } from "../i18n/I18nProvider";
+import { cityDisplayName, cityPath } from "../seo/directoryHead";
 import { siteHead } from "../seo/siteHead";
 import { useDocumentHead } from "../seo/useDocumentHead";
 
@@ -55,63 +57,35 @@ function BrandMark() {
   );
 }
 
-/** The visual " · " between certifier names; hidden from the accessible tree. */
-const SEPARATOR = " · ";
-
-function RestaurantRow({ restaurant }: { restaurant: DirectoryRestaurantView }) {
-  const { t, lang } = useI18n();
-  const name = pickName(lang, restaurant.nameHe, restaurant.nameEn);
-  // Every certifier on the record — the whole set in the API's order, which is
-  // alphabetical. Not a ranking, and not a pick of one over another.
-  const certifiers = restaurant.certifiers.map((certifier) =>
-    pickName(lang, certifier.nameHe, certifier.nameEn),
-  );
-
-  return (
-    <li>
-      {/* A real anchor: this is the link a crawler follows to the restaurant page.
-          Its accessible name is the restaurant's name alone; the address and the
-          certifiers stay visible, and separators are decoration. */}
-      <Link className="landing__row" to={`/r/${restaurant.id}`} aria-label={name}>
-        <span className="landing__rowName">{name}</span>
-        {restaurant.addressHe && <span className="landing__rowSub">{restaurant.addressHe}</span>}
-        <span className="landing__rowSub">
-          {certifiers.length === 0
-            ? t.landing.noCertificate
-            : certifiers.map((certifier, index) => (
-                <span key={`${index}-${certifier}`}>
-                  {index > 0 && <span aria-hidden="true">{SEPARATOR}</span>}
-                  {certifier}
-                </span>
-              ))}
-        </span>
-      </Link>
-    </li>
-  );
-}
-
 function CityPanel({ city }: { city: DirectoryCityView }) {
   const { t, lang } = useI18n();
   const headingId = useId();
   // The records spell cities in Hebrew, and in Hebrew that is the heading. In
   // English: the records' own `city_en` when they have one, else the string table's
   // fallback for a launch city, else the city as the records spell it.
-  const name =
-    lang === "he" ? city.cityHe : (city.cityEn ?? t.landing.cityNames[city.cityHe] ?? city.cityHe);
+  const name = cityDisplayName(city.cityHe, city.cityEn, lang, t);
+  // The city page lists every restaurant, where this panel samples. A city whose
+  // records carry no slug has no page, and its heading stays plain text.
+  const page = city.citySlug ? cityPath(city.citySlug) : null;
 
   return (
     <section className="panel glass" aria-labelledby={headingId}>
       <div className="landing__cityHead">
         <h3 id={headingId} className="landing__cityName">
-          {name}
+          {page ? <Link to={page}>{name}</Link> : name}
         </h3>
         <span className="landing__count">{t.landing.restaurantCount(city.restaurantCount)}</span>
       </div>
       <ul className="landing__rows">
         {city.restaurants.map((restaurant) => (
-          <RestaurantRow key={restaurant.id} restaurant={restaurant} />
+          <DirectoryRow key={restaurant.id} restaurant={restaurant} />
         ))}
       </ul>
+      {page && (
+        <Link className="landing__showAll" to={page}>
+          {t.landing.showAll}
+        </Link>
+      )}
     </section>
   );
 }

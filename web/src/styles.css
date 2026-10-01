@@ -1585,6 +1585,103 @@ a {
   padding: 8px 0 16px;
 }
 
+/* A city heading that is a link reads as the heading, not as a link: the panel's
+   "show all" line below carries the affordance. */
+.landing__cityName a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.landing__cityName a:hover,
+.landing__cityName a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.landing__showAll {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── Directory pages (city, city + certifier, certifier) ─────────────────── */
+
+.directory__crumbs {
+  font-size: 12.5px;
+  color: var(--sub);
+}
+
+.directory__crumbs ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.directory__crumbs li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.directory__crumbs a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.directory__crumbs [aria-current="page"] {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.directory__head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* The facet list: one row per certifier (or city) with its count at the far end.
+   Inline-end margins and padding so it mirrors itself under `dir="rtl"`. */
+.directory__facets {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.directory__facet {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--hair);
+  font-size: 14px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.directory__facet:hover,
+.directory__facet:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.directory__facet--current {
+  font-weight: 700;
+  padding-inline-start: 10px;
+  border-inline-start: 2.5px solid var(--ink);
+}
+
 /* ── Tab bar ───────────────────────────────────────────────────────────── */
 
 /*

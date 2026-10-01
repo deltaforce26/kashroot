@@ -13,10 +13,10 @@ import { AlertIcon, CloudOffIcon, PinIcon, SearchIcon } from "./icons";
 
 /**
  * How long a request may run before the wait gets an explanation rather than a bare
- * skeleton. The API is hosted on a plan that suspends the instance when idle, so the
- * first request after a quiet spell pays a cold start of roughly a minute. A first-time
- * visitor has no way to tell that apart from a broken app, and silence reads as broken.
- * Short enough to pre-empt the doubt, long enough that a warm request never trips it.
+ * skeleton. The API runs on an always-on instance, so a slow answer is the exception
+ * — a congested network, a heavy query — but a visitor has no way to tell a slow
+ * answer apart from a broken app, and silence reads as broken. Short enough to
+ * pre-empt the doubt, long enough that an ordinary request never trips it.
  */
 const SLOW_REQUEST_MS = 6000;
 

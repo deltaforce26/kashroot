@@ -98,12 +98,20 @@ class DirectoryRestaurantOut(BaseModel):
     #: Parallel to ``certifier_names_he`` (same order, same length); an entry is
     #: ``None`` when that certifier has no English name.
     certifier_names_en: list[str | None]
+    #: Parallel to ``certifier_names_he`` (same order, same length); each entry is
+    #: the certifier's unique slug, the key the web app's ``/certifier/<slug>`` and
+    #: ``/city/<city_slug>/<slug>`` landing pages are addressed by.
+    certifier_slugs: list[str]
 
 
 class DirectoryCityOut(BaseModel):
     """One city's group within the ``GET /v1/directory`` landing-page response."""
 
     city_he: str
+    #: The slug of the city's web landing page, taken from ``Restaurant.city_slug``
+    #: across the city's restaurants by the same rule as ``city_en`` (most common
+    #: non-null value, ties alphabetical); ``None`` when none of them has one.
+    city_slug: str | None
     #: The city's English name, taken from ``Restaurant.city_en`` across the city's
     #: restaurants — the most common non-null value (ties broken alphabetically), or
     #: ``None`` when none of them has one. Grouping itself stays keyed by ``city_he``
@@ -133,3 +141,77 @@ class DirectoryResponse(BaseModel):
     #: One entry per distinct non-null ``city_he``, ordered by ``restaurant_count``
     #: descending, ties broken alphabetically by ``city_he``.
     cities: list[DirectoryCityOut]
+
+
+class DirectoryCertifierFacetOut(BaseModel):
+    """One certifier's identity plus how many public restaurants it covers within
+    the scope of the response it appears in (a city for ``CityDirectoryOut``). A
+    count of restaurants, never a ranking: facets are always sorted by ``name_he``.
+    """
+
+    slug: str
+    name_he: str
+    name_en: str | None
+    restaurant_count: int
+
+
+class CityDirectoryOut(BaseModel):
+    """``GET /v1/directory/cities/{city_slug}`` (200) — every public restaurant in
+    one city, facts only, with the certifier facets the city page filters by. See
+    ``app.api.public_directory.get_city_directory``.
+    """
+
+    city_slug: str
+    #: Most common non-null ``city_he`` among the slug's public restaurants, ties
+    #: alphabetical; falls back to ``city_slug`` when none of them has one.
+    city_he: str
+    #: Same majority rule over ``city_en``; ``None`` when none has one.
+    city_en: str | None
+    #: Every public restaurant with this ``city_slug``, independent of the
+    #: ``certifier`` filter.
+    restaurant_count: int
+    #: Every active certifier on at least one public restaurant in the city, sorted
+    #: alphabetically by ``name_he``; never narrowed by the ``certifier`` filter.
+    certifiers: list[DirectoryCertifierFacetOut]
+    #: Echo of the ``certifier`` filter when one was given.
+    selected_certifier: DirectoryCertifierFacetOut | None
+    #: All matching restaurants (not sampled), sorted by ``name_he``, narrowed to the
+    #: selected certifier when the filter is given.
+    restaurants: list[DirectoryRestaurantOut]
+
+
+class DirectoryCertifierCityOut(BaseModel):
+    """One city a certifier covers, within ``CertifierDirectoryOut``."""
+
+    city_slug: str
+    city_he: str
+    city_en: str | None
+    restaurant_count: int
+
+
+class DirectoryCertifierRestaurantOut(DirectoryRestaurantOut):
+    """A ``DirectoryRestaurantOut`` plus its city, for the certifier page where
+    restaurants from several cities share one list.
+    """
+
+    city_he: str | None
+    city_en: str | None
+    city_slug: str | None
+
+
+class CertifierDirectoryOut(BaseModel):
+    """``GET /v1/directory/certifiers/{certifier_slug}`` (200) — every public
+    restaurant one active certifier covers, facts only. See
+    ``app.api.public_directory.get_certifier_directory``.
+    """
+
+    slug: str
+    name_he: str
+    name_en: str | None
+    restaurant_count: int
+    #: Only groups with a non-null ``city_slug``; ordered by ``restaurant_count``
+    #: descending, ties broken alphabetically by ``city_he``.
+    cities: list[DirectoryCertifierCityOut]
+    #: All public restaurants with this certifier (not sampled), sorted by
+    #: ``name_he``, including ones with no ``city_slug``.
+    restaurants: list[DirectoryCertifierRestaurantOut]
