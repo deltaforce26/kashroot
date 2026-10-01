@@ -139,6 +139,26 @@ export function useRestaurantPlaces(id: string | undefined): QueryState<PlacesVi
 }
 
 /**
+ * The same enrichment for a grid tile, held back until the tile is on (or near)
+ * the screen. A grid of fifty restaurants must not open with fifty Places calls:
+ * `enabled` stays false until the tile's IntersectionObserver fires, and while it
+ * is false this resolves to `null` without a request — and without the rejected
+ * promise `useRestaurantPlaces` would log for a missing id, once per tile.
+ *
+ * As with the detail page, nothing here is kashrut evidence and nothing here gates
+ * the verdict: a tile renders its pill whether or not this ever answers.
+ */
+export function useTileRestaurantPlaces(
+  id: string,
+  enabled: boolean,
+): QueryState<PlacesView | null> {
+  return useQuery<PlacesView | null>(
+    (signal) => (enabled ? kashrootApi.getRestaurantPlaces(id, signal) : Promise.resolve(null)),
+    [id, enabled],
+  );
+}
+
+/**
  * The city-grouped directory behind the landing page. No inputs at all: there is no
  * profile and no centre on this path, so the question is always the same one.
  */
