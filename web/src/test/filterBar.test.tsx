@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FilterBar } from "../components/filters/FilterBar";
 import {
   DEFAULT_FILTERS,
+  DEFAULT_RADIUS_KM,
   normalizeFilters,
   toSearchFilters,
   type FilterState,
@@ -119,11 +120,11 @@ describe("filter bar", () => {
 
   it("counts the filters only the sheet draws, so one set there is never invisible", async () => {
     const user = userEvent.setup();
-    localStorage.setItem(KEY, JSON.stringify({ ...DEFAULT_FILTERS, radiusKm: 3, minRating: 4 }));
+    localStorage.setItem(KEY, JSON.stringify({ ...DEFAULT_FILTERS, radiusKm: 2, minRating: 4 }));
     renderBar();
 
     // Neither has a chip to show it…
-    expect(screen.queryByRole("button", { name: he.filters.radiusValue(3) })).toBeNull();
+    expect(screen.queryByRole("button", { name: he.filters.radiusValue(2) })).toBeNull();
     // …so the sliders button is the only thing that can say the list is narrowed.
     const sliders = screen.getByRole("button", { name: he.home.filtersActive });
     expect(sliders).toHaveTextContent("2");
@@ -131,7 +132,7 @@ describe("filter bar", () => {
     await user.click(sliders);
     const sheet = screen.getByRole("dialog", { name: he.filters.title });
     expect(
-      within(sheet).getByRole("button", { name: he.filters.radiusValue(3) }),
+      within(sheet).getByRole("button", { name: he.filters.radiusValue(2) }),
     ).toHaveAttribute("aria-pressed", "true");
     expect(
       within(sheet).getByRole("button", { name: he.filters.ratingValue(4) }),
@@ -181,19 +182,19 @@ describe("filter bar", () => {
 
     await user.click(screen.getByRole("button", { name: he.filters.radius }));
     const popover = screen.getByRole("dialog", { name: he.filters.radius });
-    expect(within(popover).getByRole("button", { name: he.filters.radiusValue(10) })).toHaveAttribute(
+    expect(within(popover).getByRole("button", { name: he.filters.radiusValue(DEFAULT_RADIUS_KM) })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
 
-    await user.click(within(popover).getByRole("button", { name: he.filters.radiusValue(3) }));
+    await user.click(within(popover).getByRole("button", { name: he.filters.radiusValue(2) }));
 
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByRole("button", { name: he.filters.radiusValue(3) })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: he.filters.radiusValue(2) })).toHaveAttribute(
       "data-active",
       "true",
     );
-    expect(stored().radiusKm).toBe(3);
+    expect(stored().radiusKm).toBe(2);
   });
 
   it("clears a minimum rating when the same one is picked again", async () => {
@@ -322,7 +323,7 @@ describe("filter state model", () => {
       toSearchFilters({
         certifierIds: ["b", "a"],
         openNow: true,
-        radiusKm: 3,
+        radiusKm: 2,
         diets: ["fish", "dairy"],
         minRating: 4.5,
       }),
@@ -344,6 +345,6 @@ describe("filter state model", () => {
         diets: ["dairy", "mixed", "soup"],
         minRating: 5,
       }),
-    ).toEqual({ certifierIds: ["a"], openNow: false, radiusKm: 10, diets: ["dairy"], minRating: null });
+    ).toEqual({ certifierIds: ["a"], openNow: false, radiusKm: DEFAULT_RADIUS_KM, diets: ["dairy"], minRating: null });
   });
 });

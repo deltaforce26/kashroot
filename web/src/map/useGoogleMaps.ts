@@ -143,6 +143,43 @@ export async function geocodeAddress(
   }));
 }
 
+/** Address components naming an area, finest first: the first one a result has is the name. */
+const AREA_COMPONENT_TYPES = ["neighborhood", "sublocality", "locality"] as const;
+
+/**
+ * A point -> the name of the area it is in (neighbourhood, else sublocality, else city),
+ * for a label such as "restaurants near Florentin". Null when Google has no such name.
+ *
+ * Rejects without a key or when the lookup itself failed, like `geocodeAddress`; the
+ * caller falls back to a generic label, since a name is a nicety and never a reason to
+ * say anything out loud.
+ *
+ * This sends the point to Google's geocoder. It is the one place the device position
+ * leaves the app other than to our own server. It happens once per device fix (also for
+ * one silently restored on load; never again on a language toggle or on another screen)
+ * and only for the placeholder's sake, and the point is never persisted or logged here.
+ */
+export async function reverseGeocodeArea(
+  point: { lat: number; lon: number },
+  language: "he" | "en",
+): Promise<string | null> {
+  if (!hasMapsKey()) throw new Error("No maps key configured");
+  const geocoder = await loadGeocoder(language);
+  let response: google.maps.GeocoderResponse;
+  try {
+    response = await geocoder.geocode({ location: { lat: point.lat, lng: point.lon } });
+  } catch (error) {
+    if (String(error).includes("ZERO_RESULTS")) return null;
+    throw error;
+  }
+  const components = response.results[0]?.address_components ?? [];
+  for (const type of AREA_COMPONENT_TYPES) {
+    const name = components.find((component) => component.types.includes(type))?.long_name;
+    if (name) return name;
+  }
+  return null;
+}
+
 /**
  * One completion offered while the user is still typing. It carries no point: a
  * prediction is only a name, and looking the point up is a second, billed call, so it

@@ -21,8 +21,8 @@
 import type { DietType, SearchFilters } from "../api/types";
 
 /** Every radius sits inside the API's 0.1–50 km bounds. */
-export const RADIUS_OPTIONS = [1, 3, 5, 10, 25] as const;
-export const DEFAULT_RADIUS_KM = 10;
+export const RADIUS_OPTIONS = [1, 2, 5, 10] as const;
+export const DEFAULT_RADIUS_KM = 5;
 
 /** The kitchens offered, in the order the options list them. */
 export const DIET_OPTIONS: readonly DietType[] = ["meat", "dairy", "fish", "pareve"];

@@ -185,7 +185,7 @@ describe("home location sheet", () => {
       within(sheet).getByRole("button", { name: he.origin.useMyLocation }),
     ).toBeInTheDocument();
     expect(within(sheet).getByLabelText(he.origin.addressLabel)).toBeInTheDocument();
-    // There is no city to pick: the app has none.
+    // No city here: cities are the search bar's dropdown, not the sheet's.
     expect(within(sheet).queryByRole("button", { name: "ירושלים" })).toBeNull();
     // It drops from the top rather than rising from the bottom, so it lands on the
     // header control that asked. jsdom lays nothing out; the modifier is the guarantee.

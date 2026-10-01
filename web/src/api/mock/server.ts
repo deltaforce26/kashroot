@@ -442,6 +442,9 @@ export function mockSearch(request: SearchRequest, now = new Date()): Promise<Se
 
   const items: SearchResultItemOut[] = [];
   for (const restaurant of RESTAURANTS) {
+    // A city scope is the whole city: an exact slug match and nothing else, as
+    // `build_search_statement` does. It carries no point, so no distance either.
+    if (request.city && restaurant.city_slug !== request.city) continue;
     const distanceKm = center ? haversineKm(center, restaurant) : null;
     if (distanceKm !== null && distanceKm > radiusKm) continue;
     if (query && !matchesQuery(restaurant, query)) continue;
@@ -758,7 +761,7 @@ function toDirectoryRow(restaurant: FixtureRestaurant): DirectoryRestaurantOut {
 
 /**
  * The most common non-null value, ties broken alphabetically, `null` when there is
- * none — `_majority_value` in app/api/public_seo.py.
+ * none — `majority_value` in app/api/public_directory_shared.py.
  */
 function majorityValue(values: ReadonlyArray<string | null>): string | null {
   const counts = new Map<string, number>();
@@ -786,7 +789,7 @@ export function directoryCityEn(group: ReadonlyArray<{ city_en: string | null }>
 }
 
 /** The same majority rule over `city_slug` — `_city_slug_for_group` on the API. */
-function directoryCitySlug(group: ReadonlyArray<{ city_slug: string | null }>): string | null {
+export function directoryCitySlug(group: ReadonlyArray<{ city_slug: string | null }>): string | null {
   return majorityValue(group.map((restaurant) => restaurant.city_slug));
 }
 

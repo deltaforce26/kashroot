@@ -141,6 +141,8 @@ def test_directory_groups_by_city_with_counts(client, session) -> None:
     cities_by_name = {city["city_he"]: city for city in body["cities"]}
     assert cities_by_name["ירושלים"]["restaurant_count"] == 2
     assert cities_by_name["תל אביב"]["restaurant_count"] == 1
+    assert cities_by_name["ירושלים"]["city_slug"] == "jerusalem"
+    assert cities_by_name["תל אביב"]["city_slug"] == "jerusalem"
 
 
 def test_directory_orders_cities_by_count_desc_then_name(client, session) -> None:
@@ -228,6 +230,26 @@ def test_directory_city_en_majority_wins_ties_alphabetical_and_null_when_none(
     assert cities_by_name["חיפה"]["city_en"] is None
 
 
+def test_directory_city_slug_majority_wins_ties_alphabetical_and_null_when_none(
+    client, session
+) -> None:
+    make_restaurant(session, city_he="ירושלים", city_slug="jerusalem")
+    make_restaurant(session, city_he="ירושלים", city_slug="jerusalem")
+    make_restaurant(session, city_he="ירושלים", city_slug="yerushalayim")
+    make_restaurant(session, city_he="ירושלים", city_slug=None)
+    make_restaurant(session, city_he="תל אביב", city_slug="tel-aviv")
+    make_restaurant(session, city_he="תל אביב", city_slug="jaffa")
+    make_restaurant(session, city_he="חיפה", city_slug=None)
+    session.commit()
+
+    response = client.get("/v1/directory")
+    cities_by_name = {city["city_he"]: city for city in response.json()["cities"]}
+
+    assert cities_by_name["ירושלים"]["city_slug"] == "jerusalem"
+    assert cities_by_name["תל אביב"]["city_slug"] == "jaffa"
+    assert cities_by_name["חיפה"]["city_slug"] is None
+
+
 def test_directory_null_city_excluded_from_cities_but_counted(client, session) -> None:
     make_restaurant(session, city_he="ירושלים")
     make_restaurant(session, city_he=None)
@@ -273,26 +295,6 @@ def test_directory_cache_control_header(client, session) -> None:
     response = client.get("/v1/directory")
 
     assert response.headers["cache-control"] == "public, max-age=3600"
-
-
-def test_directory_city_slug_majority_wins_ties_alphabetical_and_null_when_none(
-    client, session
-) -> None:
-    make_restaurant(session, city_he="ירושלים", city_slug="jerusalem")
-    make_restaurant(session, city_he="ירושלים", city_slug="jerusalem")
-    make_restaurant(session, city_he="ירושלים", city_slug="yerushalayim")
-    make_restaurant(session, city_he="ירושלים", city_slug=None)
-    make_restaurant(session, city_he="תל אביב", city_slug="tel-aviv")
-    make_restaurant(session, city_he="תל אביב", city_slug="jaffa")
-    make_restaurant(session, city_he="חיפה", city_slug=None)
-    session.commit()
-
-    response = client.get("/v1/directory")
-    cities_by_name = {city["city_he"]: city for city in response.json()["cities"]}
-
-    assert cities_by_name["ירושלים"]["city_slug"] == "jerusalem"
-    assert cities_by_name["תל אביב"]["city_slug"] == "jaffa"
-    assert cities_by_name["חיפה"]["city_slug"] is None
 
 
 def test_directory_certifier_slugs_parallel_to_names(client, session) -> None:
