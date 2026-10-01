@@ -467,8 +467,8 @@ describe("the landing page's links into the directory", () => {
     // `city_slug`, and a number that could disagree with its target is not printed.
     const showAll = screen.getAllByRole("link", { name: he.landing.showAll });
     expect(showAll.length).toBeGreaterThan(0);
-    expect(showAll[0]).toHaveAttribute("href", "/city/jerusalem");
-    expect(showAll[0]?.textContent).not.toMatch(/\d/);
+    expect(showAll.map((link) => link.getAttribute("href"))).toContain("/city/jerusalem");
+    for (const link of showAll) expect(link.textContent).not.toMatch(/\d/);
     // Rows are unchanged: still one real anchor per restaurant, to its own page.
     expect(container.querySelectorAll(".landing__row")).toHaveLength(RESTAURANTS.length);
     expect(container.querySelectorAll('a[href="/city/bnei-brak"]').length).toBeGreaterThan(0);
