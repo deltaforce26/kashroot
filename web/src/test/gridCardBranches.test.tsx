@@ -191,6 +191,7 @@ describe("RestaurantGridCard photo", () => {
     fireEvent.load(img as HTMLImageElement);
     expect(img?.classList.contains("tile__img--in")).toBe(true);
     expect(title?.classList.contains("tile__name--on-photo")).toBe(true);
+    expect(container.querySelector(".tile__scrim")).not.toBeNull();
   });
 
   it("drops the image, not the area, when the image fails to load", async () => {

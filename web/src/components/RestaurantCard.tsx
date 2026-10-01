@@ -226,6 +226,8 @@ export function RestaurantGridCard({ item, saved, onToggleSave }: CardProps) {
               onError={() => setPhotoState("failed")}
             />
             <span className="tile__credit">{credit ? `${credit} · Google` : "Google"}</span>
+            {/* A dark fade behind the name, so white text reads on any photo. */}
+            {photoState === "loaded" && <span className="tile__scrim" aria-hidden="true" />}
           </>
         )}
         {/* The name sits at the top of the photo area, as on the tile before the
