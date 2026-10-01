@@ -150,7 +150,7 @@ describe("RestaurantGridCard photo", () => {
     vi.unstubAllGlobals();
   });
 
-  it("does not fetch, and draws no photo area, without an IntersectionObserver", async () => {
+  it("does not fetch, and draws no photo, without an IntersectionObserver", async () => {
     vi.stubGlobal("IntersectionObserver", undefined);
     const spy = vi.spyOn(api.kashrootApi, "getRestaurantPlaces").mockResolvedValue(ONE_PHOTO);
     const { container } = renderHe(
@@ -158,19 +158,19 @@ describe("RestaurantGridCard photo", () => {
     );
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(spy).not.toHaveBeenCalled();
-    expect(container.querySelector(".tile__photo")).toBeNull();
+    expect(container.querySelector(".tile__photo img")).toBeNull();
     expect(container.querySelector(".verdict")).not.toBeNull();
   });
 
-  it("hides the photo area entirely when Places has no photo", async () => {
+  it("keeps the photo area, empty, when Places has no photo", async () => {
     vi.stubGlobal("IntersectionObserver", OnScreenObserver);
     const spy = vi.spyOn(api.kashrootApi, "getRestaurantPlaces").mockResolvedValue(places([]));
     const { container } = renderHe(
       <RestaurantGridCard item={view({})} saved={false} onToggleSave={noop} />,
     );
     await waitFor(() => expect(spy).toHaveBeenCalledWith("r1", expect.anything()));
-    expect(container.querySelector(".tile__photo")).toBeNull();
-    expect(container.querySelector(".card--bare")).not.toBeNull();
+    expect(container.querySelector(".tile__photo")).not.toBeNull();
+    expect(container.querySelector(".tile__photo img")).toBeNull();
     expect(container.querySelector(".verdict")).not.toBeNull();
   });
 
@@ -189,7 +189,7 @@ describe("RestaurantGridCard photo", () => {
     expect(img?.classList.contains("tile__img--in")).toBe(true);
   });
 
-  it("takes the photo area away again when the image fails to load", async () => {
+  it("drops the image, not the area, when the image fails to load", async () => {
     vi.stubGlobal("IntersectionObserver", OnScreenObserver);
     vi.spyOn(api.kashrootApi, "getRestaurantPlaces").mockResolvedValue(ONE_PHOTO);
     const { container } = renderHe(
@@ -197,7 +197,7 @@ describe("RestaurantGridCard photo", () => {
     );
     await screen.findByText("Dana K. · Google");
     fireEvent.error(container.querySelector(".tile__photo img") as HTMLImageElement);
-    expect(container.querySelector(".tile__photo")).toBeNull();
+    expect(container.querySelector(".tile__photo img")).toBeNull();
     expect(screen.queryByText("Dana K. · Google")).toBeNull();
   });
 
@@ -209,7 +209,7 @@ describe("RestaurantGridCard photo", () => {
       <RestaurantGridCard item={view({})} saved={false} onToggleSave={noop} />,
     );
     await waitFor(() => expect(console.error).toHaveBeenCalled());
-    expect(container.querySelector(".tile__photo")).toBeNull();
+    expect(container.querySelector(".tile__photo img")).toBeNull();
     expect(container.querySelector(".verdict--match")).not.toBeNull();
   });
 
