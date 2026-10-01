@@ -9,6 +9,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, kashrootApi } from "../api";
 import type { GeoPoint, ProfileRequest, SearchRequest } from "../api/types";
 import type {
+  CertifierDirectoryView,
+  CityDirectoryView,
   DetailView,
   DirectoryView,
   PlacesView,
@@ -164,6 +166,35 @@ export function useTileRestaurantPlaces(
  */
 export function useDirectory(): QueryState<DirectoryView> {
   return useQuery<DirectoryView>((signal) => kashrootApi.getDirectory(signal), []);
+}
+
+/**
+ * One city's facts list, narrowed to one certifier when `certifierSlug` is given.
+ * The two slugs are the whole question; a 404 surfaces as an `ApiError` the view
+ * tells apart with `isNotFoundError`, exactly as `useRestaurantPublic` does.
+ */
+export function useCityDirectory(
+  citySlug: string | undefined,
+  certifierSlug: string | undefined,
+): QueryState<CityDirectoryView> {
+  return useQuery<CityDirectoryView>(
+    (signal) =>
+      citySlug
+        ? kashrootApi.getCityDirectory(citySlug, certifierSlug, signal)
+        : Promise.reject(new Error("missing city slug")),
+    [citySlug, certifierSlug ?? ""],
+  );
+}
+
+/** Every restaurant one certifier covers, for `/certifier/:certifierSlug`. */
+export function useCertifierDirectory(slug: string | undefined): QueryState<CertifierDirectoryView> {
+  return useQuery<CertifierDirectoryView>(
+    (signal) =>
+      slug
+        ? kashrootApi.getCertifierDirectory(slug, signal)
+        : Promise.reject(new Error("missing certifier slug")),
+    [slug],
+  );
 }
 
 export function isNetworkError(error: Error | null): boolean {

@@ -15,8 +15,13 @@ import type {
   CertificateEvidenceOut,
   CertificateState,
   CertifierChip,
+  CertifierDirectoryOut,
   CertifierListItem,
+  CityDirectoryOut,
   DietType,
+  DirectoryCertifierCityOut,
+  DirectoryCertifierFacetOut,
+  DirectoryCertifierRestaurantOut,
   DirectoryCityOut,
   DirectoryOut,
   DirectoryRestaurantOut,
@@ -205,8 +210,12 @@ export function toPublicView(response: RestaurantPublicOut): PublicRestaurantVie
   };
 }
 
-/** A certifier's two names as the directory hands them over — no id, no type. */
+/**
+ * A certifier's two names and its page slug as the directory hands them over — no
+ * id, no type.
+ */
 export interface DirectoryCertifierView {
+  slug: string;
   nameHe: string;
   nameEn: string | null;
 }
@@ -225,7 +234,7 @@ export interface DirectoryCityView {
   cityHe: string;
   /** The records' own English name for the city, when they have one. */
   cityEn: string | null;
-  /** What a search sends to scope itself to this city; null when it has no slug. */
+  /** The city's `/city/<slug>` page; `null` when its records carry no slug. */
   citySlug: string | null;
   restaurantCount: number;
   restaurants: DirectoryRestaurantView[];
@@ -242,9 +251,12 @@ function toDirectoryRestaurantView(item: DirectoryRestaurantOut): DirectoryResta
     nameHe: item.name_he,
     nameEn: item.name_en,
     addressHe: item.address_he,
-    // The wire carries two parallel lists. They are zipped here so a view prints one
-    // name per certifier and never lines the two lists up by index itself.
+    // The wire carries three parallel lists. They are zipped here so a view prints
+    // one name per certifier and never lines the lists up by index itself. A row
+    // from an API build that predates `certifier_slugs` gets an empty slug, which
+    // the views render as plain text rather than a link to nowhere.
     certifiers: item.certifier_names_he.map((nameHe, index) => ({
+      slug: item.certifier_slugs?.[index] ?? "",
       nameHe,
       nameEn: item.certifier_names_en[index] ?? null,
     })),
@@ -255,7 +267,7 @@ function toDirectoryCityView(city: DirectoryCityOut): DirectoryCityView {
   return {
     cityHe: city.city_he,
     cityEn: city.city_en,
-    citySlug: city.city_slug,
+    citySlug: city.city_slug ?? null,
     restaurantCount: city.restaurant_count,
     restaurants: city.restaurants.map(toDirectoryRestaurantView),
   };
@@ -265,6 +277,106 @@ export function toDirectoryView(response: DirectoryOut): DirectoryView {
   return {
     totalRestaurants: response.total_restaurants,
     cities: response.cities.map(toDirectoryCityView),
+  };
+}
+
+/** One certifier facet on a city page: identity, slug and a count. Never a rank. */
+export interface DirectoryCertifierFacetView {
+  slug: string;
+  nameHe: string;
+  nameEn: string | null;
+  restaurantCount: number;
+}
+
+/** `/city/<slug>` and `/city/<slug>/<certifier>`: one city's full facts list. */
+export interface CityDirectoryView {
+  citySlug: string;
+  cityHe: string;
+  cityEn: string | null;
+  /** The whole city's count, whether or not a certifier filter is on. */
+  restaurantCount: number;
+  /** Every certifier in the city, alphabetical; never narrowed by the filter. */
+  certifiers: DirectoryCertifierFacetView[];
+  selectedCertifier: DirectoryCertifierFacetView | null;
+  /** Every matching row, alphabetical — narrowed when a certifier is selected. */
+  restaurants: DirectoryRestaurantView[];
+}
+
+/** One city a certifier covers, as a link target with a count. */
+export interface CertifierCityView {
+  citySlug: string;
+  cityHe: string;
+  cityEn: string | null;
+  restaurantCount: number;
+}
+
+/** A directory row that also names its city, for the certifier page's list. */
+export interface CertifierDirectoryRestaurantView extends DirectoryRestaurantView {
+  cityHe: string | null;
+  cityEn: string | null;
+  citySlug: string | null;
+}
+
+/** `/certifier/<slug>`: every restaurant one certifier covers, by city. */
+export interface CertifierDirectoryView {
+  slug: string;
+  nameHe: string;
+  nameEn: string | null;
+  restaurantCount: number;
+  /** Largest city first, then alphabetical — the API's order, not a ranking. */
+  cities: CertifierCityView[];
+  restaurants: CertifierDirectoryRestaurantView[];
+}
+
+function toFacetView(facet: DirectoryCertifierFacetOut): DirectoryCertifierFacetView {
+  return {
+    slug: facet.slug,
+    nameHe: facet.name_he,
+    nameEn: facet.name_en,
+    restaurantCount: facet.restaurant_count,
+  };
+}
+
+export function toCityDirectoryView(response: CityDirectoryOut): CityDirectoryView {
+  return {
+    citySlug: response.city_slug,
+    cityHe: response.city_he,
+    cityEn: response.city_en,
+    restaurantCount: response.restaurant_count,
+    certifiers: response.certifiers.map(toFacetView),
+    selectedCertifier: response.selected_certifier ? toFacetView(response.selected_certifier) : null,
+    restaurants: response.restaurants.map(toDirectoryRestaurantView),
+  };
+}
+
+function toCertifierCityView(city: DirectoryCertifierCityOut): CertifierCityView {
+  return {
+    citySlug: city.city_slug,
+    cityHe: city.city_he,
+    cityEn: city.city_en,
+    restaurantCount: city.restaurant_count,
+  };
+}
+
+function toCertifierRestaurantView(
+  item: DirectoryCertifierRestaurantOut,
+): CertifierDirectoryRestaurantView {
+  return {
+    ...toDirectoryRestaurantView(item),
+    cityHe: item.city_he,
+    cityEn: item.city_en,
+    citySlug: item.city_slug,
+  };
+}
+
+export function toCertifierDirectoryView(response: CertifierDirectoryOut): CertifierDirectoryView {
+  return {
+    slug: response.slug,
+    nameHe: response.name_he,
+    nameEn: response.name_en,
+    restaurantCount: response.restaurant_count,
+    cities: response.cities.map(toCertifierCityView),
+    restaurants: response.restaurants.map(toCertifierRestaurantView),
   };
 }
 

@@ -21,8 +21,6 @@ adds on top.
 from __future__ import annotations
 
 import uuid
-from collections import Counter
-from collections.abc import Iterable
 from xml.sax.saxutils import escape
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -48,12 +46,17 @@ from app.api.consts import (
     WEB_ROUTE_RESTAURANT_TEMPLATE,
 )
 from app.api.public import _geo_point_out
+from app.api.public_directory_shared import (
+    city_en_for_group,
+    city_slug_for_group,
+    directory_restaurant_out,
+    directory_sitemap_paths,
+)
 from app.api.schemas_public_seo import (
     CertificateFactOut,
     CertifierFactOut,
     DirectoryCityOut,
     DirectoryResponse,
-    DirectoryRestaurantOut,
     RestaurantPublicOut,
 )
 from app.core.config import settings
@@ -212,12 +215,14 @@ def build_sitemap_xml(origin: str, entries: list[tuple[str, str | None]]) -> str
 
 @router.get("/sitemap.xml")
 def get_sitemap(request: Request, session: Session = Depends(get_session)) -> Response:
-    """XML sitemap of the web app's public routes: the home page and one
+    """XML sitemap of the web app's public routes: the home page, the city and
+    certifier landing pages (``directory_sitemap_paths``, no lastmod), and one
     ``/r/{restaurant_id}`` entry per restaurant ``POST /v1/search`` could ever return —
     the same unconditional candidate-set filter ``build_search_statement`` applies
     (``Restaurant.status == RestaurantStatus.OPEN``); every other search filter is
     request-specific narrowing, not part of "could ever be returned". Capped at
-    ``SITEMAP_MAX_URLS`` (the sitemaps.org limit for one file); the corpus is ~375
+    ``SITEMAP_MAX_URLS`` (the sitemaps.org limit for one file), truncating restaurant
+    entries before directory entries; the corpus is ~375
     restaurants today, so a single file is enough — a larger corpus later needs a
     sitemap *index* file instead, which is out of scope here.
 
@@ -231,14 +236,16 @@ def get_sitemap(request: Request, session: Session = Depends(get_session)) -> Re
     """
     origin = resolve_public_web_origin(request)
 
+    directory_paths = directory_sitemap_paths(session)[: SITEMAP_MAX_URLS - 1]
     rows = session.execute(
         select(Restaurant.id, Restaurant.updated_at)
         .where(Restaurant.status == RestaurantStatus.OPEN)
         .order_by(Restaurant.id)
-        .limit(SITEMAP_MAX_URLS)
+        .limit(max(SITEMAP_MAX_URLS - 1 - len(directory_paths), 0))
     ).all()
 
     entries: list[tuple[str, str | None]] = [(WEB_ROUTE_HOME, None)]
+    entries.extend((path, None) for path in directory_paths)
     entries.extend(
         (
             WEB_ROUTE_RESTAURANT_TEMPLATE.format(restaurant_id=restaurant_id),
@@ -257,103 +264,6 @@ def get_sitemap(request: Request, session: Session = Depends(get_session)) -> Re
             VARY_HEADER: VARY_FORWARDED_HOST,
         },
     )
-
-
-def _certifier_names(restaurant: Restaurant) -> tuple[list[str], list[str | None]]:
-    """Active certifiers of one restaurant's certificates, de-duplicated by certifier
-    id and sorted alphabetically by ``name_he`` — the same "active certifiers only"
-    inclusion rule ``get_restaurant_public_facts`` applies, with no certificate state
-    exposed (this is identity only, not evaluation).
-
-    Parameters:
-        restaurant (Restaurant): the restaurant, with ``certificates`` and each
-            certificate's ``certifier`` already loaded.
-
-    Return:
-        tuple[list[str], list[str | None]]: ``(names_he, names_en)``, parallel lists
-            (same order, same length); ``names_en`` may contain ``None``.
-    """
-    active_by_id: dict[uuid.UUID, Certifier] = {
-        certificate.certifier.id: certificate.certifier
-        for certificate in restaurant.certificates
-        if certificate.certifier.is_active
-    }
-    ordered = sorted(active_by_id.values(), key=lambda certifier: certifier.name_he)
-    names_he = [certifier.name_he for certifier in ordered]
-    names_en = [certifier.name_en for certifier in ordered]
-
-    return names_he, names_en
-
-
-def _directory_restaurant_out(restaurant: Restaurant) -> DirectoryRestaurantOut:
-    """Serialize one restaurant's identity-only facts for a directory city group.
-
-    Parameters:
-        restaurant (Restaurant): the restaurant, with ``certificates`` and each
-            certificate's ``certifier`` already loaded.
-
-    Return:
-        DirectoryRestaurantOut: the restaurant as an API output model.
-    """
-    certifier_names_he, certifier_names_en = _certifier_names(restaurant)
-
-    return DirectoryRestaurantOut(
-        restaurant_id=restaurant.id,
-        name_he=restaurant.name_he,
-        name_en=restaurant.name_en,
-        address_he=restaurant.address_he,
-        certifier_names_he=certifier_names_he,
-        certifier_names_en=certifier_names_en,
-    )
-
-
-def _majority_value(values: Iterable[str | None]) -> str | None:
-    """The most common non-null value in ``values``, ties broken alphabetically.
-
-    Parameters:
-        values (Iterable[str | None]): the candidate values; ``None`` entries are
-            ignored.
-
-    Return:
-        str | None: the majority value, or ``None`` if there is no non-null value.
-    """
-    counts = Counter(value for value in values if value is not None)
-
-    if not counts:
-        return None
-
-    return max(sorted(counts), key=lambda value: counts[value])
-
-
-def _city_en_for_group(city_restaurants: list[Restaurant]) -> str | None:
-    """The English display label for one ``city_he`` group: the most common non-null
-    ``Restaurant.city_en`` among its restaurants, ties broken alphabetically. Grouping
-    itself stays keyed by ``city_he`` only — this only picks the label shown for it.
-
-    Parameters:
-        city_restaurants (list[Restaurant]): every restaurant already grouped under
-            one ``city_he`` value.
-
-    Return:
-        str | None: the majority ``city_en``, or ``None`` if none of them has one.
-    """
-    return _majority_value(restaurant.city_en for restaurant in city_restaurants)
-
-
-def _city_slug_for_group(city_restaurants: list[Restaurant]) -> str | None:
-    """The search-scoping slug for one ``city_he`` group: the most common non-null
-    ``Restaurant.city_slug`` among its restaurants, ties broken alphabetically. The web
-    app sends it back as ``SearchRequest.city``. Grouping itself stays keyed by
-    ``city_he`` only — this only picks the slug exposed for it.
-
-    Parameters:
-        city_restaurants (list[Restaurant]): every restaurant already grouped under
-            one ``city_he`` value.
-
-    Return:
-        str | None: the majority ``city_slug``, or ``None`` if none of them has one.
-    """
-    return _majority_value(restaurant.city_slug for restaurant in city_restaurants)
 
 
 @router.get("/directory", response_model=DirectoryResponse)
@@ -413,11 +323,11 @@ def get_directory(response: Response, session: Session = Depends(get_session)) -
         cities=[
             DirectoryCityOut(
                 city_he=city_he,
-                city_en=_city_en_for_group(city_restaurants),
-                city_slug=_city_slug_for_group(city_restaurants),
+                city_slug=city_slug_for_group(city_restaurants),
+                city_en=city_en_for_group(city_restaurants),
                 restaurant_count=len(city_restaurants),
                 restaurants=[
-                    _directory_restaurant_out(restaurant)
+                    directory_restaurant_out(restaurant)
                     for restaurant in city_restaurants[:DIRECTORY_SAMPLE_PER_CITY]
                 ],
             )
