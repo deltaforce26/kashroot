@@ -65,6 +65,10 @@
  * worth another try, an unavailable device position and a browser with no geolocation
  * (often an insecure context) each get their own honest line, and if the hook has no
  * cause on record the hint falls back to the plain "unavailable" wording.
+ *
+ * Installed as a PWA (`isStandalone`) there is no address bar and no lock icon, so the
+ * denied line is a different one there: it points at the device's settings (Android's
+ * app permissions, iOS's Safari location setting) instead.
  */
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
@@ -73,6 +77,7 @@ import { useFilters } from "../filters/useFilters";
 import { useI18n } from "../i18n/I18nProvider";
 import { matchCities, useCityIndex, type CityOption } from "../location/useCityIndex";
 import { useOrigin } from "../location/useOrigin";
+import { isStandalone } from "../pwa/standalone";
 import {
   hasMapsKey,
   reverseGeocodeArea,
@@ -407,7 +412,9 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
           hint in between would push the menu down below it. */}
       {hint && (
         <p className="hint searchbar__hint" role="status">
-          {t.origin.refused[failure ?? "unavailable"]}
+          {failure === "denied" && isStandalone()
+            ? t.origin.refused.deniedInstalled
+            : t.origin.refused[failure ?? "unavailable"]}
         </p>
       )}
     </>

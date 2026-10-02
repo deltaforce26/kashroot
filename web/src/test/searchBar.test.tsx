@@ -112,6 +112,20 @@ async function radiusOffered(user: User): Promise<boolean> {
   return offered;
 }
 
+/**
+ * A `matchMedia` that answers the install question and nothing else true. The rest of
+ * the app (the theme provider) listens to media queries too, so it is a whole
+ * MediaQueryList, not just `matches`.
+ */
+function stubMatchMedia(standalone: boolean) {
+  return (query: string) => ({
+    matches: standalone && query === "(display-mode: standalone)",
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  });
+}
+
 let positionRequests = 0;
 /** Held open so a test can look at the pending state before answering. */
 let answer: (() => void) | null = null;
@@ -147,6 +161,7 @@ describe("search bar", () => {
     resetCityIndex();
     Reflect.deleteProperty(navigator, "geolocation");
     Reflect.deleteProperty(navigator, "permissions");
+    Reflect.deleteProperty(window, "matchMedia");
   });
 
   it("is idle at first: the near-me label and the navigation arrow, on the gradient pill", async () => {
@@ -342,6 +357,36 @@ describe("search bar", () => {
     expect(await screen.findByText(he.origin.refused.timeout)).toBeInTheDocument();
     expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
     expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
+  });
+
+  it("points an installed app at the device's settings, not at a lock icon that is not there", async () => {
+    seedEverywhere();
+    stubGeolocation("deny");
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: stubMatchMedia(true),
+    });
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    await user.click(nearMe());
+    expect(await screen.findByText(he.origin.refused.deniedInstalled)).toBeInTheDocument();
+    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
+  });
+
+  it("keeps the browser wording for a denial in a browser tab", async () => {
+    seedEverywhere();
+    stubGeolocation("deny");
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: stubMatchMedia(false),
+    });
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    await user.click(nearMe());
+    expect(await screen.findByText(he.origin.refused.denied)).toBeInTheDocument();
+    expect(screen.queryByText(he.origin.refused.deniedInstalled)).toBeNull();
   });
 
   it("says the site is blocked at once, without asking the device, when permission is already denied", async () => {

@@ -379,6 +379,9 @@ const he = {
       denied:
         "הגישה למיקום חסומה לאתר הזה. אפשר לאפשר אותה מחדש דרך סמל המנעול בשורת הכתובת, או להקליד עיר או כתובת.",
       timeout: "לא הצלחנו לאתר אותך בזמן. נסו שוב או הקלידו עיר או כתובת.",
+      // The installed app has no address bar or lock icon, so the way back is the device's own settings.
+      deniedInstalled:
+        "הגישה למיקום חסומה לאפליקציה. אפשר לאפשר אותה בהגדרות המכשיר — באנדרואיד: הגדרות → אפליקציות → Kashroot → הרשאות → מיקום; באייפון: הגדרות → Safari → מיקום — או להקליד עיר או כתובת.",
       unavailable: "המיקום לא זמין כרגע במכשיר. אפשר להקליד עיר או כתובת.",
       unsupported: "הדפדפן הזה לא מאפשר גישה למיקום (נדרש חיבור מאובטח). אפשר להקליד עיר או כתובת.",
     },
@@ -958,6 +961,8 @@ const en: Strings = {
       denied:
         "Location is blocked for this site. Allow it again from the lock icon in the address bar, or type a city or an address.",
       timeout: "We couldn't find your position in time. Try again, or type a city or an address.",
+      deniedInstalled:
+        "Location is blocked for the app. Allow it in your device settings — Android: Settings → Apps → Kashroot → Permissions → Location; iPhone: Settings → Safari → Location — or type a city or an address.",
       unavailable: "Your device's location isn't available right now. Type a city or an address instead.",
       unsupported:
         "This browser can't share your location (a secure connection is required). Type a city or an address instead.",

@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { useI18n } from "../i18n/I18nProvider";
+import { isStandalone } from "../pwa/standalone";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -15,13 +16,6 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const DISMISS_KEY = "kashroot.install.dismissed";
-
-function isStandalone(): boolean {
-  return (
-    window.matchMedia?.("(display-mode: standalone)").matches ||
-    (window.navigator as { standalone?: boolean }).standalone === true
-  );
-}
 
 export function InstallPrompt() {
   const { t } = useI18n();
