@@ -112,11 +112,25 @@ async function radiusOffered(user: User): Promise<boolean> {
   return offered;
 }
 
+/**
+ * A `matchMedia` that answers the install question and nothing else true. The rest of
+ * the app (the theme provider) listens to media queries too, so it is a whole
+ * MediaQueryList, not just `matches`.
+ */
+function stubMatchMedia(standalone: boolean) {
+  return (query: string) => ({
+    matches: standalone && query === "(display-mode: standalone)",
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  });
+}
+
 let positionRequests = 0;
 /** Held open so a test can look at the pending state before answering. */
 let answer: (() => void) | null = null;
 
-function stubGeolocation(behaviour: "grant" | "deny" | "hold") {
+function stubGeolocation(behaviour: "grant" | "deny" | "timeout" | "hold") {
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
     value: {
@@ -126,6 +140,7 @@ function stubGeolocation(behaviour: "grant" | "deny" | "hold") {
           ok({ coords: { latitude: 31.78, longitude: 35.21 } } as GeolocationPosition);
         if (behaviour === "grant") grant();
         else if (behaviour === "deny") fail({ code: 1, message: "denied" } as GeolocationPositionError);
+        else if (behaviour === "timeout") fail({ code: 3, message: "timeout" } as GeolocationPositionError);
         else answer = grant;
       },
     },
@@ -145,6 +160,8 @@ describe("search bar", () => {
     resetOriginState();
     resetCityIndex();
     Reflect.deleteProperty(navigator, "geolocation");
+    Reflect.deleteProperty(navigator, "permissions");
+    Reflect.deleteProperty(window, "matchMedia");
   });
 
   it("is idle at first: the near-me label and the navigation arrow, on the gradient pill", async () => {
@@ -241,7 +258,7 @@ describe("search bar", () => {
     expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem(ORIGIN_KEY) ?? "null")).toEqual({ source: "none" });
     // Leaving is not a refusal.
-    expect(screen.queryByText(he.origin.nearMeRefused)).toBeNull();
+    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
   });
 
   it("cancels on a tap while locating, without a hint, and ignores the late answer", async () => {
@@ -254,7 +271,7 @@ describe("search bar", () => {
     expect(locatingButton()).toBeInTheDocument();
     await user.click(locatingButton());
     expect(nearMe()).toHaveAttribute("data-state", "idle");
-    expect(screen.queryByText(he.origin.nearMeRefused)).toBeNull();
+    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
 
     // The device answers after all: nobody is waiting for it.
     answer!();
@@ -262,7 +279,7 @@ describe("search bar", () => {
     expect(nearMe()).toHaveAttribute("data-state", "idle");
     expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
     expect(field()).toHaveAttribute("placeholder", he.search.placeholder);
-    expect(screen.queryByText(he.origin.nearMeRefused)).toBeNull();
+    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
     expect(JSON.parse(localStorage.getItem(ORIGIN_KEY) ?? "null")).toEqual({ source: "none" });
   });
 
@@ -278,7 +295,7 @@ describe("search bar", () => {
     await user.click(nearMe());
     await user.click(locatingButton());
     expect(nearMe()).toHaveAttribute("data-state", "idle");
-    expect(screen.queryByText(he.origin.nearMeRefused)).toBeNull();
+    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
 
     answer!();
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -289,7 +306,7 @@ describe("search bar", () => {
       source: "city",
       slug: "tiberias",
     });
-    expect(screen.queryByText(he.origin.nearMeRefused)).toBeNull();
+    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
   });
 
   it("labels the active button with the filter bar's radius", async () => {
@@ -312,11 +329,11 @@ describe("search bar", () => {
     stubGeolocation("deny");
     const user = userEvent.setup();
     await reachHome(user);
-    expect(screen.queryByText(he.origin.nearMeRefused)).toBeNull();
+    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
 
     await user.click(nearMe());
-    expect(await screen.findByText(he.origin.nearMeRefused)).toBeInTheDocument();
-    const hint = screen.getByText(he.origin.nearMeRefused);
+    expect(await screen.findByText(he.origin.refused.denied)).toBeInTheDocument();
+    const hint = screen.getByText(he.origin.refused.denied);
     expect(hint).toHaveAttribute("role", "status");
     // Outside the wrapper that anchors the menu, so a menu opening later is not pushed
     // below it.
@@ -327,7 +344,82 @@ describe("search bar", () => {
     cleanup();
     mount();
     await screen.findAllByRole("button", { name: he.home.changeLocation });
-    expect(screen.queryByText(he.origin.nearMeRefused)).toBeNull();
+    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
+  });
+
+  it("names the timeout for a timed-out request, not the blocked-site instruction", async () => {
+    seedEverywhere();
+    stubGeolocation("timeout");
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    await user.click(nearMe());
+    expect(await screen.findByText(he.origin.refused.timeout)).toBeInTheDocument();
+    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
+    expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
+  });
+
+  it("points an installed app at the device's settings, not at a lock icon that is not there", async () => {
+    seedEverywhere();
+    stubGeolocation("deny");
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: stubMatchMedia(true),
+    });
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    await user.click(nearMe());
+    expect(await screen.findByText(he.origin.refused.deniedInstalled)).toBeInTheDocument();
+    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
+  });
+
+  it("keeps the browser wording for a denial in a browser tab", async () => {
+    seedEverywhere();
+    stubGeolocation("deny");
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: stubMatchMedia(false),
+    });
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    await user.click(nearMe());
+    expect(await screen.findByText(he.origin.refused.denied)).toBeInTheDocument();
+    expect(screen.queryByText(he.origin.refused.deniedInstalled)).toBeNull();
+  });
+
+  it("says the site is blocked at once, without asking the device, when permission is already denied", async () => {
+    seedEverywhere();
+    stubGeolocation("grant");
+    Object.defineProperty(navigator, "permissions", {
+      configurable: true,
+      value: { query: () => Promise.resolve({ state: "denied" }) },
+    });
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    await user.click(nearMe());
+    expect(await screen.findByText(he.origin.refused.denied)).toBeInTheDocument();
+    expect(positionRequests).toBe(0);
+    expect(nearMe()).toHaveAttribute("data-state", "idle");
+    expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
+  });
+
+  it("asks the device anyway when the permission query itself fails", async () => {
+    seedEverywhere();
+    stubGeolocation("grant");
+    Object.defineProperty(navigator, "permissions", {
+      configurable: true,
+      value: { query: () => Promise.reject(new TypeError("unsupported")) },
+    });
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    await user.click(nearMe());
+    await waitFor(() => expect(withinButton()).toBeInTheDocument());
+    expect(positionRequests).toBe(1);
+    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
   });
 
   it("offers a matching city, and a pick scopes the whole city and survives a reload", async () => {
@@ -390,11 +482,11 @@ describe("search bar", () => {
     const user = userEvent.setup();
     await reachHome(user);
     await user.click(nearMe());
-    await screen.findByText(he.origin.nearMeRefused);
+    await screen.findByText(he.origin.refused.denied);
 
     await user.type(field(), "טבר");
     await user.click(await screen.findByRole("button", { name: /טבריה/ }));
-    expect(screen.queryByText(he.origin.nearMeRefused)).toBeNull();
+    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
   });
 
   it("lets a later pick win over a place whose lookup is still in flight", async () => {

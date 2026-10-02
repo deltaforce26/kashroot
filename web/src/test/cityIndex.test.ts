@@ -315,6 +315,109 @@ describe("a city as the search origin", () => {
     expect(result.current.state).toBe("idle");
   });
 
+  describe("why a device request failed", () => {
+    // An explicit "all of Israel" on record, so mounting the hook does not make a
+    // first-load device request of its own and every request below is the test's.
+    beforeEach(() => {
+      localStorage.setItem(ORIGIN_KEY, JSON.stringify({ source: "none" }));
+    });
+    afterEach(() => {
+      Reflect.deleteProperty(navigator, "permissions");
+    });
+
+    it.each([
+      [1, "denied"],
+      [2, "unavailable"],
+      [3, "timeout"],
+    ] as const)("maps position error code %i to %s, and a fix clears it", (code, failure) => {
+      const { result } = renderHook(() => useOrigin());
+      const { pending, fix } = holdGeolocation();
+      expect(result.current.failure).toBeNull();
+
+      act(() => result.current.requestDeviceLocation());
+      expect(result.current.failure).toBeNull();
+      act(() => pending[0]!.fail({ code } as GeolocationPositionError));
+      expect(result.current.state).toBe("unavailable");
+      expect(result.current.failure).toBe(failure);
+
+      // A new request starts clean, and a fix leaves nothing on record.
+      act(() => result.current.requestDeviceLocation());
+      expect(result.current.failure).toBeNull();
+      act(() => pending[1]!.ok(fix(32.08, 34.78)));
+      expect(result.current.state).toBe("granted");
+      expect(result.current.failure).toBeNull();
+    });
+
+    it("is unsupported without a geolocation API", () => {
+      const { result } = renderHook(() => useOrigin());
+      act(() => result.current.requestDeviceLocation());
+      expect(result.current.state).toBe("unavailable");
+      expect(result.current.failure).toBe("unsupported");
+    });
+
+    it("is cleared by a cancel, and the cancelled request's late refusal does not bring it back", () => {
+      const { result } = renderHook(() => useOrigin());
+      const { pending } = holdGeolocation();
+      act(() => result.current.requestDeviceLocation());
+      act(() => pending[0]!.fail({ code: 1 } as GeolocationPositionError));
+      expect(result.current.failure).toBe("denied");
+
+      act(() => result.current.requestDeviceLocation());
+      act(() => result.current.cancelRequest());
+      expect(result.current.state).toBe("idle");
+      expect(result.current.failure).toBeNull();
+      act(() => pending[1]!.fail({ code: 3 } as GeolocationPositionError));
+      expect(result.current.failure).toBeNull();
+    });
+
+    it("is denied at once, without asking the device, when the permission already says so", async () => {
+      Object.defineProperty(navigator, "permissions", {
+        configurable: true,
+        value: { query: () => Promise.resolve({ state: "denied" }) },
+      });
+      const { pending } = holdGeolocation();
+      const { result } = renderHook(() => useOrigin());
+
+      act(() => result.current.requestDeviceLocation());
+      expect(result.current.state).toBe("requesting");
+      await waitFor(() => expect(result.current.state).toBe("unavailable"));
+      expect(result.current.failure).toBe("denied");
+      expect(pending).toHaveLength(0);
+    });
+
+    it("asks anyway when the permission is not denied or the query rejects", async () => {
+      const { pending } = holdGeolocation();
+      const { result } = renderHook(() => useOrigin());
+      for (const query of [
+        () => Promise.resolve({ state: "prompt" }),
+        () => Promise.reject(new TypeError("nope")),
+      ]) {
+        Object.defineProperty(navigator, "permissions", { configurable: true, value: { query } });
+        const before = pending.length;
+        act(() => result.current.requestDeviceLocation());
+        await waitFor(() => expect(pending).toHaveLength(before + 1));
+      }
+      expect(result.current.failure).toBeNull();
+    });
+
+    it("drops a permission answer that arrives after a cancel", async () => {
+      let settle!: (status: { state: string }) => void;
+      Object.defineProperty(navigator, "permissions", {
+        configurable: true,
+        value: { query: () => new Promise((resolve) => (settle = resolve)) },
+      });
+      const { pending } = holdGeolocation();
+      const { result } = renderHook(() => useOrigin());
+
+      act(() => result.current.requestDeviceLocation());
+      act(() => result.current.cancelRequest());
+      await act(async () => settle({ state: "denied" }));
+      expect(result.current.state).toBe("idle");
+      expect(result.current.failure).toBeNull();
+      expect(pending).toHaveLength(0);
+    });
+  });
+
   it("ignores a device answer that arrives after a later pick, or after a newer request", () => {
     const { result } = renderHook(() => useOrigin());
     const { pending, fix } = holdGeolocation();
