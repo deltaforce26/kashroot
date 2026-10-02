@@ -48,6 +48,11 @@ from app.ingestion.normalize import (
     split_branch_addresses,
 )
 from app.ingestion.places_resolve_consts import BUSINESS_PLACE_SOURCE_SEED_CSV
+from app.ingestion.seed_import_consts import (
+    CSV_ENCODING,
+    EMPTY_NAME_PLACEHOLDER,
+    ROW_WIDTH_ERROR_TEMPLATE,
+)
 from app.ingestion.seed_prune import PruneStats, prune_seed_data
 from app.models import (
     AuditAction,
@@ -442,10 +447,42 @@ class SeedImportStats:
         return asdict(self)
 
 
+class SeedCorpusRowWidthError(ValueError):
+    """Raised when a corpus row has a different field count than the header."""
+
+
 def read_rows(csv_path: Path) -> Iterator[dict[str, str]]:
-    """The corpus is written UTF-8 with BOM (Excel compatibility) — decode accordingly."""
-    with csv_path.open(encoding="utf-8-sig", newline="") as fh:
-        yield from csv.DictReader(fh)
+    """
+    Yield corpus rows as dicts, failing on any row whose width differs from the header.
+
+    The corpus is UTF-8 with BOM (Excel compatibility). ``csv.DictReader`` silently
+    shifts values of short rows into the wrong columns, so rows are read with
+    ``csv.reader`` and their field count is checked against the header first.
+
+    Parameters:
+        csv_path (Path): Path of the seed corpus CSV.
+
+    Return:
+        Iterator[dict[str, str]]: One header-keyed dict per non-blank row.
+    """
+    with csv_path.open(encoding=CSV_ENCODING, newline="") as fh:
+        reader = csv.reader(fh)
+        header = next(reader, None)
+        if header is None:
+            return
+        for row in reader:
+            if not row:
+                continue
+            if len(row) != len(header):
+                raise SeedCorpusRowWidthError(
+                    ROW_WIDTH_ERROR_TEMPLATE.format(
+                        line=reader.line_num,
+                        name=row[0] if row else EMPTY_NAME_PLACEHOLDER,
+                        actual=len(row),
+                        expected=len(header),
+                    )
+                )
+            yield dict(zip(header, row, strict=True))
 
 
 def _apply(obj: Any, values: dict[str, Any], stats: SeedImportStats, entity: str) -> dict[str, Any]:
