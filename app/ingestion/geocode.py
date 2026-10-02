@@ -580,11 +580,16 @@ def _run_geocode(
     stats.would_call_api = len(uncached_skipped)
 
     # ---- Phase 2: classify + mutate (rolled back by the caller on dry runs). --------
-    used_place_ids: set[str] = set(
-        session.scalars(
-            select(Restaurant.google_place_id).where(Restaurant.google_place_id.is_not(None))
+    # google_place_id here is the BUILDING/address place id (we geocode the street
+    # address), so several restaurants legitimately share one. Track place_id -> the
+    # normalized names already using it; only a same-name collision is a dedupe question.
+    used_place_ids: dict[str, set[str]] = {}
+    for used_pid, used_name in session.execute(
+        select(Restaurant.google_place_id, Restaurant.name_he).where(
+            Restaurant.google_place_id.is_not(None)
         )
-    )
+    ):
+        used_place_ids.setdefault(used_pid, set()).add(normalize_for_key(used_name))
     for restaurant, q in items:
         snapshot = snapshots[restaurant.id]
         had_point = snapshot["had_point"]
@@ -621,11 +626,12 @@ def _run_geocode(
         own_place_id = snapshot["place_id"] if had_point else None
         if (
             decision.place_id
-            and decision.place_id in used_place_ids
             and decision.place_id != own_place_id
+            and normalize_for_key(restaurant.name_he) in used_place_ids.get(decision.place_id, ())
         ):
-            # Two records resolving to one Google place — a dedupe question for a
-            # moderator, not something to overwrite silently.
+            # Same normalized name at the same Google place — plausibly one business
+            # recorded twice, a dedupe question for a moderator, not something to
+            # overwrite silently. Different names in one building are accepted.
             if not had_point:
                 _flag(session, restaurant, "duplicate_place_id", evidence, run_id, stats)
             continue
@@ -633,7 +639,9 @@ def _run_geocode(
             _accept(session, restaurant, decision, evidence, run_id, stats, snapshot)
             and decision.place_id
         ):
-            used_place_ids.add(decision.place_id)
+            used_place_ids.setdefault(decision.place_id, set()).add(
+                normalize_for_key(restaurant.name_he)
+            )
 
     session.flush()
 

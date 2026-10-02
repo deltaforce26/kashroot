@@ -533,7 +533,7 @@ def test_duplicate_place_id_flags_instead_of_writing(session):
         geo="SRID=4326;POINT(34.83 32.08)",
         name_he="הסניף הראשון",
     )
-    second = make_restaurant(session, name_he="הסניף השני")
+    second = make_restaurant(session, name_he='הסניף  "הראשון"', dedupe_key="other-key")
     query = build_geocode_query(second.address_he, second.city_he)
     stub = StubGeocoder({query: ok_response(google_result())})
 
@@ -544,6 +544,39 @@ def test_duplicate_place_id_flags_instead_of_writing(session):
     session.refresh(second)
     assert second.geo is None
     assert second.needs_review is True
+
+
+def test_same_building_different_names_are_all_accepted(session):
+    first = make_restaurant(session, name_he="רודריגז")
+    second = make_restaurant(session, name_he="חומוס אליהו")
+    stub = StubGeocoder({QUERY: ok_response(google_result())})
+
+    stats = geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
+
+    assert stats.accepted == 2
+    assert stats.review_reasons == {}
+    for restaurant in (first, second):
+        session.refresh(restaurant)
+        assert restaurant.geo is not None
+        assert restaurant.needs_review is False
+
+
+def test_same_building_different_name_from_existing_point_is_accepted(session):
+    make_restaurant(
+        session,
+        google_place_id="ChIJd8kRVoJHHRURn5W2jCzHIcE",
+        geo="SRID=4326;POINT(34.83 32.08)",
+        name_he="רודריגז",
+    )
+    other = make_restaurant(session, name_he="סאם בורגר")
+    stub = StubGeocoder({QUERY: ok_response(google_result())})
+
+    stats = geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
+
+    assert stats.accepted == 1
+    assert stats.review_reasons == {}
+    session.refresh(other)
+    assert other.geo is not None
 
 
 @pytest.mark.parametrize("response", [REQUEST_DENIED, OVER_QUERY_LIMIT])
@@ -699,7 +732,7 @@ def test_city_and_limit_filters(session):
 def test_shared_query_between_branches_costs_one_api_call(session):
     # Same published address for two records → one query, one billable call.
     make_restaurant(session, name_he="סניף א")
-    make_restaurant(session, name_he="סניף ב")
+    make_restaurant(session, name_he="סניף  א!", dedupe_key="other-key")
     stub = StubGeocoder({QUERY: ok_response(google_result())})
 
     stats = geocode_restaurants(session, stub, dry_run=False, allow_api_calls=True, actor="pytest")
@@ -716,7 +749,7 @@ def test_shared_query_between_branches_costs_one_api_call(session):
 # --------------------------------------------------------------------------------------
 
 
-def test_migration_chain_heads_at_0010():
+def test_migration_chain_heads_at_0011():
     from pathlib import Path
 
     from alembic.config import Config
@@ -724,7 +757,11 @@ def test_migration_chain_heads_at_0010():
 
     root = Path(__file__).resolve().parents[1]
     script = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert script.get_heads() == ["0010_business_place_source"]
+    assert script.get_heads() == ["0011_google_place_id_non_unique"]
+    assert (
+        script.get_revision("0011_google_place_id_non_unique").down_revision
+        == "0010_business_place_source"
+    )
     assert (
         script.get_revision("0010_business_place_source").down_revision == "0009_business_place_id"
     )
