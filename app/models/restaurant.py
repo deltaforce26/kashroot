@@ -97,7 +97,7 @@ class Restaurant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Geography(geometry_type="POINT", srid=4326, spatial_index=False)
     )
     geocoded_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
-    google_place_id: Mapped[str | None] = mapped_column(String(200), unique=True)
+    google_place_id: Mapped[str | None] = mapped_column(String(200), index=True)
     #: The *business's* Places (New) place id, distinct from google_place_id (a
     #: street-address place id from the legacy Geocoding API). Filled by
     #: app.ingestion.places_resolve; preferred by PlacesService.enrichment, which
