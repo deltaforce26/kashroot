@@ -56,6 +56,15 @@
  * and what a failed request leaves behind depends on what was already in use (nothing,
  * an address, a city, an earlier fix), so the hint claims none of it: it says only that
  * the position did not come, and what to do instead. It never blocks.
+ *
+ * What to do instead depends on why, which is why the line is chosen by the hook's
+ * `failure` and not one generic sentence. The case that matters is "denied": once a
+ * site is blocked the browser never prompts again, so tapping the button can only fail
+ * at once, and the one thing that helps is re-allowing location in the browser's site
+ * settings (the lock icon in the address bar). The hint says exactly that. A timeout is
+ * worth another try, an unavailable device position and a browser with no geolocation
+ * (often an insecure context) each get their own honest line, and if the hook has no
+ * cause on record the hint falls back to the plain "unavailable" wording.
  */
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
@@ -113,6 +122,7 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
     origin,
     source,
     state,
+    failure,
     requestDeviceLocation,
     setAddressOrigin,
     setCityOrigin,
@@ -397,7 +407,7 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
           hint in between would push the menu down below it. */}
       {hint && (
         <p className="hint searchbar__hint" role="status">
-          {t.origin.nearMeRefused}
+          {t.origin.refused[failure ?? "unavailable"]}
         </p>
       )}
     </>

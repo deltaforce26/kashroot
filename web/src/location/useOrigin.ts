@@ -24,9 +24,18 @@
  * The origin is shared process-wide rather than held per component, so setting it
  * on home moves the map too: one origin, one answer.
  *
- * Denied, dismissed, unavailable and timed out are one outcome: refusing to share
- * your location is a legitimate choice, not an error state, and the sheet says so
- * once, where the button is, while the header never nags.
+ * Denied, dismissed, unavailable and timed out are one outcome as far as the origin
+ * goes: refusing to share your location is a legitimate choice, not an error state,
+ * and the sheet says so once, where the button is, while the header never nags.
+ *
+ * They are not one outcome as far as the *wording* goes, because what the user can do
+ * about each differs. A site the browser has blocked never prompts again, so "denied"
+ * needs a pointer to the browser's site settings; a timeout is worth retrying; no
+ * geolocation API (often an insecure context) is not fixable from here. So the last
+ * failure's cause is kept as `failure` (`GeoFailure`) beside the state, which keeps its
+ * meaning unchanged. When the Permissions API already reports "denied", the request is
+ * not made at all: the browser would only fail it instantly, and this way the answer is
+ * the same without a wait.
  *
  * What that outcome costs depends on what was already chosen. A request made with
  * nothing behind it leaves the app searching everywhere. A request made when an
@@ -81,6 +90,14 @@ export interface CityScope {
  */
 export type GeoState = "idle" | "requesting" | "granted" | "stale" | "unavailable";
 
+/**
+ * Why the last device request did not produce a fix, for the one line that tells the
+ * user what to do next. Only meaningful while `GeoState` says a request failed; null
+ * otherwise. `denied` is `GeolocationPositionError.code` 1, `unavailable` is 2,
+ * `timeout` is 3, and `unsupported` is no geolocation API at all.
+ */
+export type GeoFailure = "denied" | "unavailable" | "timeout" | "unsupported";
+
 const TIMEOUT_MS = 8000;
 
 /**
@@ -110,6 +127,9 @@ const CHANGED = "kashroot:origin-changed";
 
 let override: Override | null = null;
 let geoState: GeoState = "idle";
+
+/** Why the last device request failed; cleared by a fix, a cancel and every new request. */
+let lastFailure: GeoFailure | null = null;
 
 /**
  * Which device request is the current one. `getCurrentPosition` cannot be aborted, so a
@@ -180,42 +200,91 @@ function devicePoint(position: GeolocationPosition): Override {
   };
 }
 
+/** The failure a `GeolocationPositionError.code` stands for; anything unknown reads as unavailable. */
+function failureOf(error: { code?: number } | null | undefined): GeoFailure {
+  if (error?.code === 1) return "denied";
+  if (error?.code === 3) return "timeout";
+  return "unavailable";
+}
+
+/**
+ * A device request that did not produce a fix, whatever the cause: record the cause
+ * and publish the outcome. Denied, dismissed, position unavailable, or timed out —
+ * one outcome for the origin, and never a reason to discard one the user already has.
+ * Keeping the last device fix is the difference between a retry that quietly does
+ * nothing and a retry that throws the map somewhere else; keeping a pinned address or
+ * a chosen city is the same courtesy for someone who only tried the shortcut.
+ *
+ * Storage is left alone with it, so the kept origin also survives a reload.
+ */
+function failDevice(failure: GeoFailure): void {
+  lastFailure = failure;
+  if (override) {
+    publish(override, override.source === "device" ? "stale" : "unavailable");
+    return;
+  }
+  persist(null);
+  publish(null, "unavailable");
+}
+
 /**
  * Ask the device for its position. Shared by the sheet's button, the map's locate
  * control and the first load, so every path handles a refusal the same way.
+ *
+ * Without a Permissions API the position is asked for on the spot. With one, a standing
+ * "denied" is answered at once instead of waiting for the browser to refuse; any other
+ * answer, and a query that itself fails, means "go ahead and ask". The query is a wait
+ * like any other, so it checks it is still the current request before acting.
  */
 function requestDevice(): void {
   const gen = ++requestGen;
+  lastFailure = null;
   if (typeof navigator === "undefined" || !navigator.geolocation) {
+    lastFailure = "unsupported";
     publish(override, override ? geoState : "unavailable");
     return;
   }
   if (geoState !== "requesting") stateBeforeRequest = geoState;
   publish(override, "requesting");
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
+  const geolocation = navigator.geolocation;
+  const ask = () => {
+    geolocation.getCurrentPosition(
+      (position) => {
+        if (gen !== requestGen) return;
+        // Only the choice is remembered, never the coordinates.
+        lastFailure = null;
+        persist({ source: "device" });
+        publish(devicePoint(position), "granted");
+      },
+      (error) => {
+        if (gen !== requestGen) return;
+        failDevice(failureOf(error));
+      },
+      { enableHighAccuracy: false, timeout: TIMEOUT_MS, maximumAge: 60_000 },
+    );
+  };
+  const permissions = navigator.permissions;
+  if (!permissions || typeof permissions.query !== "function") {
+    ask();
+    return;
+  }
+  let query: Promise<PermissionStatus>;
+  try {
+    query = permissions.query({ name: "geolocation" });
+  } catch {
+    ask();
+    return;
+  }
+  query.then(
+    (status) => {
       if (gen !== requestGen) return;
-      // Only the choice is remembered, never the coordinates.
-      persist({ source: "device" });
-      publish(devicePoint(position), "granted");
+      if (status.state === "denied") failDevice("denied");
+      else ask();
     },
     () => {
       if (gen !== requestGen) return;
-      // Denied, dismissed, position unavailable, or timed out — one outcome, and
-      // never a reason to discard an origin the user already has. Keeping the last
-      // device fix is the difference between a retry that quietly does nothing and
-      // a retry that throws the map somewhere else; keeping a pinned address or a
-      // chosen city is the same courtesy for someone who only tried the shortcut.
-      //
-      // Storage is left alone with it, so the kept origin also survives a reload.
-      if (override) {
-        publish(override, override.source === "device" ? "stale" : "unavailable");
-        return;
-      }
-      persist(null);
-      publish(null, "unavailable");
+      ask();
     },
-    { enableHighAccuracy: false, timeout: TIMEOUT_MS, maximumAge: 60_000 },
   );
 }
 
@@ -317,6 +386,7 @@ export function resetOriginState(): void {
   requestGen += 1;
   override = null;
   geoState = "idle";
+  lastFailure = null;
   stateBeforeRequest = "idle";
   restored = false;
 }
@@ -343,6 +413,12 @@ export function useOrigin(): {
    */
   city: CityScope | null;
   state: GeoState;
+  /**
+   * Why the last device request failed, or null: nothing has failed, or a fix, a cancel
+   * or a newer request has since replaced it. It says nothing about whether a failure
+   * is on record — `state` does that.
+   */
+  failure: GeoFailure | null;
   /**
    * True while the device is being asked and nothing else is pinned: the answer is
    * not yet "everywhere", so screens keep loading rather than searching unscoped.
@@ -402,6 +478,7 @@ export function useOrigin(): {
   const cancelRequest = useCallback(() => {
     if (geoState !== "requesting") return;
     requestGen += 1;
+    lastFailure = null;
     publish(override, stateBeforeRequest === "unavailable" ? "idle" : stateBeforeRequest);
   }, []);
 
@@ -417,6 +494,7 @@ export function useOrigin(): {
     addressLabel: override?.source === "address" ? override.label : null,
     city: override?.source === "city" ? override.city : null,
     state: geoState,
+    failure: lastFailure,
     resolving: override === null && geoState === "requesting",
     requestDeviceLocation,
     setAddressOrigin,
