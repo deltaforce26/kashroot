@@ -26,7 +26,7 @@ const { chromium } = loadPlaywright();
 const BASE = (process.env.CAPTURE_URL || 'https://www.kashroot.app').replace(/\/$/, '');
 const OUT = resolve(ROOT, 'src', 'screens');
 mkdirSync(OUT, { recursive: true });
-const JERUSALEM = { latitude: 31.7683, longitude: 35.2137 };
+const JERUSALEM = { latitude: 31.7655, longitude: 35.1805 }; // Bayit VeGan, Jerusalem (DEMO_RUNSHEET neighbourhood)
 const SAFE_TOP = 59, SAFE_BOTTOM = 34;
 // Run-sheet certifiers: Badatz Eda Haredit (אייס סטורי) and Badatz Mehadrin (Rubin).
 const PICK_CERTIFIERS = [/העדה החרדית/, /רובין/];
