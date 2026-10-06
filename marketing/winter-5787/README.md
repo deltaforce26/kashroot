@@ -96,10 +96,13 @@ python3 -c "import qrcode, qrcode.image.svg as s; q=qrcode.QRCode(error_correcti
 "שמונה לילות, שמונה סטנדרטים" — at one Hanukkah table (4–12 Dec 2026) every person has
 their own kashrut standard, and Kashroot gives each of them an answer, never a score. Same
 cream + sage system with a warm amber candle glow (`#e6bd5e` / `#c9a94e`, the brief's gold);
-no snow, no red/white. The hanukkiah is clean SVG (`K.hanukkiah()` in `src/hanukkah.js`):
-**eight flames of identical size and brightness** plus a raised shamash — equal flames is a
-brand rule, nothing may read as a ranking of certifiers. Only the shamash flame carries the
-logo mark's green→amber as a quiet brand tie-in.
+no snow, no red/white. The hanukkiah is a classic brass menorah drawn as clean SVG
+(`K.hanukkiah()` in `src/hanukkah.js`, not a traced photo): knopped stem on a fluted dome
+base, four pairs of concentric engraved semicircular arms to a straight row of eight goblet
+cups, raised shamash cup, twisted-wax candles in a symmetric blue / white / orange / yellow
+order, and **eight flames of identical size and brightness** — equal flames is a brand rule,
+nothing may read as a ranking of certifiers. Only the shamash flame carries the logo mark's
+green→amber as a quiet brand tie-in.
 
 ### Outputs (`out/`)
 
@@ -118,7 +121,7 @@ logo mark's green→amber as a quiet brand tie-in.
   (1) the hanukkiah lighting flame by flame, shamash first; (2) "סבא" chip, certifier picker
   with בד״ץ העדה החרדית ticked → his home list; (3) "הגיסה", בית יוסף → her list;
   (4) "בן הדוד", the "כל תעודת כשרות" preset → his list; (5) end card with QR.
-- `hanukkah.js` (hanukkiah, persona chip, the three Hanukkah bullets) + `hanukkah.css`
+- `hanukkah.js` (brass menorah, persona chip, the three Hanukkah bullets) + `hanukkah.css`
   (amber tokens, chip, canvas glow), loaded after `screens.js` / `common.css`.
 - `qr-hanukkah-image.svg` / `qr-hanukkah-video.svg` — real QR codes (ECC H) for
   `utm_campaign=hanukkah-5787`, `utm_medium=image` / `video`.

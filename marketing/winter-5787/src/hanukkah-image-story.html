@@ -14,8 +14,8 @@
 .tagline{font-size:34px;margin-top:10px;text-align:center}
 h1{margin:40px 0 0;font:700 70px/1.14 Assistant,sans-serif;letter-spacing:-.01em;text-align:center;color:var(--ink)}
 .subline{font-size:30px;color:var(--sub);margin-top:16px;font-weight:500;text-align:center}
-.phonewrap{position:relative;width:418px;height:720px;margin:34px 0 30px;flex:none}
-.phonewrap .device{position:absolute;left:0;top:0;transform:scale(.825);transform-origin:top center}
+.phonewrap{position:relative;width:418px;height:690px;margin:46px 0 30px;flex:none}
+.phonewrap .device{position:absolute;left:0;top:0;transform:scale(.79);transform-origin:top center}
 .feats{display:flex;flex-direction:column;gap:20px;width:720px}
 .feat .t{font-size:30px}.feat .d{font-size:23px}
 .feat .ic{width:70px;height:70px}.feat .ic svg{width:34px;height:34px}
@@ -23,7 +23,7 @@ h1{margin:40px 0 0;font:700 70px/1.14 Assistant,sans-serif;letter-spacing:-.01em
 .bottom .url{font:700 74px/1 Assistant,sans-serif;letter-spacing:-.03em;direction:ltr;color:var(--ink)}
 .bottom .cta{font-size:32px;color:#3a3a3a;margin-top:12px;font-weight:600}
 /* the hanukkiah sits low-contrast behind the headline block; its flames are the only warm note */
-.hkback{position:absolute;left:50%;top:118px;transform:translateX(-50%);opacity:.28;z-index:1}
+.hkback{position:absolute;left:50%;top:198px;transform:translateX(-50%);opacity:.36;z-index:1}
 </style>
 </head>
 <body>
@@ -34,7 +34,7 @@ h1{margin:40px 0 0;font:700 70px/1.14 Assistant,sans-serif;letter-spacing:-.01em
 document.getElementById('c').innerHTML = `
 ${K.leaf({ w: 400, x: 840, y: 1040, rot: -100, op: .26 })}
 ${K.leaf({ w: 460, x: -170, y: 1560, rot: -8, op: .4 })}
-<div class="hkback">${K.hanukkiah({ w: 680, id: 'hk1' })}</div>
+<div class="hkback">${K.hanukkiah({ w: 360, id: 'hk1' })}</div>
 <div class="layout">
   <div class="brand"><div class="brandrow">${K.MARK(124, 'm1')}<div class="wordmark">Kashroot</div></div><div class="tagline">כשרות לפי הסטנדרט שלך</div></div>
   <h1>שמונה לילות בחוץ.<br>לכל אחד הסטנדרט שלו.</h1>
