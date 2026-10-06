@@ -4,6 +4,10 @@ Static image (square + story) and a silent 15 s video for the *bein hazmanim* /
 tiyul-season push. Everything is rendered deterministically from HTML with
 Playwright, so a copy tweak is an edit in `src/` and a re-render.
 
+**The phone screens are real captures of the production app** (https://www.kashroot.app,
+live data, captured 2026-10-06 by `scripts/capture.mjs`) — not design mockups. See
+`src/screens/CAPTURE.md` for the exact profile, restaurant and state of every shot.
+
 ## Outputs (`out/`)
 
 | File | What |
@@ -22,14 +26,39 @@ Playwright, so a copy tweak is an edit in `src/` and a re-render.
   switches the layout to the 1080×1080 cut. No `Date.now`, no RAF — frames are
   reproducible.
 - `common.css` + `screens.js` — palette tokens (from `design/DESIGN_BRIEF.md`),
-  the phone frame (390×844 basis, dynamic island, dark bezel) and the three app
-  screens hand-ported from `design/screens/3a.html` (home), `3c.html`
-  (whitelist) and `3d.html` (restaurant + certificate) as plain HTML/CSS
-  (no `<x-dc>` runtime).
+  the phone frame (390×844 basis, dynamic island, dark bezel), the brand mark,
+  leaves, QR and feature bullets. `K.shot('home.png')` drops a capture into the
+  frame; the old hand-ported design screens are gone.
+- `screens/` — the app captures, 1170×2532 PNG (390×844 CSS px @3x, no browser
+  chrome): `onboarding-preset`, `onboarding-certifiers-{0,1,2}` (the ticking
+  sequence), `home` (scroll top), `home-mix` (scrolled to where the verdicts mix),
+  `home-noprofile` (widest preset, not used in the cut), `restaurant`,
+  `restaurant-evidence`, `search`. `CAPTURE.md` is written by the capture script;
+  `boxes.json` holds the evidence/certificate panel positions the video's pulse
+  rings use (copied into `video.html` as `BOX`).
 - `fonts/` — copy of `web/public/fonts` (Assistant 400–700, Frank Ruhl Libre
   500–700), loaded with relative `@font-face` URLs, so rendering is offline-safe.
 - `icon.svg` — the logo mark; `qr-image.svg` / `qr-video.svg` — real QR codes
   (ECC H) for the two UTM-tagged links, generated with the Python `qrcode` lib.
+
+## Re-capture the app screens
+
+Requires Node 18+, Playwright 1.56 with a Chromium build and network access to
+production (or a local dev server). The script walks the demo run-sheet: presets →
+"מותאם אישית" → un-tick the preselected Badatzim → tick בד״ץ העדה החרדית and
+בד״ץ מהדרין — הרב רובין → home near Jerusalem (geolocation granted) → אייס סטורי
+(found through the name search) → its evidence panel. It emulates iPhone safe-area
+insets (59/34 px) so the app lays out under the frame's island as on a device.
+
+```sh
+cd marketing/winter-5787
+export PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
+node scripts/capture.mjs                                  # production
+CAPTURE_URL=http://127.0.0.1:5199 node scripts/capture.mjs  # local (cd web && npx vite --port 5199)
+```
+
+Then check `src/screens/CAPTURE.md`, and if `boxes.json` moved, update `BOX` in
+`src/video.html` before re-rendering.
 
 ## Re-render
 
