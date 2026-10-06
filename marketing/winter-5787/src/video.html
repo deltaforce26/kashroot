@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Kashroot — בין הזמנים תשפ״ז · video (1080×1920, 15s)</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="common.css">
+<style>
+.canvas{width:1080px;height:1920px}
+.hl{position:absolute;left:70px;right:70px;top:130px;text-align:center;opacity:0}
+.hl h1{margin:0;font:700 76px/1.16 Assistant,sans-serif;letter-spacing:-.01em;color:var(--ink)}
+.hl .sub{font-size:31px;color:var(--sub);margin-top:18px;font-weight:500;line-height:1.35}
+.phonewrap{position:absolute;left:50%;top:470px;width:418px;height:872px;margin-left:-209px}
+.phonewrap .device{position:absolute;inset:0;transform:scale(1.2);transform-origin:top center}
+.scr{position:absolute;inset:0;opacity:0}
+.caption{position:absolute;left:0;right:0;top:1580px;text-align:center;font:700 40px/1 Assistant,sans-serif;letter-spacing:-.02em;direction:ltr;color:var(--ink);opacity:.85}
+.end{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:0 80px;opacity:0;z-index:3}
+.end .brand{gap:10px}
+.end .wordmark{font-size:112px}
+.end .tagline{font-size:34px}
+.end h1{margin:56px 0 0;font:700 78px/1.16 Assistant,sans-serif;text-align:center;color:var(--ink);letter-spacing:-.01em}
+.end .url{margin-top:54px;font:700 112px/1 Assistant,sans-serif;letter-spacing:-.035em;direction:ltr;color:var(--ink)}
+.end .qr{margin-top:48px}
+.end .cta{margin-top:34px;font-size:40px;font-weight:700;color:var(--green)}
+.end .small{margin-top:14px;font-size:26px;color:var(--sub)}
+.end>*{opacity:0}
+/* square cut overrides */
+body.sq .canvas{width:1080px;height:1080px}
+body.sq .hl{top:62px}
+body.sq .hl h1{font-size:56px}
+body.sq .hl .sub{font-size:25px;margin-top:10px}
+body.sq .phonewrap{top:292px;height:0}
+body.sq .phonewrap .device{transform:scale(.78)}
+body.sq .caption{top:1008px;font-size:32px}
+body.sq .end .wordmark{font-size:84px}
+body.sq .end .mark{width:90px;height:90px}
+body.sq .end .tagline{font-size:26px}
+body.sq .end h1{font-size:54px;margin-top:26px}
+body.sq .end .url{font-size:80px;margin-top:26px}
+body.sq .end .qr{margin-top:22px;width:170px!important;height:170px!important}
+body.sq .end .cta{font-size:30px;margin-top:18px}
+body.sq .end .small{font-size:20px;margin-top:8px}
+body.sq .leaf.b{display:none}
+</style>
+</head>
+<body>
+<div class="canvas" id="c"></div>
+<script src="screens.js"></script>
+<script>
+const cards3 = K.HOME_CARDS.map((c, i) => Object.assign({}, c, { v: i === 2 ? 'no' : i === 4 ? 'unk' : 'ok' }));
+const beats = [
+  { h: 'בין הזמנים. טיול.<br>איפה אוכלים?', s: 'מסעדות כשרות בכל מקום בארץ' },
+  { h: 'מגדירים את הסטנדרט<br>שלכם פעם אחת', s: 'בוחרים את גופי הכשרות שאתם מקבלים' },
+  { h: 'כל מסעדה מקבלת תשובה,<br>לא ציון', s: 'מתאים לך · לא מתאים · לא מאומת — לפי מה שכתוב בתעודה' },
+  { h: 'כל שורה נסמכת<br>על התעודה עצמה', s: 'מי נתן אותה, מה כתוב בה, ועד מתי היא בתוקף' },
+];
+const screens = [
+  K.homeScreen(),
+  K.onboardingScreen({ on: [] }),
+  K.homeScreen({ cards: cards3 }),
+  K.restaurantScreen(),
+];
+document.getElementById('c').innerHTML = `
+${K.leaf({ w: 460, x: -170, y: -120, rot: 100, flip: true, op: .4 })}
+${K.leaf({ w: 460, x: -170, y: 1560, rot: -8, op: .45, cls: 'b' })}
+${K.leaf({ w: 380, x: 820, y: 1620, rot: 60, flip: true, op: .3, cls: 'b' })}
+${beats.map((b, i) => `<div class="hl" id="hl${i}"><h1>${b.h}</h1><div class="sub">${b.s}</div></div>`).join('')}
+<div class="phonewrap" id="pw">${K.phone(screens.map((s, i) => `<div class="scr" id="scr${i}">${s}</div>`).join(''))}</div>
+<div class="caption" id="cap">kashroot.app</div>
+<div class="end" id="end">
+  <div class="brand">${K.MARK(130, 'm1')}<div class="wordmark">Kashroot</div></div>
+  <h1>בין הזמנים נגמר?<br>הסטנדרט נשאר.</h1>
+  <div class="url">kashroot.app</div>
+  ${K.qr('qr-video.svg', 250)}
+  <div class="cta">הצטרפו עכשיו</div>
+  <div class="small">כשרות לפי הסטנדרט שלך · תשפ״ז</div>
+</div>`;
+
+// ---------- timeline (all Web Animations, paused; window.seek(ms) scrubs) ----------
+const anims = [];
+const EASE = 'cubic-bezier(.2,.7,.2,1)';
+const POP = 'cubic-bezier(.3,1.5,.5,1)';
+function A(el, kf, opts) { const a = el.animate(kf, Object.assign({ fill: 'both', easing: EASE }, opts)); a.pause(); anims.push(a); return a; }
+const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)];
+const BEAT = 3000, X = 300;
+
+// headlines + screens: in at start (fill both), out over the last 300ms (fill forwards only,
+// so the exit animation does not apply its first keyframe before it starts)
+for (let i = 0; i < 4; i++) {
+  const st = i * BEAT, en = st + BEAT;
+  const hl = $('#hl' + i), scr = $('#scr' + i);
+  const inAt = i === 0 ? -X : st - 200; // beat 1 is already in at t=0; later beats overlap the previous exit -> crossfade
+  A(hl, [{ opacity: 0, transform: 'translateY(22px)' }, { opacity: 1, transform: 'translateY(0)' }], { delay: inAt, duration: X });
+  A(hl, [{ opacity: 1, transform: 'translateY(0)' }, { opacity: 0, transform: 'translateY(-14px)' }], { delay: en - X, duration: X, fill: 'forwards' });
+  A(scr, [{ opacity: 0, transform: 'translateX(-18px)' }, { opacity: 1, transform: 'translateX(0)' }], { delay: inAt, duration: X });
+  if (i < 3) A(scr, [{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: 'translateX(18px)' }], { delay: en - X, duration: X, fill: 'forwards' });
+}
+// phone: gentle float, then exit with beat 4
+A($('#pw'), [{ transform: 'translateY(0)' }, { transform: 'translateY(-12px)' }, { transform: 'translateY(0)' }], { duration: 4000, iterations: Infinity, easing: 'ease-in-out' });
+A($('#pw .device'), [{ opacity: 1, transform: 'scale(1.2)' }, { opacity: 0, transform: 'scale(1.14)' }], { delay: 4 * BEAT - X, duration: X, fill: 'forwards' });
+A($('#cap'), [{ opacity: 0 }, { opacity: .85 }], { delay: 0, duration: X });
+A($('#cap'), [{ opacity: .85 }, { opacity: 0 }], { delay: 4 * BEAT - X, duration: X, fill: 'forwards' });
+
+// beat 1: cards fade in one by one
+$$('#scr0 .card').forEach((c, i) => A(c, [{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'translateY(0)' }], { delay: 200 + i * 170, duration: 420 }));
+// beat 2: certifier rows get checked in sequence
+[0, 1, 2].forEach((i, k) => {
+  const row = $(`#scr1 .row[data-i="${i}"]`), t0 = BEAT + 700 + k * 600;
+  A(row.querySelector('.tint'), [{ opacity: 0 }, { opacity: 1 }], { delay: t0, duration: 260 });
+  A(row.querySelector('.fill'), [{ transform: 'scale(0)' }, { transform: 'scale(1)' }], { delay: t0, duration: 340, easing: POP });
+  A(row.querySelector('.nm'), [{ color: '#6b6b6b' }, { color: '#161616' }], { delay: t0, duration: 260 });
+  A(row.querySelector('.av'), [{ opacity: .6 }, { opacity: 1 }], { delay: t0, duration: 260 });
+});
+// beat 3: verdict pills pop in
+$$('#scr2 .pill').forEach((p, i) => A(p, [{ transform: 'translateX(-50%) scale(0)', opacity: 0 }, { transform: 'translateX(-50%) scale(1)', opacity: 1 }], { delay: 2 * BEAT + 420 + i * 200, duration: 360, easing: POP }));
+// beat 4: certificate card highlighted with a soft pulse
+A($('#certCard'), [
+  { boxShadow: '0 0 0 0 rgba(47,122,77,0), 0 0 0 0 rgba(47,122,77,0)' },
+  { boxShadow: '0 0 0 2px rgba(47,122,77,1), 0 0 0 10px rgba(47,122,77,.22)' },
+  { boxShadow: '0 0 0 2px rgba(47,122,77,1), 0 0 0 0 rgba(47,122,77,0)' },
+], { delay: 3 * BEAT + 350, duration: 1300, iterations: 2, easing: 'ease-in-out' });
+A($('#certCard'), [{ transform: 'scale(1)' }, { transform: 'scale(1.03)' }, { transform: 'scale(1)' }], { delay: 3 * BEAT + 350, duration: 1300, iterations: 2, easing: 'ease-in-out' });
+// beat 5: end card
+A($('#end'), [{ opacity: 0 }, { opacity: 1 }], { delay: 4 * BEAT - 250, duration: 350 });
+$$('#end > *').forEach((el, i) => A(el, [{ opacity: 0, transform: 'translateY(18px)' }, { opacity: 1, transform: 'translateY(0)' }], { delay: 4 * BEAT - 200 + i * 130, duration: 450 }));
+
+window.seek = (ms) => { anims.forEach(a => { a.currentTime = ms; }); };
+window.setSquare = () => { document.body.classList.add('sq'); };
+window.seek(0);
+</script>
+</body>
+</html>

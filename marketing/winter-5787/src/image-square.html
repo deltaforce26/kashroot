@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Kashroot — בין הזמנים תשפ״ז (1080×1080)</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="common.css">
+<style>
+.canvas{width:1080px;height:1080px}
+.layout{position:absolute;inset:0;display:flex;padding:54px 60px 50px 40px;gap:10px}
+.text{width:600px;flex:none;display:flex;flex-direction:column;align-items:flex-start;text-align:right;position:relative;z-index:2}
+.phonecol{flex:1;position:relative}
+.phonecol .device{position:absolute;left:-14px;top:84px;transform:rotate(-6deg) scale(.9);transform-origin:center}
+.brand{align-items:flex-start;gap:6px;margin-bottom:34px}
+.brand .mark{margin-right:6px;margin-bottom:4px}
+.wordmark{font-size:92px}
+.tagline{font-size:30px;margin-top:4px}
+h1{margin:0;font:700 52px/1.16 Assistant,sans-serif;letter-spacing:-.01em;color:var(--ink)}
+.subline{font-size:25px;color:var(--sub);margin:16px 0 36px;font-weight:500}
+.feats{display:flex;flex-direction:column;gap:22px}
+.bottom{margin-top:auto;display:flex;align-items:center;gap:34px;width:100%}
+.bottom .url{font:700 60px/1 Assistant,sans-serif;letter-spacing:-.03em;direction:ltr;color:var(--ink)}
+.bottom .cta{font-size:28px;color:#3a3a3a;margin-top:10px;font-weight:600}
+.bottom .qr{margin-right:4px}
+</style>
+</head>
+<body>
+<div class="canvas" id="c"></div>
+<script src="screens.js"></script>
+<script>
+document.getElementById('c').innerHTML = `
+${K.leaf({ w: 440, x: -150, y: -130, rot: 100, flip: true, op: .5 })}
+${K.leaf({ w: 420, x: -140, y: 790, rot: -8, op: .55 })}
+${K.leaf({ w: 260, x: 880, y: 900, rot: 60, flip: true, op: .3 })}
+<div class="layout">
+  <div class="text">
+    <div class="brand">${K.MARK(118, 'm1')}<div class="wordmark">Kashroot</div><div class="tagline">כשרות לפי הסטנדרט שלך</div></div>
+    <h1>יוצאים לטיול?<br>הסטנדרט שלכם נוסע איתכם.</h1>
+    <div class="subline">בין הזמנים תשפ״ז · מסעדות כשרות בכל מקום בארץ</div>
+    <div class="feats">${K.FEATURES.join('')}</div>
+    <div class="bottom">
+      <div><div class="url">kashroot.app</div><div class="cta">הצטרפו עכשיו</div></div>
+      ${K.qr('qr-image.svg', 190)}
+    </div>
+  </div>
+  <div class="phonecol">${K.phone(K.homeScreen())}</div>
+</div>`;
+</script>
+</body>
+</html>

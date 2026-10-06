@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Kashroot — בין הזמנים תשפ״ז (1080×1920)</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="common.css">
+<style>
+.canvas{width:1080px;height:1920px}
+.layout{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;padding:76px 70px 70px;z-index:2}
+.brandrow{display:flex;align-items:center;gap:22px;direction:ltr}
+.wordmark{font-size:104px}
+.tagline{font-size:34px;margin-top:10px;text-align:center}
+h1{margin:40px 0 0;font:700 70px/1.14 Assistant,sans-serif;letter-spacing:-.01em;text-align:center;color:var(--ink)}
+.subline{font-size:30px;color:var(--sub);margin-top:16px;font-weight:500;text-align:center}
+.phonewrap{position:relative;width:418px;height:720px;margin:34px 0 30px;flex:none}
+.phonewrap .device{position:absolute;left:0;top:0;transform:scale(.825);transform-origin:top center}
+.feats{display:flex;flex-direction:column;gap:20px;width:720px}
+.feat .t{font-size:30px}.feat .d{font-size:23px}
+.feat .ic{width:70px;height:70px}.feat .ic svg{width:34px;height:34px}
+.bottom{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:46px;width:100%}
+.bottom .url{font:700 74px/1 Assistant,sans-serif;letter-spacing:-.03em;direction:ltr;color:var(--ink)}
+.bottom .cta{font-size:32px;color:#3a3a3a;margin-top:12px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="canvas" id="c"></div>
+<script src="screens.js"></script>
+<script>
+document.getElementById('c').innerHTML = `
+${K.leaf({ w: 460, x: -170, y: -120, rot: 100, flip: true, op: .45 })}
+${K.leaf({ w: 440, x: 800, y: 560, rot: -100, op: .35 })}
+${K.leaf({ w: 460, x: -170, y: 1560, rot: -8, op: .5 })}
+<div class="layout">
+  <div class="brand"><div class="brandrow">${K.MARK(124, 'm1')}<div class="wordmark">Kashroot</div></div><div class="tagline">כשרות לפי הסטנדרט שלך</div></div>
+  <h1>יוצאים לטיול?<br>הסטנדרט שלכם נוסע איתכם.</h1>
+  <div class="subline">בין הזמנים תשפ״ז · מסעדות כשרות בכל מקום בארץ</div>
+  <div class="phonewrap">${K.phone(K.homeScreen())}</div>
+  <div class="feats">${K.FEATURES.join('')}</div>
+  <div class="bottom">
+    <div><div class="url">kashroot.app</div><div class="cta">הצטרפו עכשיו</div></div>
+    ${K.qr('qr-image.svg', 230)}
+  </div>
+</div>`;
+</script>
+</body>
+</html>
