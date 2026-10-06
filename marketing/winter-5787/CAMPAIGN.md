@@ -24,6 +24,34 @@ if northern coverage is not live by publish time, swap the mock location to יר
 (one string in `src/image-square.html` / `src/image-story.html`). Do not promise a place the app will
 show as UNKNOWN.
 
+## Phase 2 — Hanukkah 5787 (assets: `out/kashroot-hanukkah-5787-*`)
+Concept: **שמונה לילות, שמונה סטנדרטים.** At one Hanukkah table the grandfather, the sister-in-law and
+the cousin each have their own standard; Kashroot answers each of them, never with a score.
+Every screen is a real production capture under a real profile (`src/screens/hanukkah/CAPTURE.md`).
+
+Schedule (first candle Fri 4 Dec; yeshiva and school break follows):
+| Date | Asset | Channel |
+|---|---|---|
+| Sun 29 Nov – Thu 3 Dec | square image, teaser copy "עוד כמה ימים..." | WhatsApp groups, site banners |
+| Motzei Shabbat 5 Dec, after 21:00 | 15 s video | WhatsApp Status, Instagram Reels/Stories |
+| Sun 6 – Thu 10 Dec | video cutdowns + story image, one post per day, one "night" per post | Stories |
+| Fri 11 Dec | nothing (Shabbat) | — |
+| Sat night 12 Dec | final push "לילה אחרון" | Status |
+
+Copy bank: שמונה לילות בחוץ. לכל אחד הסטנדרט שלו. / ולכולם יש תשובה, לא ציון / לסבא יש סטנדרט ·
+לגיסה יש סטנדרט אחר · ולבן הדוד — כל תעודה / חנוכה שמח. הסטנדרט שלכם, התשובה שלנו.
+
+Guardrails specific to this set:
+- The hanukkiah's eight flames are identical in size and brightness. Flames next to certifier names
+  must never read as a ranking.
+- No real restaurant is ever shown with ✕ לא מתאים or ? לא מאומת in an ad. Different standards are
+  shown as different *lists*, all MATCH, never as one restaurant failing someone's standard.
+- "Open on Hanukkah" is a hours claim: Hanukkah is not a yom tov, so no chag-hours logic applies; the
+  bullet "פתוח עכשיו — גם בערבי חנוכה" is only about the open-now filter.
+- Amber candle glow is the only seasonal cue. No snow, no red and white.
+
+UTM: `utm_campaign=hanukkah-5787`, `utm_medium=image|video`, `utm_source=whatsapp|instagram|print|site`.
+
 ## Audience and channels
 1. **Yeshiva / kollel WhatsApp groups** (primary). Square image, forwardable, QR works from a screen.
    Ask 10–20 seed contacts to forward with one personal line; the ask is "תביאו את החברותא".
