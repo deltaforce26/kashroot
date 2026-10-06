@@ -1,0 +1,77 @@
+{
+  "captured": "2026-10-06",
+  "url": "https://www.kashroot.app",
+  "profiles": {
+    "p1": {
+      "persona": "סבא",
+      "preset": "מותאם אישית",
+      "certifier": "בד\"ץ העדה החרדית",
+      "fallback": false,
+      "header": "מחפשים ליד המיקום שלך",
+      "pills": {
+        "match": 4,
+        "no_match": 0,
+        "unknown": 0
+      },
+      "cards": [
+        "פיצה שמש [verdict--match]",
+        "סושי בייגלס [verdict--match]",
+        "אייס סטורי [verdict--match]",
+        "ביג בייט [verdict--match]",
+        "פיצה טראמפ [verdict--match]",
+        "פיצה ירושלים [verdict--match]",
+        "היימישע בייגל [verdict--match]",
+        "פיצה אורי [verdict--match]"
+      ]
+    },
+    "p2": {
+      "persona": "הגיסה",
+      "preset": "מותאם אישית",
+      "certifier": "בית יוסף",
+      "fallback": false,
+      "header": "מחפשים ליד המיקום שלך",
+      "pills": {
+        "match": 4,
+        "no_match": 0,
+        "unknown": 0
+      },
+      "cards": [
+        "קפה גן סיפור [verdict--match]",
+        "בורגרס בר - תלפיות [verdict--match]",
+        "בורגרס בר [verdict--match]",
+        "בורגרס בר - המושבה הגרמנית [verdict--match]",
+        "פיצה שמש [verdict--match]",
+        "ג'פאן ג'פאן [verdict--match]",
+        "בורגרס בר [verdict--match]",
+        "ג'וי [verdict--match]"
+      ]
+    },
+    "p3": {
+      "persona": "בן הדוד",
+      "preset": "כל תעודת כשרות",
+      "certifier": null,
+      "fallback": false,
+      "header": "מחפשים ליד המיקום שלך",
+      "pills": {
+        "match": 4,
+        "no_match": 0,
+        "unknown": 0
+      },
+      "cards": [
+        "קצפת [verdict--match]",
+        "סושי בית וגן [verdict--match]",
+        "פיצה שמש [verdict--match]",
+        "מזנון הפסגה [verdict--match]",
+        "נוגטין [verdict--match]",
+        "פיצה האט [verdict--match]",
+        "קפה שלוה [verdict--match]",
+        "מאפיית לחם פיינגולד [verdict--match]"
+      ]
+    }
+  },
+  "restaurant": {
+    "name": "אייס סטורי",
+    "href": "/r/f56be1e8-5f5b-4126-931d-a294e23b960d",
+    "verdict": "✓מתאים לפרופיל שלך"
+  }
+}
