@@ -1,0 +1,9 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "Kashroot",
+    "documentationUrl": "https://kashroot.app/llms.txt",
+    "logoUrl": "https://kashroot.app/icons/icon-512.png"
+  },
+  "entries": []
+}
