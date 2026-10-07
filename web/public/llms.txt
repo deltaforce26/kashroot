@@ -1,0 +1,26 @@
+# Kashroot
+
+> Kashroot is a kosher restaurant directory for Israel. Each user defines their own kashrut profile once (which certifiers they accept, plus required attributes), and every restaurant is shown as a match, no match, or unknown for that profile, with the certificate evidence behind it.
+
+Kashroot reports facts from published certifier lists and certificates; it does not rule on halacha and does not rank or judge kashrut agencies. When the evidence is incomplete or a certificate has expired without renewal evidence, a restaurant is shown as "unknown", never as a match. Paid placement never affects results.
+
+The site is in Hebrew and English. Coverage starts with Jerusalem, Tel Aviv, Bnei Brak, Haifa and Be'er Sheva.
+
+## Directory
+
+- [Jerusalem](https://kashroot.app/city/jerusalem): kosher restaurants in Jerusalem, grouped by certifier
+- [Tel Aviv](https://kashroot.app/city/tel-aviv): kosher restaurants in Tel Aviv, grouped by certifier
+- [Bnei Brak](https://kashroot.app/city/bnei-brak): kosher restaurants in Bnei Brak, grouped by certifier
+- [Haifa](https://kashroot.app/city/haifa): kosher restaurants in Haifa, grouped by certifier
+- [Be'er Sheva](https://kashroot.app/city/be-er-sheva): kosher restaurants in Be'er Sheva, grouped by certifier
+
+## Page types
+
+- [Sitemap](https://kashroot.app/sitemap.xml): every indexable page — restaurants, cities and certifiers
+- Restaurant pages (`/r/<id>`): one restaurant, its certifier and the certificate evidence on file
+- City pages (`/city/<city>`) and city-by-certifier pages (`/city/<city>/<certifier>`): restaurants in a city
+- Certifier pages (`/certifier/<certifier>`): restaurants under one certifier across all cities
+
+## Optional
+
+- [Home](https://kashroot.app/): set up a kashrut profile and search
