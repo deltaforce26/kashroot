@@ -27,13 +27,26 @@ export const JSON_LD_ATTR = "data-kashroot-jsonld";
  * `VITE_SITE_ORIGIN` is the deploy's public address, set at build time so a preview
  * deployment on a Vercel branch URL still declares the production canonical — a
  * canonical pointing at the preview host would split the site's ranking across
- * every preview ever built. Without it the running page's own origin is used, which
- * is right for local development and for the tests.
+ * every preview ever built.
+ *
+ * Without it, every deployed host declares `PRODUCTION_ORIGIN` — the same origin
+ * the server prerender (`src/ssr/prerender.ts`) writes into the raw HTML, so the
+ * canonical a crawler reads before any script runs is the one hydration leaves in
+ * place, whichever host (a `*.vercel.app` alias, say) served the page. Only a local
+ * host (development, the jsdom tests) uses its own origin, and with no `window` at
+ * all (the server bundle) it is the production origin again.
  */
+export const PRODUCTION_ORIGIN = "https://kashroot.app";
+
+const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
 export function siteOrigin(): string {
   const configured = (import.meta.env["VITE_SITE_ORIGIN"] as string | undefined)?.trim();
   if (configured) return configured.replace(/\/+$/, "");
-  return window.location.origin;
+  if (typeof window !== "undefined" && LOCAL_HOSTNAMES.has(window.location.hostname)) {
+    return window.location.origin;
+  }
+  return PRODUCTION_ORIGIN;
 }
 
 export function absoluteUrl(path: string): string {

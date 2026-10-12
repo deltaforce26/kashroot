@@ -3,10 +3,17 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "functions": {
+    "api/prerender.js": { "maxDuration": 30 }
+  },
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "https://kashroot-api.onrender.com/v1/sitemap.xml" },
     { "source": "/v1/:path*", "destination": "https://kashroot-api.onrender.com/v1/:path*" },
     { "source": "/api/:path*", "destination": "https://kashroot-api.onrender.com/api/:path*" },
+    { "source": "/r/:id", "destination": "/api/prerender?path=/r/:id" },
+    { "source": "/city/:citySlug", "destination": "/api/prerender?path=/city/:citySlug" },
+    { "source": "/city/:citySlug/:certifierSlug", "destination": "/api/prerender?path=/city/:citySlug/:certifierSlug" },
+    { "source": "/certifier/:certifierSlug", "destination": "/api/prerender?path=/certifier/:certifierSlug" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
