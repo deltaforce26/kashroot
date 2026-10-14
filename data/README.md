@@ -1,13 +1,30 @@
 # Seed Data
 
 ## `seed/kashroot_seed_corpus.csv`
-583 records (previously 492 records / 9 documents — see the 2026-09-26 section below for
-what changed; 457 records / 8 documents after the Tishrei 5787 refresh; 375 records / 7
+648 records (previously 657 before the 2026-10-14 update below, 583 as stated before the
+place-ID additions; 492 records / 9 documents before the 2026-09-26 section; 457 records / 8 documents after the Tishrei 5787 refresh; 375 records / 7
 documents before that; 142 Landa records had been dropped by the Elul 5786 refresh — see
 that section). The corpus now includes rows added directly from supplied CSVs rather than
 exclusively through `scripts/build_seed.py`, so the script is currently **not guaranteed
 to reproduce this file** — see the Tishrei 5787 section before re-running it. Encoding:
 UTF-8 with BOM.
+
+**2026-10-14 update (user-supplied `kashroot_updated_oct14` xlsx, 657 -> 648 rows, file is 649 lines
+including the header):**
+- Added 490 `google_business_place_id` values (16 -> 505 rows carry one). Excluded by decision:
+  `ChIJCcRTPgA_HBURbcibvkfWAxw`, which the xlsx put on two different Tiberias `סול` rows (both left blank), and
+  the ID on `זלמנ'ס רוממה`, left blank because the importer rejects a place ID on a row that splits into
+  several branches.
+- Removed 8 Rubin Jerusalem rows, removed per user-supplied update 2026-10-14: 3x מאפיית לחם פיינגולד,
+  מיני קצפת, גלידה ברובע, מעדני השבת, אדמה ציפס, קייטרינג פריים. The xlsx gave no reason.
+- Applied 14 Rubin Jerusalem address/name edits (e.g. `פיצה ירושלים 2` renamed `מפגש רמות פיצה ירושלים`) and
+  recomputed `dedupe_hash_sha256` for them as `sha256(name|address|city_he)`. One edit (`מגדניית מרציפן`, אגריפס 81
+  -> 44) duplicated an existing identical row; the duplicate without a place ID was dropped (this is one of
+  the 9 net-removed rows, so 8 removals + 1 duplicate = 9).
+- Not applied: the xlsx's `נוגטין` עוזיאל 28 -> המרפא 1 edit (would duplicate the existing המרפא 1 row, and the
+  xlsx also carries an unexplained extra `נוגטין עוזיאל 86` row) — עוזיאל 28 is unchanged and no row was added.
+  Also not applied: the xlsx's lost phone leading zeros and its datetime `source_date` (Excel artifacts).
+- State counts now: `LIST_VERIFIED` 600, `UNKNOWN_PENDING_VERIFICATION` 48; `needs_review=TRUE` 52.
 
 **2026-09-26 refresh:** adds two trailing columns, `source_url` and `opening_hours_he` (a third, `google_business_place_id`, was appended afterwards — see Columns)
 (see Columns below) — the importer (`app/ingestion/seed_import.py`) currently ignores
@@ -45,8 +62,8 @@ reattributions change state/review/certifier flags, not row count.
 | `certifier_ids` | `;`-separated. 25 known slugs as of the 2026-09-26 refresh — see `CERTIFIER_SEED` in `app/ingestion/seed_import.py` for the full, current list |
 | `corroboration_count` | # of distinct source documents listing this business (36 have 2, 6 have 3) |
 | `source_documents` / `source_date` | Provenance; dates are Hebrew-calendar list dates. Freshest document first — the importer dates the certificate from it. Each document's own date lives in `SOURCE_DOCUMENT_SEED`, never inferred from whichever row cites it first. Six slugs cited here are deliberately unregistered and dropped on import — see the 2026-09-26 section below |
-| `record_state` | `LIST_VERIFIED` (clean row from official list, 439 rows) or `UNKNOWN_PENDING_VERIFICATION` (53 rows) |
-| `needs_review` | TRUE where poster layout (or, for the Tishrei 5787 rows, an unresolved certifier attribution) made city/phone/address/certifier assignment ambiguous (55 rows) |
+| `record_state` | `LIST_VERIFIED` (clean row from official list, 600 rows) or `UNKNOWN_PENDING_VERIFICATION` (48 rows) |
+| `needs_review` | TRUE where poster layout (or, for the Tishrei 5787 rows, an unresolved certifier attribution) made city/phone/address/certifier assignment ambiguous (52 rows) |
 | `dedupe_hash_sha256` | Present in the Tishrei 5787 corpus; not read by the importer (dedupe keys are derived at import time by `restaurant_dedupe_key`, not from this column) |
 | `source_url` | Added in the 2026-09-26 refresh; not read by the importer |
 | `opening_hours_he` | Added in the 2026-09-26 refresh; not read by the importer |
