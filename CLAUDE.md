@@ -15,13 +15,18 @@ An app that answers "Can I eat here according to MY standards?" — user defines
 - Hebrew (RTL) + English at launch. Israel hours logic: Shabbat, chagim, erev chag, Chol Hamoed.
 - Paid placement never influences match results or organic ranking.
 
-## Current status (Aug 2026)
+## Current status (Nov 2026)
 - PRD complete (`docs/`).
-- **Backend scaffolded:** `app/` (FastAPI modular monolith) with PRD §16 models, Alembic
-  initial migration `0001_initial_schema`, and `kashroot seed-import` (dry-run by
-  default). No match engine, no API beyond `/health` yet — that's next.
-- **Seed data corpus exists:** `data/seed/kashroot_seed_corpus.csv` — 492 records from 9 certifier source documents (see `data/README.md` for schema, sources, and known gaps). Built by `scripts/build_seed.py`.
-- Seed data has certifier + status only — **no certificate-level attributes, no expiry dates**. Records are `LIST_VERIFIED` at best; treat as source-hierarchy level 1 (official published lists).
+- **Backend:** `app/` FastAPI modular monolith — match engine (`app/match/`: kashrut gate +
+  Fit Score), public API (search, city/certifier directory, places, photos, SEO), admin API,
+  notifications, rate limiting. Alembic migrations through `0011`; RLS on every table.
+- **Web app** (`web/`, Vite/React, Vercel) and **admin console** (`admin/`) exist.
+- **Seed corpus:** `data/seed/kashroot_seed_corpus.csv` (~657 records, 27 certifiers).
+  **The CSV is the sole source of truth** — edit it directly, then sync the DB with
+  `kashroot seed-import` (dry-run first, `--apply --prune`). The original source documents
+  (`data/archive/sources/`) and `scripts/archive/build_seed.py` are retired history: never regenerate the
+  CSV from them or cross-check rows against them. See `data/README.md`.
+- Seed data has certifier + status only — **no certificate-level attributes, no expiry dates**. Records are `LIST_VERIFIED` at best.
 - Launch gate: don't launch a city below 80% coverage.
 
 ## Build order (from PRD roadmap)

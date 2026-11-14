@@ -1,5 +1,6 @@
 """End-to-end seed import over the real corpus (SQLite-backed — see conftest)."""
 
+import collections
 import datetime as dt
 import unittest
 from pathlib import Path
@@ -14,6 +15,7 @@ from app.ingestion.seed_import import (
     DEFAULT_CSV_PATH,
     SOURCE_DOCUMENT_SEED,
     SeedImportError,
+    _row_certifier_slugs,
     import_seed,
     read_rows,
 )
@@ -133,28 +135,28 @@ def test_refreshed_rows_are_dated_by_their_freshest_source(session, imported):
     assert certificate.verified_at.date() == dt.date(2026, 8, 14)
 
 
-@pytest.mark.xfail(
-    reason=(
-        '3 Landa records (קברנה, רויאל, שביט - לכבוד שבת ויו"ט) are in the corpus but '
-        "absent from landa_restaurants_elul_5786.csv, so this sees 44, not 41. Deferred "
-        "by explicit product decision pending research — see docs/data-review-todo.md."
-    ),
-    strict=False,
-)
-def test_the_refresh_is_the_whole_of_its_certifier(session, imported):
-    """The Elul list is treated as the complete record for Landa, not a category slice.
+def test_the_csv_is_the_whole_of_each_certifier(session, imported):
+    """The CSV is the sole source of truth: the DB holds exactly the records it lists.
 
-    Everything Landa previously carried and that list omits is gone from the corpus, so
-    the import can only produce the 41 records the list names. ``מאמה מיה בטיילת``, on the
-    older vacation-cities poster and absent from the refresh, is the case that shows it.
+    For every certifier, the number of certificates after import equals the number of
+    (row, branch) records the CSV itself assigns to that certifier -- no more (nothing
+    invented) and no fewer (nothing dropped), with no per-certifier count assumed.
     """
-    landa = session.scalar(select(Certifier).where(Certifier.slug == "landa_bnei_brak"))
-    certificates = session.scalars(
-        select(Certificate).where(Certificate.certifier_id == landa.id)
-    ).all()
+    expected = collections.Counter()
+    for row in read_rows(DEFAULT_CSV_PATH):
+        branches = len(split_branch_addresses(row["address_he"]))
+        for slug in _row_certifier_slugs(row):
+            expected[slug] += branches
 
-    assert len(certificates) == 41
-    assert session.scalar(select(Restaurant).where(Restaurant.name_he == "מאמה מיה בטיילת")) is None
+    actual = collections.Counter(
+        slug
+        for (slug,) in session.execute(
+            select(Certifier.slug).join(Certificate, Certificate.certifier_id == Certifier.id)
+        )
+    )
+
+    assert expected
+    assert actual == expected
 
 
 def test_import_creates_one_restaurant_per_branch(session, imported):

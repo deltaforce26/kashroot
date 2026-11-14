@@ -15,7 +15,6 @@ from app.ingestion.seed_import import (
     DEFAULT_CSV_PATH,
     SOURCE_DATE_EARLIEST,
     SOURCE_DOCUMENT_SEED,
-    SOURCES_DIR,
     SeedImportStats,
     _parse_diet,
     _parse_record_state,
@@ -96,9 +95,8 @@ def test_row_dates_agree_with_the_documents_they_cite(rows):
         )
 
 
-def test_source_documents_point_at_files_that_exist():
-    for slug, spec in SOURCE_DOCUMENT_SEED.items():
-        assert (SOURCES_DIR / spec["file"]).exists(), f"{slug} → missing {spec['file']}"
+def test_source_document_certifiers_are_registered():
+    for spec in SOURCE_DOCUMENT_SEED.values():
         certifier_slug = spec.get("certifier_slug")
         # A document may cite no single certifier (a consolidated multi-certifier
         # directory) — ``None`` is a deliberate value, not an omission.

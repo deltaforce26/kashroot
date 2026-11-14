@@ -75,7 +75,7 @@ from app.models import (
 PIPELINE = "seed_corpus"
 PIPELINE_VERSION = "1.0.0"
 DEFAULT_CSV_PATH = Path("data/seed/kashroot_seed_corpus.csv")
-SOURCES_DIR = Path("data/sources")
+SOURCES_DIR = Path("data/archive/sources")
 
 logger = logging.getLogger(__name__)
 
@@ -343,11 +343,10 @@ SOURCE_DOCUMENT_SEED: dict[str, dict[str, Any]] = {
     # ``certifier_id`` NULL for it rather than attributing it to one certifier it was
     # never published by.
     #
-    # KNOWN GAP: no raw file for this document exists under ``data/sources/`` — the CSV
+    # KNOWN GAP: no raw file for this document exists under ``data/archive/sources/`` — the CSV
     # cites 145 rows against it but the underlying list itself was never supplied here.
-    # ``test_source_documents_point_at_files_that_exist`` therefore fails until the real
-    # file is added; this is a genuine missing-evidence gap; needs a project decision, not
-    # a guess at contents.
+    # Source documents are retired (the CSV is the sole source of truth, 2026-11-08), so
+    # this is historical provenance only, not an outstanding task.
     "misadot_mehadrin_restaurants_csv": {
         "title": "Misadot Mehadrin — consolidated restaurants list",
         "kind": SourceDocumentKind.MANUAL,
@@ -358,7 +357,7 @@ SOURCE_DOCUMENT_SEED: dict[str, dict[str, Any]] = {
             "Multi-certifier directory (~20 certifiers: local rabbanuts, private "
             "rabbis, badatzim) rather than one certifier's own list. No publication "
             "date on the source — the label records receipt, not publication. Raw "
-            "file not present under data/sources/ — see the module docstring note "
+            "file not present under data/archive/sources/ — see the module docstring note "
             "above this entry."
         ),
     },
@@ -368,10 +367,9 @@ SOURCE_DOCUMENT_SEED: dict[str, dict[str, Any]] = {
     # territory.
     #
     # KNOWN GAP: no raw snapshot of the page was captured, so nothing is checked in under
-    # ``data/sources/`` — the CSV cites 47 rows against it but there is no evidence file
+    # ``data/archive/sources/`` — the CSV cites 47 rows against it but there is no evidence file
     # behind them, the same gap as ``misadot_mehadrin_restaurants_csv`` above.
-    # ``test_source_documents_point_at_files_that_exist`` fails on this entry until a
-    # snapshot is added; this is a genuine missing-evidence gap, not a guess to paper over.
+    # Source documents are retired (CSV is the sole source of truth); historical only.
     "badatz_beit_yosef_web_directory": {
         "title": "Badatz Beit Yosef — web directory (Ashdod)",
         "kind": SourceDocumentKind.WEB,
@@ -382,7 +380,7 @@ SOURCE_DOCUMENT_SEED: dict[str, dict[str, Any]] = {
             "Rows scraped from the certifier's own public online directory, Ashdod "
             "only. The label is an access date, not a publication date — the "
             "directory itself carries no publication date. No raw snapshot is "
-            "checked in under data/sources/ — see the module docstring note above "
+            "checked in under data/archive/sources/ — see the module docstring note above "
             "this entry, a KNOWN GAP in the same sense as misadot_mehadrin."
         ),
     },
@@ -400,6 +398,7 @@ SOURCE_DATE_EARLIEST: dict[str, dt.date] = {
     "Tishrei 5787 (Sep 2026)": dt.date(2026, 9, 12),  # 1 Tishrei 5787
     # An access date is exact, not a Hebrew-calendar range — earliest == that date.
     "Accessed 2026-09-25": dt.date(2026, 9, 25),
+    "Accessed 2026-09-27": dt.date(2026, 9, 27),
     # A bare ISO date (the hand-entered ``user_input`` row) is likewise exact.
     "2026-09-25": dt.date(2026, 9, 25),
 }
