@@ -372,18 +372,47 @@ const he = {
     useMyLocation: "השתמשו במיקום שלי",
     // The search bar's own button: short, because it shares a line with the field.
     nearMe: "קרוב אליי",
-    // Said once under the search bar when "near me" did not come back, one line per cause
-    // because what the user can do differs: a blocked site is never asked again by the
-    // browser, so only its settings can unblock it. Neutral, and never a ruling.
-    refused: {
-      denied:
-        "הגישה למיקום חסומה לאתר הזה. אפשר לאפשר אותה מחדש דרך סמל המנעול בשורת הכתובת, או להקליד עיר או כתובת.",
-      timeout: "לא הצלחנו לאתר אותך בזמן. נסו שוב או הקלידו עיר או כתובת.",
-      // The installed app has no address bar or lock icon, so the way back is the device's own settings.
-      deniedInstalled:
-        "הגישה למיקום חסומה לאפליקציה. אפשר לאפשר אותה בהגדרות המכשיר — באנדרואיד: הגדרות → אפליקציות → Kashroot → הרשאות → מיקום; באייפון: הגדרות → Safari → מיקום — או להקליד עיר או כתובת.",
-      unavailable: "המיקום לא זמין כרגע במכשיר. אפשר להקליד עיר או כתובת.",
-      unsupported: "הדפדפן הזה לא מאפשר גישה למיקום (נדרש חיבור מאובטח). אפשר להקליד עיר או כתובת.",
+    // The pre-permission dialog (LocationPermissionDialog): context first, then the
+    // browser's own prompt. The denied face is honest that the browser will not ask
+    // again, and lists the steps for where the user actually is. Neutral, never a ruling.
+    permission: {
+      title: "כדי למצוא מקומות כשרים קרובים, צריך גישה למיקום",
+      reason: "כך נציג קודם את המקומות הקרובים אליך.",
+      allow: "אפשר מיקום",
+      typeInstead: "הקלדת עיר או כתובת",
+      deniedTitle: "הגישה למיקום כבויה",
+      deniedLead: "הדפדפן לא יבקש שוב בעצמו. כדי להפעיל אותה:",
+      retry: "נסו שוב",
+      steps: {
+        browser: [
+          "הקישו על סמל המנעול בשורת הכתובת",
+          "בחרו ״מיקום״",
+          "סמנו ״אפשר״ וחזרו לכאן",
+        ],
+        iosBrowser: [
+          "הקישו על ״aA״ בשורת הכתובת",
+          "בחרו ״הגדרות אתר״",
+          "תחת ״מיקום״ בחרו ״אפשר״",
+        ],
+        androidApp: [
+          "פתחו את ״הגדרות״ במכשיר",
+          "בחרו ״אפליקציות״ ואז Kashroot",
+          "בחרו ״הרשאות״ ואז ״מיקום״",
+          "סמנו ״אפשר רק בזמן השימוש באפליקציה״",
+        ],
+        iosApp: [
+          "פתחו את ״הגדרות״ באייפון",
+          "בחרו ״פרטיות ואבטחה״ ואז ״שירותי מיקום״",
+          "בחרו ״אתרי Safari״",
+          "סמנו ״בזמן השימוש ביישום״",
+        ],
+      },
+    },
+    // A brief, self-dismissing line under the bar for the transient failures only.
+    notice: {
+      timeout: "לא הצלחנו לאתר אותך. נסו שוב.",
+      unavailable: "המיקום לא זמין כרגע.",
+      unsupported: "הדפדפן הזה לא תומך במיקום.",
     },
     // The bar's button while the device is being asked, and — pressed again — the way out.
     locating: "מאתר…",
@@ -957,15 +986,43 @@ const en: Strings = {
     fromDevice: "from your location",
     useMyLocation: "Use my location",
     nearMe: "Near me",
-    refused: {
-      denied:
-        "Location is blocked for this site. Allow it again from the lock icon in the address bar, or type a city or an address.",
-      timeout: "We couldn't find your position in time. Try again, or type a city or an address.",
-      deniedInstalled:
-        "Location is blocked for the app. Allow it in your device settings — Android: Settings → Apps → Kashroot → Permissions → Location; iPhone: Settings → Safari → Location — or type a city or an address.",
-      unavailable: "Your device's location isn't available right now. Type a city or an address instead.",
-      unsupported:
-        "This browser can't share your location (a secure connection is required). Type a city or an address instead.",
+    permission: {
+      title: "Turn on location to find kosher places near you",
+      reason: "So we can show the places closest to you first.",
+      allow: "Allow location",
+      typeInstead: "Type a city or address",
+      deniedTitle: "Location access is off",
+      deniedLead: "Your browser won't ask again on its own. To turn it on:",
+      retry: "Try again",
+      steps: {
+        browser: [
+          "Tap the lock icon in the address bar",
+          "Choose Location",
+          "Set it to Allow, then come back",
+        ],
+        iosBrowser: [
+          "Tap “aA” in the address bar",
+          "Choose Website Settings",
+          "Set Location to Allow",
+        ],
+        androidApp: [
+          "Open your device's Settings",
+          "Go to Apps, then Kashroot",
+          "Tap Permissions, then Location",
+          "Choose “Allow only while using the app”",
+        ],
+        iosApp: [
+          "Open Settings on your iPhone",
+          "Tap Privacy & Security, then Location Services",
+          "Tap Safari Websites",
+          "Choose While Using the App",
+        ],
+      },
+    },
+    notice: {
+      timeout: "We couldn't find you in time. Try again.",
+      unavailable: "Location isn't available right now.",
+      unsupported: "This browser can't share location.",
     },
     locating: "Locating…",
     withinKm: (n: number) => `Within ${n} km`,

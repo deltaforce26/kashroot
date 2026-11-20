@@ -8,9 +8,11 @@
  * refused-permission branch is covered too: refusing is a legitimate answer, so the
  * app states it once and keeps working, unscoped, over the whole database.
  *
- * "Everywhere" is the last resort, so a first load with nothing stored asks the
- * device before it settles for it. jsdom has no geolocation: unless a test installs
- * one, that request fails at once and the app opens on "all of Israel".
+ * "Everywhere" is the last resort, so a first load with nothing stored reads the
+ * standing permission: granted re-acquires silently, prompt (or no Permissions API)
+ * opens the pre-permission dialog and asks nothing until Allow, denied opens its denied
+ * state. jsdom has no geolocation: unless a test installs one, nothing is asked and the
+ * app opens on "all of Israel".
  *
  * The geocoder is mocked. It is Google's network call, not ours; what is tested is
  * what the sheet does with an answer, with no answer, and with a failure.
@@ -369,24 +371,104 @@ describe("home location sheet", () => {
    * stored, the first load asks the device itself — a prompt is acceptable here —
    * and only settles for the whole database once that has failed.
    */
-  it("asks the device on first load and measures from it when allowed", async () => {
+  it("re-acquires silently on first load when the permission is already granted", async () => {
     const user = userEvent.setup();
     stubGeolocation("grant");
+    stubPermissions("granted");
     await reachHome(user);
 
     expect(await screen.findByText(he.map.youAreHere)).toBeInTheDocument();
     expect(positionRequests).toBe(1);
     expect(screen.queryByText(he.origin.everywhere)).toBeNull();
+    // Nothing to explain: no pre-permission dialog.
+    expect(screen.queryByRole("dialog", { name: he.origin.permission.title })).toBeNull();
   });
 
-  it("settles for all of Israel only once the first-load request has failed", async () => {
+  it("explains first, and fires the native prompt only when Allow is tapped", async () => {
     const user = userEvent.setup();
-    stubGeolocation("deny");
+    stubGeolocation("grant");
+    stubPermissions("prompt");
     await reachHome(user);
 
-    expect(await screen.findByText(he.origin.everywhere)).toBeInTheDocument();
-    expect(screen.getByText(he.origin.searchingEverywhere)).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog", { name: he.origin.permission.title });
+    expect(within(dialog).getByText(he.origin.permission.reason)).toBeInTheDocument();
+    expect(within(dialog).getByText(he.origin.privacy)).toBeInTheDocument();
+    // The browser has not been asked: no cold prompt.
+    expect(positionRequests).toBe(0);
+    // Behind the dialog nothing hangs in a loading state: the list is unscoped for now.
+    expect(screen.getAllByText(he.origin.everywhere).length).toBeGreaterThan(0);
+
+    await user.click(within(dialog).getByRole("button", { name: he.origin.permission.allow }));
     expect(positionRequests).toBe(1);
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: he.origin.permission.title })).toBeNull(),
+    );
+    expect(screen.getByText(he.map.youAreHere)).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem("kashroot.origin.v1") ?? "null")).toEqual({
+      source: "device",
+    });
+  });
+
+  it("shows the dialog without a Permissions API too, and still asks nothing until Allow", async () => {
+    const user = userEvent.setup();
+    stubGeolocation("grant");
+    await reachHome(user);
+
+    expect(await screen.findByRole("dialog", { name: he.origin.permission.title })).toBeInTheDocument();
+    expect(positionRequests).toBe(0);
+  });
+
+  it("turns to the denied state, with steps, when Allow is refused", async () => {
+    const user = userEvent.setup();
+    stubGeolocation("deny");
+    stubPermissions("prompt");
+    await reachHome(user);
+
+    const dialog = await screen.findByRole("dialog", { name: he.origin.permission.title });
+    await user.click(within(dialog).getByRole("button", { name: he.origin.permission.allow }));
+    const denied = await screen.findByRole("dialog", { name: he.origin.permission.deniedTitle });
+    expect(within(denied).getAllByRole("listitem")).toHaveLength(he.origin.permission.steps.browser.length);
+    expect(positionRequests).toBe(1);
+  });
+
+  it("opens in the denied state on first load when the site is already blocked", async () => {
+    const user = userEvent.setup();
+    stubGeolocation("grant");
+    stubPermissions("denied");
+    await reachHome(user);
+
+    const dialog = await screen.findByRole("dialog", { name: he.origin.permission.deniedTitle });
+    const steps = within(dialog).getAllByRole("listitem").map((item) => item.textContent);
+    expect(steps).toEqual(he.origin.permission.steps.browser);
+    expect(within(dialog).getByRole("button", { name: he.origin.permission.retry })).toBeInTheDocument();
+    expect(positionRequests).toBe(0);
+    // Behind it, all of Israel.
+    expect(screen.getAllByText(he.origin.everywhere).length).toBeGreaterThan(0);
+    expect(screen.getByText(he.origin.searchingEverywhere)).toBeInTheDocument();
+
+    // Dismissed: a choice, stored, so a reload does not ask again.
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: he.origin.permission.deniedTitle })).toBeNull();
+    expect(JSON.parse(localStorage.getItem("kashroot.origin.v1") ?? "null")).toEqual({
+      source: "none",
+    });
+    await reload();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("hands focus to the search field from the dialog's type-instead button", async () => {
+    const user = userEvent.setup();
+    stubGeolocation("grant");
+    stubPermissions("prompt");
+    await reachHome(user);
+
+    const dialog = await screen.findByRole("dialog", { name: he.origin.permission.title });
+    await user.click(within(dialog).getByRole("button", { name: he.origin.permission.typeInstead }));
+    expect(screen.queryByRole("dialog", { name: he.origin.permission.title })).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByRole("searchbox", { name: he.search.placeholder })).toHaveFocus(),
+    );
+    expect(positionRequests).toBe(0);
   });
 
   it("measures from the device when the user allows it", async () => {
@@ -425,6 +507,7 @@ describe("home location sheet", () => {
   it("keeps the last device position when a later attempt fails", async () => {
     const user = userEvent.setup();
     stubGeolocation("grant-once");
+    stubPermissions("granted");
     // The first load takes the one grant; the sheet's own request is the one that fails.
     await reachHome(user);
     await screen.findByText(he.map.youAreHere);
