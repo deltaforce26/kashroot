@@ -92,13 +92,16 @@ function sheetEntryIsCurrent(): boolean {
 
 export function BottomSheet({
   label,
+  labelledBy,
   closeLabel,
   onClose,
   className,
   children,
 }: {
-  /** The dialog's accessible name. */
-  label: string;
+  /** The dialog's accessible name, when no visible heading names it. */
+  label?: string;
+  /** The id of a visible heading that names the dialog; preferred over `label`. */
+  labelledBy?: string;
   /** Names the scrim, the one control every sheet shares. */
   closeLabel: string;
   onClose: () => void;
@@ -184,7 +187,8 @@ export function BottomSheet({
         className={`bsheet${className ? ` ${className}` : ""}`}
         role="dialog"
         aria-modal="true"
-        aria-label={label}
+        aria-label={labelledBy ? undefined : label}
+        aria-labelledby={labelledBy}
         tabIndex={-1}
       >
         <div className="bsheet__handle" aria-hidden="true" />

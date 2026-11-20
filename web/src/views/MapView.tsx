@@ -211,7 +211,7 @@ export function MapView() {
     origin,
     source,
     state: originState,
-    requestDeviceLocation,
+    askForDeviceLocation,
     addressLabel,
     city,
     resolving,
@@ -563,8 +563,9 @@ export function MapView() {
 
       {/* Locate belongs to the map, not to the header: it moves the picture, and it
           sits in the bottom corner where a thumb already is and where every map the
-          user has ever used keeps it — just clear of the tab bar. The browser's
-          permission prompt can take a beat to paint, and a tap with nothing behind it
+          user has ever used keeps it — just clear of the tab bar. It is the gated ask,
+          like near-me: the pre-permission dialog comes before the browser's prompt
+          while one can still be shown. That prompt can take a beat to paint, and a tap with nothing behind it
           reads as a dead button, so the label says what is happening and a second tap
           cannot stack another request behind the first. */}
       <button
@@ -574,7 +575,7 @@ export function MapView() {
         aria-pressed={source === "device"}
         aria-busy={locating}
         disabled={locating}
-        onClick={requestDeviceLocation}
+        onClick={askForDeviceLocation}
       >
         <LocateFixed size={22} strokeWidth={2} aria-hidden />
       </button>
