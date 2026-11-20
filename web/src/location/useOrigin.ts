@@ -14,28 +14,48 @@
  * server returns `distance_km: null`. The header shows the city's name. A point and a
  * city are mutually exclusive (see `searchScope.ts`): choosing one replaces the other.
  *
- * "Everywhere" is the last resort, not the opening position. A first load with no
- * stored origin asks the device straight away — a permission prompt is acceptable
- * here — and only a refusal, an unsupported browser or a timeout leaves the app
- * searching without a centre. While that first request is pending the screens keep
- * their loading state (`resolving`), so the unscoped list never flashes before the
- * device has had its chance to answer.
+ * "Everywhere" is the last resort, not the opening position — but the browser's
+ * native permission prompt is never fired cold. A first load with no stored origin
+ * reads the standing answer from the Permissions API first (which raises no prompt):
+ * "granted" re-acquires the position silently, as before; "prompt", or a browser with
+ * no Permissions API, opens the pre-permission dialog (`permissionDialog: "ask"`,
+ * drawn by `LocationPermissionDialog`) and the native prompt appears only once the user
+ * taps Allow there; "denied" opens the same dialog in its denied state, which says
+ * honestly that the browser will not ask again and how to turn it back on. A browser
+ * with no geolocation at all is left alone: nothing asked, so nothing is said.
+ *
+ * Loading: while that standing answer is read (one microtask) and while a request is
+ * pending with nothing pinned, the screens keep their loading state (`resolving`), so
+ * the unscoped list never flashes before the device has had its chance to answer. While
+ * the dialog waits for a decision nothing is pending: the screens behind it search
+ * everywhere, and a fix, if the user allows, re-scopes them. Dismissing the dialog on a
+ * first visit stores "all of Israel" as the choice, so a reload does not ask again; the
+ * near-me button stays the way back.
+ *
+ * Two request paths. `askForDeviceLocation` is the gated one (the search bar's near-me
+ * button, the map's locate control): granted asks at once, prompt opens the dialog,
+ * denied opens it in its denied state. `requestDeviceLocation` asks directly, for the
+ * location sheet, whose own button already sits next to the context and the privacy
+ * line. A request started from the dialog (or a granted gated ask) steers the dialog
+ * with its outcome: a fix closes it, a denial switches it to the denied state, and a
+ * transient failure (timeout, unavailable, no geolocation API) closes it and leaves a
+ * short `notice` for the bar to show briefly.
  *
  * The origin is shared process-wide rather than held per component, so setting it
  * on home moves the map too: one origin, one answer.
  *
  * Denied, dismissed, unavailable and timed out are one outcome as far as the origin
  * goes: refusing to share your location is a legitimate choice, not an error state,
- * and the sheet says so once, where the button is, while the header never nags.
+ * and the header never nags.
  *
  * They are not one outcome as far as the *wording* goes, because what the user can do
  * about each differs. A site the browser has blocked never prompts again, so "denied"
- * needs a pointer to the browser's site settings; a timeout is worth retrying; no
- * geolocation API (often an insecure context) is not fixable from here. So the last
- * failure's cause is kept as `failure` (`GeoFailure`) beside the state, which keeps its
- * meaning unchanged. When the Permissions API already reports "denied", the request is
- * not made at all: the browser would only fail it instantly, and this way the answer is
- * the same without a wait.
+ * gets the dialog's denied state with the steps to re-allow it; a timeout is worth
+ * retrying; no geolocation API (often an insecure context) is not fixable from here. So
+ * the last failure's cause is kept as `failure` (`GeoFailure`) beside the state, which
+ * keeps its meaning unchanged. When the Permissions API already reports "denied", the
+ * request is not made at all: the browser would only fail it instantly, and this way the
+ * answer is the same without a wait.
  *
  * What that outcome costs depends on what was already chosen. A request made with
  * nothing behind it leaves the app searching everywhere. A request made when an
@@ -57,7 +77,7 @@
  *   was the chosen origin is, and on load it is re-acquired **only** if the browser
  *   already reports the geolocation permission as granted. No stored coordinates and
  *   no prompt: anything short of an already-granted permission drops the marker and
- *   we search everywhere, silently. A refusal note belongs next to the button that
+ *   we search everywhere, silently. A refusal is only worth saying to someone who
  *   asked, and on that path nothing asked.
  * - An explicit "all of Israel" is stored as that choice, so a reload honours it
  *   rather than prompting for the device the user just declined to use.
@@ -97,6 +117,16 @@ export type GeoState = "idle" | "requesting" | "granted" | "stale" | "unavailabl
  * `timeout` is 3, and `unsupported` is no geolocation API at all.
  */
 export type GeoFailure = "denied" | "unavailable" | "timeout" | "unsupported";
+
+/**
+ * Which face of the pre-permission dialog is up, or null for none. "ask" explains why
+ * and offers Allow (which raises the native prompt); "denied" says the browser will not
+ * ask again and lists how to turn location back on.
+ */
+export type PermissionDialog = "ask" | "denied";
+
+/** A failure worth a brief, self-dismissing line rather than the dialog. */
+export type GeoNotice = Exclude<GeoFailure, "denied">;
 
 const TIMEOUT_MS = 8000;
 
@@ -144,10 +174,38 @@ let requestGen = 0;
 /** What `geoState` was when the request in flight began, so a cancel can put it back. */
 let stateBeforeRequest: GeoState = "idle";
 
+/** The pre-permission dialog's face, process-wide like the origin; null when closed. */
+let dialog: PermissionDialog | null = null;
+
+/**
+ * The generation of the request whose outcome steers the dialog: one started from the
+ * dialog's Allow / Try again, or a gated ask that found the permission granted. -1 for
+ * none. A direct request (the location sheet's) never opens the dialog.
+ */
+let gatedGen = -1;
+
+/** The transient failure of the last gated request, for the bar's brief line; null for none. */
+let notice: GeoNotice | null = null;
+
+/**
+ * Whether a device fix came back this page session. Only consulted without a
+ * Permissions API, where it is the one sign that asking again will not prompt.
+ */
+let hadFix = false;
+
+function announce(): void {
+  window.dispatchEvent(new Event(CHANGED));
+}
+
 function publish(nextOverride: Override | null, nextState: GeoState): void {
   override = nextOverride;
   geoState = nextState;
-  window.dispatchEvent(new Event(CHANGED));
+  announce();
+}
+
+function openDialog(kind: PermissionDialog): void {
+  dialog = kind;
+  announce();
 }
 
 function persist(stored: StoredOrigin | null): void {
@@ -216,9 +274,21 @@ function failureOf(error: { code?: number } | null | undefined): GeoFailure {
  * a chosen city is the same courtesy for someone who only tried the shortcut.
  *
  * Storage is left alone with it, so the kept origin also survives a reload.
+ *
+ * When the request is the gated one (`gen === gatedGen`), the outcome also steers the
+ * dialog: a denial puts up its denied state; anything else closes it and leaves a brief
+ * notice, because a dialog is overkill for a timeout.
  */
-function failDevice(failure: GeoFailure): void {
+function failDevice(failure: GeoFailure, gen?: number): void {
   lastFailure = failure;
+  if (gen !== undefined && gen === gatedGen) {
+    if (failure === "denied") {
+      dialog = "denied";
+    } else {
+      dialog = null;
+      notice = failure;
+    }
+  }
   if (override) {
     publish(override, override.source === "device" ? "stale" : "unavailable");
     return;
@@ -228,19 +298,29 @@ function failDevice(failure: GeoFailure): void {
 }
 
 /**
- * Ask the device for its position. Shared by the sheet's button, the map's locate
- * control and the first load, so every path handles a refusal the same way.
+ * Ask the device for its position — the native prompt, if the browser still has one to
+ * show. Shared by the sheet's button, the dialog's Allow and Try again, a granted gated
+ * ask and a first load whose permission is already granted, so every path handles a
+ * refusal the same way. `gated` marks a request whose outcome steers the dialog.
  *
  * Without a Permissions API the position is asked for on the spot. With one, a standing
  * "denied" is answered at once instead of waiting for the browser to refuse; any other
  * answer, and a query that itself fails, means "go ahead and ask". The query is a wait
  * like any other, so it checks it is still the current request before acting.
  */
-function requestDevice(): void {
+function requestDevice(gated = false): void {
   const gen = ++requestGen;
   lastFailure = null;
+  if (gated) {
+    gatedGen = gen;
+    notice = null;
+  }
   if (typeof navigator === "undefined" || !navigator.geolocation) {
     lastFailure = "unsupported";
+    if (gated) {
+      dialog = null;
+      notice = "unsupported";
+    }
     publish(override, override ? geoState : "unavailable");
     return;
   }
@@ -253,12 +333,14 @@ function requestDevice(): void {
         if (gen !== requestGen) return;
         // Only the choice is remembered, never the coordinates.
         lastFailure = null;
+        hadFix = true;
+        if (gen === gatedGen) dialog = null;
         persist({ source: "device" });
         publish(devicePoint(position), "granted");
       },
       (error) => {
         if (gen !== requestGen) return;
-        failDevice(failureOf(error));
+        failDevice(failureOf(error), gen);
       },
       { enableHighAccuracy: false, timeout: TIMEOUT_MS, maximumAge: 60_000 },
     );
@@ -278,13 +360,109 @@ function requestDevice(): void {
   query.then(
     (status) => {
       if (gen !== requestGen) return;
-      if (status.state === "denied") failDevice("denied");
+      if (status.state === "denied") failDevice("denied", gen);
       else ask();
     },
     () => {
       if (gen !== requestGen) return;
       ask();
     },
+  );
+}
+
+/** True when the browser offers `permissions.query` to read the standing answer with. */
+function canQueryPermission(): boolean {
+  return (
+    typeof navigator !== "undefined" &&
+    !!navigator.permissions &&
+    typeof navigator.permissions.query === "function"
+  );
+}
+
+/**
+ * The near-me path: never fire the native prompt without the dialog's context first.
+ *
+ * Granted asks at once (as a gated request, so a surprise denial still lands in the
+ * dialog). Prompt opens the dialog; denied opens its denied state. With no Permissions
+ * API there is no way to tell, so the dialog is shown — unless a fix already came back
+ * this session, which means asking again will not prompt. No geolocation at all goes
+ * straight to the request, which reports "unsupported" as a brief notice.
+ *
+ * The query is a wait, so it takes a request generation like any request: a pick or a
+ * cancel made meanwhile wins, and the late answer opens nothing.
+ */
+function askDevice(): void {
+  if (typeof navigator === "undefined" || !navigator.geolocation) {
+    requestDevice(true);
+    return;
+  }
+  if (!canQueryPermission()) {
+    if (hadFix) requestDevice(true);
+    else openDialog("ask");
+    return;
+  }
+  const gen = ++requestGen;
+  const decide = (state: PermissionState | null) => {
+    if (gen !== requestGen) return;
+    if (state === "granted") requestDevice(true);
+    else openDialog(state === "denied" ? "denied" : "ask");
+  };
+  let query: Promise<PermissionStatus>;
+  try {
+    query = navigator.permissions.query({ name: "geolocation" });
+  } catch {
+    decide(null);
+    return;
+  }
+  query.then(
+    (status) => decide(status.state),
+    () => decide(null),
+  );
+}
+
+/**
+ * A first visit: nothing stored. Read the standing answer, never prompt cold.
+ *
+ * While the query runs the state is "requesting", so the screens keep loading instead
+ * of flashing the unscoped list. Granted asks silently, as a plain (ungated) request: a
+ * failure there is nobody's question, so no dialog and no notice. Prompt, a failed
+ * query and no Permissions API open the dialog and leave the screens searching
+ * everywhere behind it; denied records the refusal and opens the denied state. No
+ * geolocation API: nothing to ask and nothing said.
+ */
+function firstVisit(): void {
+  if (typeof navigator === "undefined" || !navigator.geolocation) return;
+  if (!canQueryPermission()) {
+    openDialog("ask");
+    return;
+  }
+  const gen = ++requestGen;
+  stateBeforeRequest = "idle";
+  publish(null, "requesting");
+  const decide = (state: PermissionState | null) => {
+    if (gen !== requestGen) return;
+    if (state === "granted") {
+      requestDevice();
+      return;
+    }
+    if (state === "denied") {
+      failDevice("denied");
+      openDialog("denied");
+      return;
+    }
+    dialog = "ask";
+    publish(null, "idle");
+  };
+  let query: Promise<PermissionStatus>;
+  try {
+    query = navigator.permissions.query({ name: "geolocation" });
+  } catch {
+    decide(null);
+    return;
+  }
+  query.then(
+    (status) => decide(status.state),
+    () => decide(null),
   );
 }
 
@@ -345,17 +523,17 @@ let restored = false;
 /**
  * Reinstate the last chosen origin. Runs once per page load, before first render.
  *
- * Nothing stored means a first visit, and a first visit asks the device — with a
- * prompt if need be — because "everywhere" is what the app falls back to, not what
- * it opens on. A stored choice, including an explicit "all of Israel", is honoured
- * without a prompt.
+ * Nothing stored means a first visit (`firstVisit`): the standing permission decides
+ * between a silent fix, the pre-permission dialog and its denied state — the native
+ * prompt only ever follows a tap on Allow. A stored choice, including an explicit "all
+ * of Israel", is honoured without a prompt and without the dialog.
  */
 export function restoreOrigin(): void {
   if (restored) return;
   restored = true;
   const stored = readStored();
   if (!stored) {
-    requestDevice();
+    firstVisit();
     return;
   }
   if (stored.source === "none") return;
@@ -388,12 +566,18 @@ export function resetOriginState(): void {
   geoState = "idle";
   lastFailure = null;
   stateBeforeRequest = "idle";
+  dialog = null;
+  gatedGen = -1;
+  notice = null;
+  hadFix = false;
   restored = false;
 }
 
 /** Drop any pinned origin, in memory and in storage. Test seam and reset path. */
 export function clearOrigin(): void {
   requestGen += 1;
+  dialog = null;
+  notice = null;
   persist(null);
   publish(null, "idle");
 }
@@ -424,8 +608,29 @@ export function useOrigin(): {
    * not yet "everywhere", so screens keep loading rather than searching unscoped.
    */
   resolving: boolean;
-  /** Ask for the device position. Safe to call when unsupported. */
+  /**
+   * Ask for the device position directly — the native prompt, if any. Safe to call when
+   * unsupported. For a button that already sits beside the context (the location sheet).
+   */
   requestDeviceLocation: () => void;
+  /**
+   * The gated ask (near-me, the map's locate): granted asks at once, prompt opens the
+   * pre-permission dialog, denied opens its denied state.
+   */
+  askForDeviceLocation: () => void;
+  /** The pre-permission dialog's face, or null when it is closed. */
+  permissionDialog: PermissionDialog | null;
+  /** The dialog's Allow and Try again: the real request, whose outcome steers the dialog. */
+  allowDeviceLocation: () => void;
+  /**
+   * Close the dialog without a decision. On a first visit (nothing stored, nothing in
+   * force) that stores "all of Israel", so a reload does not ask again.
+   */
+  dismissPermissionDialog: () => void;
+  /** A transient failure of the last gated request, for a brief line; null for none. */
+  notice: GeoNotice | null;
+  /** Take the notice down (it is shown briefly). */
+  clearNotice: () => void;
   /** Measure from a point the user chose by name. */
   setAddressOrigin: (label: string, point: GeoPoint) => void;
   /** Scope the search to a whole city, by `Restaurant.city_slug`. Replaces any point. */
@@ -462,6 +667,21 @@ export function useOrigin(): {
   }, []);
 
   const requestDeviceLocation = useCallback(() => requestDevice(), []);
+  const askForDeviceLocation = useCallback(() => askDevice(), []);
+  const allowDeviceLocation = useCallback(() => requestDevice(true), []);
+
+  const dismissPermissionDialog = useCallback(() => {
+    dialog = null;
+    gatedGen = -1;
+    if (override === null && readStored() === null) persist({ source: "none" });
+    announce();
+  }, []);
+
+  const clearNotice = useCallback(() => {
+    if (notice === null) return;
+    notice = null;
+    announce();
+  }, []);
 
   const setAddressOrigin = useCallback((label: string, point: GeoPoint) => {
     requestGen += 1;
@@ -497,6 +717,12 @@ export function useOrigin(): {
     failure: lastFailure,
     resolving: override === null && geoState === "requesting",
     requestDeviceLocation,
+    askForDeviceLocation,
+    permissionDialog: dialog,
+    allowDeviceLocation,
+    dismissPermissionDialog,
+    notice,
+    clearNotice,
     setAddressOrigin,
     setCityOrigin,
     cancelRequest,

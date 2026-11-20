@@ -3,7 +3,7 @@
 DB-backed cases use the SQLite-backed ``session`` pytest fixture from conftest, the
 same way the rest of the ingestion suite does (see tests/test_seed_import.py); wrapped
 in ``unittest.TestCase`` per STANDARDS.md via an autouse fixture-injection method,
-matching the pattern in tests/test_apply_landa_elul_refresh.py.
+matching the pattern in tests/test_merge_kehilot_unidentified.py.
 """
 
 from __future__ import annotations

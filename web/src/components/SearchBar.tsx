@@ -46,29 +46,22 @@
  * that supersedes it takes the next, so a late answer finds it is no longer awaited. A
  * failed lookup is silent — nothing was asked out loud, so nothing is reported.
  *
- * "Near me" says out loud only the one thing the user cannot see: a refusal. The hint
- * is shown only for a request made from this bar during this mount — a refusal recorded
- * on an earlier screen is not news here — and it goes when the device answers, the
- * button is pressed again or a city or place is picked. The handoff wants a toast for it,
- * but the app has no toast component, so the existing hint line under the bar stays; it
- * is raised only by a tap made from this bar, so a cancel (locating -> idle) never shows
- * it. Refusing is a legitimate choice,
- * and what a failed request leaves behind depends on what was already in use (nothing,
- * an address, a city, an earlier fix), so the hint claims none of it: it says only that
- * the position did not come, and what to do instead. It never blocks.
+ * "Near me" never fires the browser's permission prompt cold. It is the gated ask
+ * (`askForDeviceLocation`): with the permission already granted it asks at once; with
+ * the browser still able to prompt it opens the pre-permission dialog, and the native
+ * prompt appears only when the user taps Allow there; with the site blocked it opens
+ * the dialog's denied state, which says honestly that the browser will not ask again
+ * and lists how to turn location back on (device settings when installed as a PWA, the
+ * address bar's site settings in a tab). The bar draws that dialog
+ * (`LocationPermissionDialog`) — the first load opens it too — and its "type a city or
+ * address" closes it and hands focus to this field.
  *
- * What to do instead depends on why, which is why the line is chosen by the hook's
- * `failure` and not one generic sentence. The case that matters is "denied": once a
- * site is blocked the browser never prompts again, so tapping the button can only fail
- * at once, and the one thing that helps is re-allowing location in the browser's site
- * settings (the lock icon in the address bar). The hint says exactly that. A timeout is
- * worth another try, an unavailable device position and a browser with no geolocation
- * (often an insecure context) each get their own honest line, and if the hook has no
- * cause on record the hint falls back to the plain "unavailable" wording.
- *
- * Installed as a PWA (`isStandalone`) there is no address bar and no lock icon, so the
- * denied line is a different one there: it points at the device's settings (Android's
- * app permissions, iOS's Safari location setting) instead.
+ * There is no paragraph under the bar any more. The transient failures — a timeout, an
+ * unavailable position, a browser with no geolocation — get a short one-line status
+ * that goes by itself after a few seconds (`notice`); a dialog would be overkill for
+ * them. Refusing is a legitimate choice, and what a failed request leaves behind
+ * depends on what was already in use (nothing, an address, a city, an earlier fix), so
+ * neither the dialog nor the line claims any of it. It never blocks the list.
  */
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
@@ -77,7 +70,6 @@ import { useFilters } from "../filters/useFilters";
 import { useI18n } from "../i18n/I18nProvider";
 import { matchCities, useCityIndex, type CityOption } from "../location/useCityIndex";
 import { useOrigin } from "../location/useOrigin";
-import { isStandalone } from "../pwa/standalone";
 import {
   hasMapsKey,
   reverseGeocodeArea,
@@ -85,6 +77,7 @@ import {
   type AddressSuggestion,
 } from "../map/useGoogleMaps";
 import { CloseIcon, NavigationIcon, PinIcon, SearchIcon } from "./icons";
+import { LocationPermissionDialog } from "./LocationPermissionDialog";
 
 /** Long enough that a word typed at speed is one request, short enough to feel live. */
 const SUGGEST_DEBOUNCE_MS = 250;
@@ -94,6 +87,9 @@ const SUGGEST_MIN_CHARS = 2;
 
 /** How many cities the dropdown offers; the directory's order (largest first) decides which. */
 const CITY_LIMIT = 5;
+
+/** How long the one-line status for a transient location failure stays up. */
+const NOTICE_MS = 5000;
 
 /**
  * One reverse geocode per device fix, however many bars, mounts or language toggles ask:
@@ -127,8 +123,9 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
     origin,
     source,
     state,
-    failure,
-    requestDeviceLocation,
+    notice,
+    clearNotice,
+    askForDeviceLocation,
     setAddressOrigin,
     setCityOrigin,
     cancelRequest,
@@ -196,24 +193,21 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
     return () => window.removeEventListener("keydown", onKey);
   }, [open, close]);
 
-  // Only a permission answer to a request made from this bar, during this mount, is
-  // reported. `asks` is in the dependencies because a refusal that comes back inside
-  // the tap leaves `state` where it was, and the effect still has to see it.
-  const askedRef = useRef(false);
-  const [asks, setAsks] = useState(0);
-  const [hint, setHint] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
+  // The transient failure line goes by itself. A new gated request clears the notice
+  // first, so the same failure twice in a row is two notices, each with its own timer.
   useEffect(() => {
-    if (state === "granted") {
-      askedRef.current = false;
-      setHint(false);
-      return;
-    }
-    if (askedRef.current && (state === "unavailable" || state === "stale")) {
-      askedRef.current = false;
-      setHint(true);
-    }
-  }, [state, asks]);
+    if (!notice) return;
+    const timer = window.setTimeout(clearNotice, NOTICE_MS);
+    return () => window.clearTimeout(timer);
+  }, [notice, clearNotice]);
+
+  // After the dialog has closed and given focus back to its opener: a tick later, so
+  // this focus is the one that stands.
+  const focusField = useCallback(() => {
+    window.setTimeout(() => inputRef.current?.focus(), 0);
+  }, []);
 
   const locating = state === "requesting";
   const active = !locating && source === "device";
@@ -244,16 +238,13 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
 
   function onNearMe() {
     close();
-    setHint(false);
+    clearNotice();
     if (mode === "idle") {
-      askedRef.current = true;
-      setAsks((n) => n + 1);
-      requestDeviceLocation();
+      askForDeviceLocation();
       return;
     }
-    // Not a refusal, so no hint. Locating is called off and whatever was in force stays;
-    // active is the way out and searches all of Israel.
-    askedRef.current = false;
+    // Locating is called off and whatever was in force stays; active is the way out and
+    // searches all of Israel.
     if (mode === "locating") cancelRequest();
     else clearToEverywhere();
   }
@@ -261,7 +252,7 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
   function pickCity(city: CityOption) {
     requestRef.current += 1;
     pickRef.current += 1;
-    setHint(false);
+    clearNotice();
     setCityOrigin(city.slug, lang === "he" ? city.labelHe : (city.labelEn ?? city.labelHe));
     onChange("");
     close();
@@ -273,7 +264,7 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
     try {
       const resolved = await item.resolve();
       if (pickRef.current !== ticket) return;
-      setHint(false);
+      clearNotice();
       setAddressOrigin(resolved.label, resolved.point);
       onChange("");
       close();
@@ -302,6 +293,7 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
             <SearchIcon size={18} />
           </span>
           <input
+            ref={inputRef}
             type="search"
             className="searchbar__input"
             autoComplete="off"
@@ -409,14 +401,13 @@ export function SearchBar({ value, onChange, onSubmit, placeholder, className }:
         )}
       </div>
       {/* After the wrapper, not inside it: the menu anchors to the pill's own box, and a
-          hint in between would push the menu down below it. */}
-      {hint && (
+          line in between would push the menu down below it. */}
+      {notice && (
         <p className="hint searchbar__hint" role="status">
-          {failure === "denied" && isStandalone()
-            ? t.origin.refused.deniedInstalled
-            : t.origin.refused[failure ?? "unavailable"]}
+          {t.origin.notice[notice]}
         </p>
       )}
+      <LocationPermissionDialog onTypeInstead={focusField} />
     </>
   );
 }

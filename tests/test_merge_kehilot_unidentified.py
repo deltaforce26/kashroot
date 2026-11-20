@@ -3,7 +3,7 @@
 The normal path is a rename in place (same certifier row, id preserved): the corpus
 label was always this one certifier, just unconfirmed until 2026-09-25. These tests use
 the SQLite-backed ``session`` fixture from conftest, the same shape
-``tests/test_apply_landa_elul_refresh.py`` uses for its end-to-end cases.
+other ingestion tests use for their end-to-end cases.
 """
 
 from __future__ import annotations

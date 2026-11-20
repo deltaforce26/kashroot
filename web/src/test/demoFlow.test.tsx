@@ -20,7 +20,7 @@ import { SavedProvider } from "../saved/SavedProvider";
 import { STRINGS } from "../i18n/strings";
 import { ThemeProvider } from "../theme/ThemeProvider";
 
-// jsdom has no geolocation, so the first load's device request fails at once and
+// jsdom has no geolocation, so the first load asks the device nothing and
 // every screen here searches unscoped: all eleven fixtures, with no distance.
 function renderApp(route = "/") {
   return render(
