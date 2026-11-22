@@ -2661,6 +2661,71 @@ a {
   padding: 14px 18px;
 }
 
+/*
+ * The pre-permission dialog (LocationPermissionDialog.tsx), on the bottom sheet's frame.
+ * Centred like a system prompt: icon, title, a line of why, then two full-width buttons.
+ * The denied face swaps the why for a short numbered list, aligned to the reading start.
+ */
+.locperm {
+  align-items: stretch;
+  text-align: center;
+}
+
+.locperm__icon {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-top: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--cta);
+  color: var(--cta-ink);
+}
+
+.locperm__icon--off {
+  background: var(--pill);
+  color: var(--sub);
+}
+
+.bsheet .locperm__title {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.35;
+}
+
+.locperm__lead {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--sub);
+}
+
+.locperm__privacy {
+  margin: 0;
+}
+
+.locperm__steps {
+  margin: 0;
+  padding-inline-start: 22px;
+  text-align: start;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.locperm__steps li + li {
+  margin-top: 6px;
+}
+
+.locperm__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
 .photo-sheet__preview {
   position: relative;
   margin: 0;

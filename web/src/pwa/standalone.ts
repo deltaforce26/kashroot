@@ -16,3 +16,15 @@ export function isStandalone(): boolean {
   const iosStandalone = (window.navigator as { standalone?: boolean }).standalone === true;
   return displayMode || iosStandalone;
 }
+
+/**
+ * Whether this is an iPhone or iPad, for the one place the wording differs by platform:
+ * the steps that turn a blocked location permission back on. iPadOS reports itself as
+ * a Mac, so a Mac with a touch screen counts too. Anything unknown reads as "not iOS".
+ */
+export function isIOS(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  if (/iPad|iPhone|iPod/.test(ua)) return true;
+  return ua.includes("Macintosh") && (navigator.maxTouchPoints ?? 0) > 1;
+}

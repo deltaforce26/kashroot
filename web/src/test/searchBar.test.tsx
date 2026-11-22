@@ -6,8 +6,10 @@
  * origin moves on a pick and on nothing else, and the header — which names the place
  * we are really searching — must agree with the pick. A city is a scope (whole city,
  * no radius), a Google place is a point (a radius applies), and the device is a point
- * the user asked for with one tap. A refusal is said once, next to the button that
- * asked, and never for a refusal this bar did not ask for.
+ * the user asked for with one tap. The native permission prompt is never fired cold:
+ * while the browser can still prompt, near-me (and a first load) opens the
+ * pre-permission dialog and asks only on Allow; a blocked site gets the dialog's denied
+ * state with the steps to re-allow it; a timeout is one short, passing line.
  *
  * Google is doubled exactly as in the location sheet's tests: the completions are
  * Google's network call, not ours. The directory the city list comes from is the
@@ -147,6 +149,23 @@ function stubGeolocation(behaviour: "grant" | "deny" | "timeout" | "hold") {
   });
 }
 
+/** The standing permission answer `permissions.query` reports. */
+function stubPermission(state: PermissionState | "reject") {
+  Object.defineProperty(navigator, "permissions", {
+    configurable: true,
+    value: {
+      query: () =>
+        state === "reject"
+          ? Promise.reject(new TypeError("unsupported"))
+          : Promise.resolve({ state } as PermissionStatus),
+    },
+  });
+}
+
+const askDialog = () => screen.findByRole("dialog", { name: he.origin.permission.title });
+const deniedDialog = () => screen.findByRole("dialog", { name: he.origin.permission.deniedTitle });
+const noDialog = () => expect(screen.queryByRole("dialog")).toBeNull();
+
 describe("search bar", () => {
   afterEach(() => {
     suggestCalls.length = 0;
@@ -179,14 +198,16 @@ describe("search bar", () => {
     expect(document.querySelector(".searchbar__divider")).toBeNull();
   });
 
-  it("asks the device once on a tap, shows the locating state, then goes active", async () => {
+  it("with the permission granted, asks the device on a tap with no dialog, then goes active", async () => {
     seedEverywhere();
     stubGeolocation("hold");
+    stubPermission("granted");
     const user = userEvent.setup();
     await reachHome(user);
 
     await user.click(nearMe());
-    const pending = locatingButton();
+    const pending = await waitFor(() => locatingButton());
+    noDialog();
     // Enabled on purpose: pressing it again cancels.
     expect(pending).toBeEnabled();
     expect(pending).toHaveAttribute("data-state", "locating");
@@ -212,6 +233,7 @@ describe("search bar", () => {
     seedEverywhere();
     stubGeolocation("grant");
     areaImpl = async () => "פלורנטין";
+    stubPermission("granted");
     const user = userEvent.setup();
     await reachHome(user);
 
@@ -230,6 +252,7 @@ describe("search bar", () => {
     stubGeolocation("grant");
     let name!: (value: string | null) => void;
     areaImpl = () => new Promise<string | null>((resolve) => (name = resolve));
+    stubPermission("granted");
     const user = userEvent.setup();
     await reachHome(user);
 
@@ -245,6 +268,7 @@ describe("search bar", () => {
   it("returns to idle on a tap while active: all of Israel, and the choice is stored", async () => {
     seedEverywhere();
     stubGeolocation("grant");
+    stubPermission("granted");
     const user = userEvent.setup();
     await reachHome(user);
     await user.click(nearMe());
@@ -258,20 +282,20 @@ describe("search bar", () => {
     expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem(ORIGIN_KEY) ?? "null")).toEqual({ source: "none" });
     // Leaving is not a refusal.
-    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
+    noDialog();
   });
 
-  it("cancels on a tap while locating, without a hint, and ignores the late answer", async () => {
+  it("cancels on a tap while locating, without a dialog, and ignores the late answer", async () => {
     seedEverywhere();
     stubGeolocation("hold");
+    stubPermission("granted");
     const user = userEvent.setup();
     await reachHome(user);
 
     await user.click(nearMe());
-    expect(locatingButton()).toBeInTheDocument();
-    await user.click(locatingButton());
+    await user.click(await waitFor(() => locatingButton()));
     expect(nearMe()).toHaveAttribute("data-state", "idle");
-    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
+    noDialog();
 
     // The device answers after all: nobody is waiting for it.
     answer!();
@@ -279,13 +303,14 @@ describe("search bar", () => {
     expect(nearMe()).toHaveAttribute("data-state", "idle");
     expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
     expect(field()).toHaveAttribute("placeholder", he.search.placeholder);
-    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
+    noDialog();
     expect(JSON.parse(localStorage.getItem(ORIGIN_KEY) ?? "null")).toEqual({ source: "none" });
   });
 
   it("keeps a pinned city when a locating tap is cancelled, and ignores the late fix", async () => {
     seedEverywhere();
     stubGeolocation("hold");
+    stubPermission("granted");
     const user = userEvent.setup();
     await reachHome(user);
     await user.type(field(), "טבר");
@@ -293,9 +318,9 @@ describe("search bar", () => {
     expect(header().getByText("טבריה")).toBeInTheDocument();
 
     await user.click(nearMe());
-    await user.click(locatingButton());
+    await user.click(await waitFor(() => locatingButton()));
     expect(nearMe()).toHaveAttribute("data-state", "idle");
-    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
+    noDialog();
 
     answer!();
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -306,7 +331,7 @@ describe("search bar", () => {
       source: "city",
       slug: "tiberias",
     });
-    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
+    noDialog();
   });
 
   it("labels the active button with the filter bar's radius", async () => {
@@ -316,6 +341,7 @@ describe("search bar", () => {
       JSON.stringify({ ...DEFAULT_FILTERS, radiusKm: 2 }),
     );
     stubGeolocation("grant");
+    stubPermission("granted");
     const user = userEvent.setup();
     await reachHome(user);
 
@@ -324,44 +350,103 @@ describe("search bar", () => {
     expect(he.origin.withinKm(2)).toBe("עד 2 ק״מ");
   });
 
-  it("says a refusal once, keeps searching all of Israel, and not for an earlier refusal", async () => {
+  it("opens the pre-permission dialog on a tap while the browser can still prompt, and asks only on Allow", async () => {
     seedEverywhere();
-    stubGeolocation("deny");
+    stubGeolocation("grant");
+    stubPermission("prompt");
     const user = userEvent.setup();
     await reachHome(user);
-    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
+    noDialog();
 
     await user.click(nearMe());
-    expect(await screen.findByText(he.origin.refused.denied)).toBeInTheDocument();
-    const hint = screen.getByText(he.origin.refused.denied);
-    expect(hint).toHaveAttribute("role", "status");
-    // Outside the wrapper that anchors the menu, so a menu opening later is not pushed
-    // below it.
-    expect(hint.closest(".searchbar__wrap")).toBeNull();
-    expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
+    const dialog = await askDialog();
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(dialog).toHaveAttribute("aria-labelledby");
+    expect(within(dialog).getByText(he.origin.privacy)).toBeInTheDocument();
+    expect(positionRequests).toBe(0);
+    // Focus moved into the dialog, onto its first action.
+    expect(within(dialog).getByRole("button", { name: he.origin.permission.allow })).toHaveFocus();
 
-    // A fresh mount, the refusal still recorded in the module: nobody asked this time.
-    cleanup();
-    mount();
-    await screen.findAllByRole("button", { name: he.home.changeLocation });
-    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
+    await user.click(within(dialog).getByRole("button", { name: he.origin.permission.allow }));
+    expect(positionRequests).toBe(1);
+    await waitFor(() => expect(withinButton()).toBeInTheDocument());
+    noDialog();
   });
 
-  it("names the timeout for a timed-out request, not the blocked-site instruction", async () => {
+  it("closes the dialog on Escape without asking, and leaves the scope as it was", async () => {
     seedEverywhere();
-    stubGeolocation("timeout");
+    stubGeolocation("grant");
+    stubPermission("prompt");
     const user = userEvent.setup();
     await reachHome(user);
 
     await user.click(nearMe());
-    expect(await screen.findByText(he.origin.refused.timeout)).toBeInTheDocument();
-    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
+    await askDialog();
+    await user.keyboard("{Escape}");
+    noDialog();
+    expect(positionRequests).toBe(0);
+    expect(nearMe()).toHaveAttribute("data-state", "idle");
     expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
+  });
+
+  it("turns a refused Allow into the denied state, with steps and no paragraph under the bar", async () => {
+    seedEverywhere();
+    stubGeolocation("deny");
+    stubPermission("prompt");
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    await user.click(nearMe());
+    await user.click(
+      within(await askDialog()).getByRole("button", { name: he.origin.permission.allow }),
+    );
+    const dialog = await deniedDialog();
+    expect(within(dialog).getByText(he.origin.permission.deniedLead)).toBeInTheDocument();
+    const steps = within(dialog).getAllByRole("listitem").map((item) => item.textContent);
+    expect(steps).toEqual(he.origin.permission.steps.browser);
+    expect(document.querySelector(".searchbar__hint")).toBeNull();
+    expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
+  });
+
+  it("opens the denied state at once, without asking the device, when permission is already denied", async () => {
+    seedEverywhere();
+    stubGeolocation("grant");
+    stubPermission("denied");
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    await user.click(nearMe());
+    const dialog = await deniedDialog();
+    expect(positionRequests).toBe(0);
+    expect(nearMe()).toHaveAttribute("data-state", "idle");
+    expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
+
+    // Try again re-runs the request; still blocked, so it stays on the denied face.
+    await user.click(within(dialog).getByRole("button", { name: he.origin.permission.retry }));
+    expect(await deniedDialog()).toBeInTheDocument();
+    expect(positionRequests).toBe(0);
+  });
+
+  it("lets Try again succeed once location has been turned back on", async () => {
+    seedEverywhere();
+    stubGeolocation("grant");
+    stubPermission("denied");
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    await user.click(nearMe());
+    const dialog = await deniedDialog();
+    stubPermission("granted");
+    await user.click(within(dialog).getByRole("button", { name: he.origin.permission.retry }));
+    await waitFor(() => expect(withinButton()).toBeInTheDocument());
+    expect(positionRequests).toBe(1);
+    noDialog();
   });
 
   it("points an installed app at the device's settings, not at a lock icon that is not there", async () => {
     seedEverywhere();
-    stubGeolocation("deny");
+    stubGeolocation("grant");
+    stubPermission("denied");
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: stubMatchMedia(true),
@@ -370,13 +455,16 @@ describe("search bar", () => {
     await reachHome(user);
 
     await user.click(nearMe());
-    expect(await screen.findByText(he.origin.refused.deniedInstalled)).toBeInTheDocument();
-    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
+    const steps = within(await deniedDialog())
+      .getAllByRole("listitem")
+      .map((item) => item.textContent);
+    expect(steps).toEqual(he.origin.permission.steps.androidApp);
   });
 
-  it("keeps the browser wording for a denial in a browser tab", async () => {
+  it("keeps the address-bar steps for a denial in a browser tab", async () => {
     seedEverywhere();
-    stubGeolocation("deny");
+    stubGeolocation("grant");
+    stubPermission("denied");
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: stubMatchMedia(false),
@@ -385,41 +473,69 @@ describe("search bar", () => {
     await reachHome(user);
 
     await user.click(nearMe());
-    expect(await screen.findByText(he.origin.refused.denied)).toBeInTheDocument();
-    expect(screen.queryByText(he.origin.refused.deniedInstalled)).toBeNull();
+    const steps = within(await deniedDialog())
+      .getAllByRole("listitem")
+      .map((item) => item.textContent);
+    expect(steps).toEqual(he.origin.permission.steps.browser);
   });
 
-  it("says the site is blocked at once, without asking the device, when permission is already denied", async () => {
+  it("opens the dialog when the permission query itself fails, rather than prompting cold", async () => {
     seedEverywhere();
     stubGeolocation("grant");
-    Object.defineProperty(navigator, "permissions", {
-      configurable: true,
-      value: { query: () => Promise.resolve({ state: "denied" }) },
-    });
+    stubPermission("reject");
     const user = userEvent.setup();
     await reachHome(user);
 
     await user.click(nearMe());
-    expect(await screen.findByText(he.origin.refused.denied)).toBeInTheDocument();
+    await askDialog();
     expect(positionRequests).toBe(0);
-    expect(nearMe()).toHaveAttribute("data-state", "idle");
-    expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
   });
 
-  it("asks the device anyway when the permission query itself fails", async () => {
+  it("says a timeout in one short line, not a dialog", async () => {
     seedEverywhere();
-    stubGeolocation("grant");
-    Object.defineProperty(navigator, "permissions", {
-      configurable: true,
-      value: { query: () => Promise.reject(new TypeError("unsupported")) },
-    });
+    stubGeolocation("timeout");
+    stubPermission("granted");
     const user = userEvent.setup();
     await reachHome(user);
 
     await user.click(nearMe());
+    const line = await screen.findByText(he.origin.notice.timeout);
+    expect(line).toHaveAttribute("role", "status");
+    // Outside the wrapper that anchors the menu, so a menu opening later is not pushed
+    // below it.
+    expect(line.closest(".searchbar__wrap")).toBeNull();
+    noDialog();
+    expect(header().getByText(he.origin.everywhere)).toBeInTheDocument();
+
+    // Picking a city takes it down.
+    await user.type(field(), "טבר");
+    await user.click(await screen.findByRole("button", { name: /טבריה/ }));
+    expect(screen.queryByText(he.origin.notice.timeout)).toBeNull();
+  });
+
+  it("asks nothing on a first load with the browser able to prompt: the dialog waits for Allow", async () => {
+    stubGeolocation("grant");
+    stubPermission("prompt");
+    const user = userEvent.setup();
+    await reachHome(user);
+
+    const dialog = await askDialog();
+    expect(positionRequests).toBe(0);
+    await user.click(within(dialog).getByRole("button", { name: he.origin.permission.allow }));
+    expect(positionRequests).toBe(1);
+    await waitFor(() => expect(withinButton()).toBeInTheDocument());
+    noDialog();
+  });
+
+  it("shows no dialog on a first load with the permission granted", async () => {
+    stubGeolocation("grant");
+    stubPermission("granted");
+    const user = userEvent.setup();
+    await reachHome(user);
+
     await waitFor(() => expect(withinButton()).toBeInTheDocument());
     expect(positionRequests).toBe(1);
-    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
+    noDialog();
   });
 
   it("offers a matching city, and a pick scopes the whole city and survives a reload", async () => {
@@ -474,19 +590,6 @@ describe("search bar", () => {
     // A point has a radius to offer, which the city scope did not.
     expect(await radiusOffered(user)).toBe(true);
     expect(suggestCalls.length).toBeGreaterThan(0);
-  });
-
-  it("clears the refusal hint when a city is picked", async () => {
-    seedEverywhere();
-    stubGeolocation("deny");
-    const user = userEvent.setup();
-    await reachHome(user);
-    await user.click(nearMe());
-    await screen.findByText(he.origin.refused.denied);
-
-    await user.type(field(), "טבר");
-    await user.click(await screen.findByRole("button", { name: /טבריה/ }));
-    expect(screen.queryByText(he.origin.refused.denied)).toBeNull();
   });
 
   it("lets a later pick win over a place whose lookup is still in flight", async () => {
